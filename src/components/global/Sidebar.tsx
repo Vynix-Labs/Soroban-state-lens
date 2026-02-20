@@ -1,20 +1,16 @@
 import { ChevronDown, ChevronRight, ChevronUp, Filter, X } from 'lucide-react'
 
-/**
- * Sidebar - Tree Explorer Panel (400px width)
- *
- * Displays the ledger state tree for navigation.
- * - Desktop: Always visible alongside main content
- * - Mobile: Overlay drawer
- */
-
 interface SidebarProps {
   open: boolean
   onClose: () => void
   variant?: 'overlay' | 'pinned'
 }
 
-export default function Sidebar({ open, onClose, variant = 'overlay' }: SidebarProps) {
+export default function Sidebar({
+  open,
+  onClose,
+  variant = 'overlay',
+}: SidebarProps) {
   const isPinned = variant === 'pinned'
 
   // Pinned variant: inline panel
@@ -33,10 +29,16 @@ export default function Sidebar({ open, onClose, variant = 'overlay' }: SidebarP
               Ledger State
             </span>
             <div className="flex gap-2">
-              <button className="text-text-muted hover:text-white" aria-label="Collapse all">
+              <button
+                className="text-text-muted hover:text-white"
+                aria-label="Collapse all"
+              >
                 <ChevronUp size={18} />
               </button>
-              <button className="text-text-muted hover:text-white" aria-label="Filter">
+              <button
+                className="text-text-muted hover:text-white"
+                aria-label="Filter"
+              >
                 <Filter size={18} />
               </button>
             </div>
@@ -76,7 +78,10 @@ export default function Sidebar({ open, onClose, variant = 'overlay' }: SidebarP
             Ledger State
           </span>
           <div className="flex gap-2">
-            <button className="text-text-muted hover:text-white" aria-label="Filter">
+            <button
+              className="text-text-muted hover:text-white"
+              aria-label="Filter"
+            >
               <Filter size={18} />
             </button>
             <button
@@ -115,7 +120,9 @@ function TreePlaceholder() {
           <div className="flex items-center gap-2 py-1.5 px-2 hover:bg-white/5 rounded cursor-pointer text-text-muted group/item">
             <span className="w-4" />
             <span className="text-blue-400">📄</span>
-            <span className="flex-1 truncate group-hover/item:text-white">Registry_Config</span>
+            <span className="flex-1 truncate group-hover/item:text-white">
+              Registry_Config
+            </span>
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-dark border border-border-dark">
               Data
             </span>

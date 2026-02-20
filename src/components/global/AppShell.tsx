@@ -6,30 +6,13 @@ import SlimNav from './SlimNav'
 
 import type { ReactNode } from 'react'
 
-/**
- * AppShell - Main application layout scaffold
- *
- * Layout structure:
- * ┌─────────────────────────────────────────────┐
- * │                   Header                     │
- * ├──────┬────────────┬─────────────────────────┤
- * │ Slim │   Tree     │                         │
- * │ Nav  │ Explorer   │     Main Content        │
- * │ 64px │   400px    │                         │
- * └──────┴────────────┴─────────────────────────┘
- */
-
 interface AppShellProps {
   children: ReactNode
   onContractLookup?: (contractId: string) => void
   isLookupLoading?: boolean
 }
 
-export default function AppShell({
-  children,
-  onContractLookup,
-  isLookupLoading = false,
-}: AppShellProps) {
+export default function AppShell({ children }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true)
   const [activeNavItem, setActiveNavItem] = useState('watchlist')
@@ -37,14 +20,10 @@ export default function AppShell({
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Header - full width */}
-      <Header
-        onContractLookup={onContractLookup}
-        isLookupLoading={isLookupLoading}
-      />
+      <Header handleToggle={() => setMobileMenuOpen(true)} />
 
       {/* Main workspace */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Slim Nav - 64px icon sidebar */}
         <SlimNav
           activeItem={activeNavItem}
           onItemClick={(item) => {

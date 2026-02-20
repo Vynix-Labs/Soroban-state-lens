@@ -1,12 +1,5 @@
 import { Eye, HelpCircle, History, Search, Settings } from 'lucide-react'
 
-/**
- * SlimNav - 64px vertical icon navigation bar
- *
- * Located on the far left of the workspace.
- * Contains icon buttons for main navigation actions.
- */
-
 interface NavItemProps {
   icon: React.ReactNode
   label: string
@@ -36,7 +29,10 @@ interface SlimNavProps {
   onItemClick?: (item: string) => void
 }
 
-export default function SlimNav({ activeItem = 'watchlist', onItemClick }: SlimNavProps) {
+export default function SlimNav({
+  activeItem = 'watchlist',
+  onItemClick,
+}: SlimNavProps) {
   const handleClick = (item: string) => {
     onItemClick?.(item)
   }
