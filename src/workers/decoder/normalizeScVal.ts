@@ -1,3 +1,5 @@
+import { Address, xdr } from '@stellar/stellar-sdk'
+
 /**
  * ScVal normalization utilities for Soroban State Lens
  * Handles conversion of Stellar Contract Values to normalized JSON-like structures
@@ -6,7 +8,7 @@
 // ScVal variant types based on Stellar XDR definitions
 export enum ScValType {
   SCV_BOOL = 'ScvBool',
-  SCV_VOID = 'ScvVoid', 
+  SCV_VOID = 'ScvVoid',
   SCV_U32 = 'ScvU32',
   SCV_I32 = 'ScvI32',
   SCV_U64 = 'ScvU64',
@@ -42,7 +44,7 @@ export interface UnsupportedFallback {
 }
 
 // Normalized output types
-export type NormalizedValue = 
+export type NormalizedValue =
   | boolean
   | number
   | string
@@ -54,7 +56,10 @@ export type NormalizedValue =
 /**
  * Creates a deterministic fallback object for unsupported ScVal variants
  */
-function createUnsupportedFallback(variant: string, rawData: unknown): UnsupportedFallback {
+function createUnsupportedFallback(
+  variant: string,
+  rawData: unknown,
+): UnsupportedFallback {
   return {
     __unsupported: true,
     variant,
@@ -66,7 +71,9 @@ function createUnsupportedFallback(variant: string, rawData: unknown): Unsupport
  * Normalizes an ScVal to a JSON-serializable format
  * Supports i32, u32, and provides fallback for unsupported variants
  */
-export function normalizeScVal(scVal: ScVal | null | undefined): NormalizedValue {
+export function normalizeScVal(
+  scVal: ScVal | null | undefined,
+): NormalizedValue {
   if (!scVal || typeof scVal.switch !== 'string') {
     return createUnsupportedFallback('Invalid', scVal)
   }
@@ -80,14 +87,24 @@ export function normalizeScVal(scVal: ScVal | null | undefined): NormalizedValue
 
     case ScValType.SCV_U32:
       // Handle u32 - ensure it's a valid 32-bit unsigned integer
-      if (typeof scVal.value === 'number' && Number.isInteger(scVal.value) && scVal.value >= 0 && scVal.value <= 0xFFFFFFFF) {
+      if (
+        typeof scVal.value === 'number' &&
+        Number.isInteger(scVal.value) &&
+        scVal.value >= 0 &&
+        scVal.value <= 0xffffffff
+      ) {
         return scVal.value
       }
       return createUnsupportedFallback(ScValType.SCV_U32, scVal.value)
 
     case ScValType.SCV_I32:
       // Handle i32 - ensure it's a valid 32-bit signed integer
-      if (typeof scVal.value === 'number' && Number.isInteger(scVal.value) && scVal.value >= -0x80000000 && scVal.value <= 0x7FFFFFFF) {
+      if (
+        typeof scVal.value === 'number' &&
+        Number.isInteger(scVal.value) &&
+        scVal.value >= -0x80000000 &&
+        scVal.value <= 0x7fffffff
+      ) {
         return scVal.value
       }
       return createUnsupportedFallback(ScValType.SCV_I32, scVal.value)
@@ -101,5 +118,73 @@ export function normalizeScVal(scVal: ScVal | null | undefined): NormalizedValue
     // All other variants return unsupported fallback
     default:
       return createUnsupportedFallback(scVal.switch, scVal.value)
+  }
+} // @ts-ignore - resolved at runtime via application bundler
+// @ts-ignore - module is provided by the runtime bundle
+
+export type NormalizedAddressType =
+  | 'account'
+  | 'contract'
+  | 'muxedAccount'
+  | 'claimableBalance'
+  | 'liquidityPool'
+  | 'unknown'
+
+export interface NormalizedAddress {
+  type: 'address'
+  addressType: NormalizedAddressType
+  value: string
+}
+
+/**
+ * Normalize an `xdr.ScVal` that represents an `ScAddress` into a
+ * human-readable StrKey form.
+ *
+ * For non-address values, this returns `null`.
+ */
+export function normalizeScAddress(
+  scVal: any | null | undefined,
+): NormalizedAddress | null {
+  if (!scVal) {
+    return null
+  }
+
+  if (scVal.switch().value !== xdr.ScValType.scvAddress().value) {
+    return null
+  }
+
+  const address = Address.fromScVal(scVal)
+  const value = address.toString()
+
+  // Infer the address type from the StrKey prefix.
+  // G... = ed25519 account, C... = contract, M... = muxed account,
+  // B... = claimable balance, P... = liquidity pool.
+  let addressType: NormalizedAddressType
+  const prefix = value[0]
+
+  switch (prefix) {
+    case 'G':
+      addressType = 'account'
+      break
+    case 'C':
+      addressType = 'contract'
+      break
+    case 'M':
+      addressType = 'muxedAccount'
+      break
+    case 'B':
+      addressType = 'claimableBalance'
+      break
+    case 'P':
+      addressType = 'liquidityPool'
+      break
+    default:
+      addressType = 'unknown'
+  }
+
+  return {
+    type: 'address',
+    addressType,
+    value,
   }
 }
