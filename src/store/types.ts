@@ -34,8 +34,10 @@ export type ExpandedNodes = Set<string>
 // Network config slice
 export interface NetworkConfigSlice {
   networkConfig: NetworkConfig
+  lastCustomUrl?: string
   setNetworkConfig: (config: Partial<NetworkConfig>) => void
   resetNetworkConfig: () => void
+  setLastCustomUrl: (url: string) => void
 }
 
 // Ledger data slice
