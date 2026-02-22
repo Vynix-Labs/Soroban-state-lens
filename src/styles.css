@@ -58,3 +58,26 @@ code {
 ::-webkit-scrollbar-thumb:hover {
   background: #8b949e;
 }
+
+.bg-grid-pattern {
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, #161b22 1px, transparent 1px),
+    linear-gradient(to bottom, #161b22 1px, transparent 1px);
+}
+
+@keyframes pulse-slow {
+
+  0%,
+  100% {
+    opacity: 0.1;
+  }
+
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.watermark-pulse {
+  animation: pulse-slow 8s ease-in-out infinite;
+}

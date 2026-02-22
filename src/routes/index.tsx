@@ -1,3 +1,4 @@
+import SearchLandingScreen from '@/components/Home/SearchLandingScreen'
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
@@ -6,8 +7,8 @@ export const Route = createFileRoute('/')({
 
 function App() {
   return (
-    <div className="text-center">
-      <p>main content here</p>
+    <div className="text-center h-full">
+      <SearchLandingScreen />
     </div>
   )
 }
