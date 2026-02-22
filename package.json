@@ -10,6 +10,10 @@
   },
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0",
+    "bun": ">=1.0.0"
+  },
   "scripts": {
     "dev": "vite --port 3000",
     "build": "vite build && tsc",
@@ -17,7 +21,8 @@
     "test": "vitest run",
     "lint": "eslint",
     "format": "prettier",
-    "check": "prettier --write . && eslint --fix"
+    "check": "prettier --write . && eslint --fix",
+    "check:env": "node scripts/check-env.js"
   },
   "dependencies": {
     "@stellar/design-system": "^3.2.7",

@@ -18,7 +18,8 @@ Soroban stores data in the ledger as ScVal (Stellar Contract Values) within Cont
 
 ### **Prerequisites**
 
-* [Node.js](https://nodejs.org/) (v20+)  
+* [Node.js](https://nodejs.org/) (v20+) — Use [nvm](https://github.com/nvm-sh/nvm) to manage versions
+* [Bun](https://bun.sh/) (v1.0+) — Fast all-in-one JavaScript runtime
 * [Rust](https://www.rust-lang.org/) (required for the Rust-based XDR decoder)  
 * A running Soroban RPC node (or use the public Testnet/Mainnet endpoints)
 
@@ -33,14 +34,18 @@ Soroban stores data in the ledger as ScVal (Stellar Contract Values) within Cont
 ### **Installation**
 
 1. Clone the repository:  
-   git clone \[https://github.com/Vynix-Labs/soroban-state-lens.git\](https://github.com/Vynix-Labs/soroban-state-lens.git)  
-   cd soroban-state-lens
+   `git clone https://github.com/Vynix-Labs/soroban-state-lens.git`  
+   `cd soroban-state-lens`
 
-2. Install dependencies:  
-   npm install
+2. Verify your environment versions:  
+   `npm run check:env` or `bun run check:env`  
+   This ensures you have Node.js v20+ and Bun v1.0+ installed.
 
-3. Start the development server:  
-   npm run dev
+3. Install dependencies:  
+   `bun install` or `npm install`
+
+4. Start the development server:  
+   `npm run dev` or `bun run dev`
 
 ## **🛠 Project Architecture**
 
