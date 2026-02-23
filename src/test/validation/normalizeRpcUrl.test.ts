@@ -54,7 +54,7 @@ describe('normalizeRpcUrl', () => {
     expect(normalizeRpcUrl('')).toBe('')
     expect(normalizeRpcUrl('   ')).toBe('')
     expect(normalizeRpcUrl('not-a-url')).toBe('')
-    // @ts-ignore
+    // @ts-ignore - testing runtime behavior for non-string
     expect(normalizeRpcUrl(null)).toBe('')
   })
 
