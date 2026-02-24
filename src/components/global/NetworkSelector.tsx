@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
+import { validateRpcUrl } from '../../lib/network/validation'
 import { useLensStore } from '../../store/lensStore'
 import { DEFAULT_NETWORKS } from '../../store/types'
 
@@ -22,10 +23,12 @@ const NETWORK_OPTIONS: Array<NetworkInfo> = [
 
 export default function NetworkSelector() {
   const [isOpen, setIsOpen] = useState(false)
-  const [customUrl, setCustomUrl] = useState('')
   const [showCustomInput, setShowCustomInput] = useState(false)
+  const [customRpcUrl, setCustomRpcUrl] = useState('')
+  const [validationError, setValidationError] = useState('')
   const [isHydrated, setIsHydrated] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const networkConfig = useLensStore((state) => state.networkConfig)
   const lastCustomUrl = useLensStore((state) => state.lastCustomUrl)
@@ -38,11 +41,11 @@ export default function NetworkSelector() {
 
     // If currently on custom network and we have a last custom URL, sync it
     if (networkConfig.networkId === 'custom' && lastCustomUrl) {
-      setCustomUrl(lastCustomUrl)
+      setCustomRpcUrl(lastCustomUrl)
       setShowCustomInput(true)
     } else if (networkConfig.networkId === 'custom') {
       // If custom but no last URL, use current config URL
-      setCustomUrl(networkConfig.rpcUrl || '')
+      setCustomRpcUrl(networkConfig.rpcUrl || '')
       setShowCustomInput(true)
     }
   }, [networkConfig.networkId, lastCustomUrl, networkConfig.rpcUrl])
@@ -67,6 +70,8 @@ export default function NetworkSelector() {
       // Preset network: clear any custom URL usage
       setNetworkConfig(option.config)
       setShowCustomInput(false)
+      setValidationError('')
+      setCustomRpcUrl('')
     } else {
       // Custom: restore last custom URL or set up for new input
       const urlToUse = lastCustomUrl || networkConfig.rpcUrl || ''
@@ -75,26 +80,59 @@ export default function NetworkSelector() {
         networkPassphrase: '', // Will be set when URL is validated
         rpcUrl: urlToUse,
       })
-      setCustomUrl(urlToUse)
+      setCustomRpcUrl(urlToUse)
       setShowCustomInput(true)
     }
     setIsOpen(false)
   }
 
+  const handleCustomUrlBlur = () => {
+    if (customRpcUrl.trim()) {
+      const validation = validateRpcUrl(customRpcUrl)
+      if (!validation.isValid) {
+        setValidationError(validation.error || 'Invalid URL')
+      }
+    }
+  }
+
+  const handleApplyCustomUrl = () => {
+    const validation = validateRpcUrl(customRpcUrl)
+    if (validation.isValid) {
+      setNetworkConfig({
+        networkId: 'custom',
+        rpcUrl: customRpcUrl.trim(),
+        networkPassphrase: 'Custom Network', // Default passphrase
+      })
+      setShowCustomInput(false)
+      setValidationError('')
+      setCustomRpcUrl('')
+      setLastCustomUrl(customRpcUrl.trim())
+    } else {
+      setValidationError(validation.error || 'Invalid URL')
+    }
+  }
+
+  const handleCancelCustom = () => {
+    setShowCustomInput(false)
+    setCustomRpcUrl('')
+    setValidationError('')
+  }
+
   const handleCustomUrlChange = (url: string) => {
-    setCustomUrl(url)
+    setCustomRpcUrl(url)
+
+    // Validate URL and set error message
+    if (url.trim() && !isValidUrl(url)) {
+      setValidationError('Please enter a valid URL (http:// or https://)')
+    } else {
+      setValidationError('')
+    }
+
     // Update network config immediately for real-time feedback
     setNetworkConfig({
       networkId: 'custom',
-      networkPassphrase: networkConfig.networkPassphrase,
       rpcUrl: url,
     })
-  }
-
-  const handleCustomUrlBlur = () => {
-    if (customUrl.trim()) {
-      setLastCustomUrl(customUrl.trim())
-    }
   }
 
   const isValidUrl = (url: string) => {
@@ -157,8 +195,87 @@ export default function NetworkSelector() {
         </span>
       </button>
 
+      {/* Custom RPC Input */}
+      {showCustomInput && (
+        <div className="absolute right-0 top-full mt-1 w-80 bg-surface-dark border border-border-dark rounded-lg shadow-lg p-4 z-50">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-text-main">
+                Custom RPC URL
+              </h3>
+              <button
+                type="button"
+                onClick={handleCancelCustom}
+                className="text-text-muted hover:text-text-main transition-colors"
+                aria-label="Cancel custom RPC"
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  close
+                </span>
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={customRpcUrl}
+                onChange={(e) => handleCustomUrlChange(e.target.value)}
+                onBlur={handleCustomUrlBlur}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleApplyCustomUrl()
+                  } else if (e.key === 'Escape') {
+                    handleCancelCustom()
+                  }
+                }}
+                placeholder="https://rpc.example.com"
+                className={`w-full px-3 py-2 bg-background-dark border rounded-md text-sm text-white placeholder-text-muted transition-colors ${
+                  validationError
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-border-dark focus:border-primary'
+                } focus:outline-none focus:ring-1 focus:ring-primary/20`}
+                aria-label="Custom RPC URL input"
+                aria-invalid={!!validationError}
+                aria-describedby={validationError ? 'rpc-error' : undefined}
+              />
+
+              {validationError && (
+                <p
+                  id="rpc-error"
+                  className="text-xs text-red-400 flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-[14px]">
+                    error
+                  </span>
+                  {validationError}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={handleCancelCustom}
+                className="px-3 py-1.5 text-sm text-text-muted hover:text-text-main transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyCustomUrl}
+                disabled={!customRpcUrl.trim() || !!validationError}
+                className="px-3 py-1.5 text-sm bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Dropdown Menu */}
-      {isOpen && (
+      {isOpen && !showCustomInput && (
         <div
           className="absolute right-0 top-full mt-1 w-64 bg-surface-dark border border-border-dark rounded-lg shadow-lg overflow-hidden z-50"
           role="listbox"
@@ -196,31 +313,6 @@ export default function NetworkSelector() {
                   </span>
                 )}
               </button>
-
-              {/* Custom URL Input */}
-              {option.id === 'custom' &&
-                currentNetwork.id === 'custom' &&
-                showCustomInput && (
-                  <div className="px-3 pb-3 border-t border-border-dark">
-                    <input
-                      type="url"
-                      value={customUrl}
-                      onChange={(e) => handleCustomUrlChange(e.target.value)}
-                      onBlur={handleCustomUrlBlur}
-                      placeholder="https://your-rpc-url.com"
-                      className={`w-full mt-2 px-3 py-2 bg-background-dark border rounded-md text-sm text-white placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary/50 ${
-                        customUrl && !isValidUrl(customUrl)
-                          ? 'border-red-500 focus:ring-red-500/50'
-                          : 'border-border-dark'
-                      }`}
-                    />
-                    {customUrl && !isValidUrl(customUrl) && (
-                      <p className="mt-1 text-xs text-red-400">
-                        Please enter a valid URL (http:// or https://)
-                      </p>
-                    )}
-                  </div>
-                )}
             </div>
           ))}
         </div>

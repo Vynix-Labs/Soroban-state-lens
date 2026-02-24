@@ -95,6 +95,17 @@ export function validateRpcUrl(url: string): ValidationResult {
       }
     }
 
+    // Optional: Validate port if specified
+    if (parsedUrl.port) {
+      const portNum = parseInt(parsedUrl.port, 10)
+      if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
+        return {
+          isValid: false,
+          error: 'Port must be between 1 and 65535',
+        }
+      }
+    }
+
     return { isValid: true }
   } catch (error) {
     // URL constructor throws on invalid URLs
