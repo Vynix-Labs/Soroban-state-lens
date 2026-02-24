@@ -12,7 +12,11 @@
  * @returns True if the value is a valid contract ID, false otherwise.
  */
 export function isContractId(value: string): boolean {
-  if (typeof value !== 'string' || value.trim() === '' || value !== value.trim()) {
+  if (
+    typeof value !== 'string' ||
+    value.trim() === '' ||
+    value !== value.trim()
+  ) {
     return false
   }
 

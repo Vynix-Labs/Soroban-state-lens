@@ -10,7 +10,9 @@ vi.mock('comlink', () => ({
 }))
 
 // Mock Worker constructor
-global.Worker = vi.fn().mockImplementation(() => ({})) as any
+global.Worker = vi.fn().mockImplementation(function () {
+  return {}
+})
 
 describe('DecoderWorker Comlink Integration', () => {
   it('should successfully call ping through Comlink and receive pong response', async () => {

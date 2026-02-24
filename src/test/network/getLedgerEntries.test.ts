@@ -37,12 +37,10 @@ describe('getLedgerEntries', () => {
 
     const sdk = await import('@stellar/stellar-sdk')
     rpc = sdk.rpc
-    vi.mocked(rpc.Server).mockImplementation(
-      () =>
-        ({
-          getLedgerEntries: mockGetLedgerEntries,
-        }) as unknown as InstanceType<typeof rpc.Server>,
-    )
+    vi.mocked(rpc.Server).mockImplementation(function (this: any) {
+      this.getLedgerEntries = mockGetLedgerEntries
+      return this
+    })
   })
 
   describe('success scenarios', () => {

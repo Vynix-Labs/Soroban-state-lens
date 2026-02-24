@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { selectLedgerEntriesByContractId } from '../../lib/selectors/selectLedgerEntriesByContractId'
 import type { LedgerEntry, LensStore } from '../../store/types'
 
-function makeEntry(overrides: Partial<LedgerEntry> & { key: string; contractId: string }): LedgerEntry {
+function makeEntry(
+  overrides: Partial<LedgerEntry> & { key: string; contractId: string },
+): LedgerEntry {
   return {
     type: 'ContractData',
     value: null,

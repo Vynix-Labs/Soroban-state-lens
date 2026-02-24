@@ -5,7 +5,11 @@ import {
   createVisitedTracker,
   normalizeScVal,
 } from '../../workers/decoder/normalizeScVal'
-import type { CycleMarker, NormalizedValue, ScVal } from '../../workers/decoder/normalizeScVal'
+import type {
+  CycleMarker,
+  NormalizedValue,
+  ScVal,
+} from '../../workers/decoder/normalizeScVal'
 
 describe('Cycle Guard - Visited Node Tracking', () => {
   describe('VisitedTracker', () => {
@@ -181,30 +185,12 @@ describe('Cycle Guard - Visited Node Tracking', () => {
   describe('Non-Cyclic Structures Still Normalize Correctly', () => {
     it('should normalize simple values without cycles', () => {
       const testCases: Array<[ScVal, NormalizedValue]> = [
-        [
-          { switch: ScValType.SCV_BOOL, value: true },
-          true,
-        ],
-        [
-          { switch: ScValType.SCV_BOOL, value: false },
-          false,
-        ],
-        [
-          { switch: ScValType.SCV_I32, value: 42 },
-          42,
-        ],
-        [
-          { switch: ScValType.SCV_I32, value: -42 },
-          -42,
-        ],
-        [
-          { switch: ScValType.SCV_STRING, value: 'hello' },
-          'hello',
-        ],
-        [
-          { switch: ScValType.SCV_VOID },
-          null,
-        ],
+        [{ switch: ScValType.SCV_BOOL, value: true }, true],
+        [{ switch: ScValType.SCV_BOOL, value: false }, false],
+        [{ switch: ScValType.SCV_I32, value: 42 }, 42],
+        [{ switch: ScValType.SCV_I32, value: -42 }, -42],
+        [{ switch: ScValType.SCV_STRING, value: 'hello' }, 'hello'],
+        [{ switch: ScValType.SCV_VOID }, null],
       ]
 
       testCases.forEach(([input, expected]) => {
@@ -249,7 +235,10 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       }
 
       const result = normalizeScVal(scVal)
-      expect(result).toEqual([[1, 2], [3, 4]])
+      expect(result).toEqual([
+        [1, 2],
+        [3, 4],
+      ])
     })
 
     it('should normalize empty vectors', () => {
@@ -471,9 +460,9 @@ describe('Cycle Guard - Visited Node Tracking', () => {
 
       // Check that result contains arrays (the normalized branches)
       const firstBranch = result[0]
-      expect(Array.isArray(firstBranch) || VisitedTracker.isCycleMarker(firstBranch)).toBe(
-        true
-      )
+      expect(
+        Array.isArray(firstBranch) || VisitedTracker.isCycleMarker(firstBranch),
+      ).toBe(true)
     })
 
     it('should handle deferred cycle detection (cycle appears deep in structure)', () => {
@@ -515,7 +504,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
         VisitedTracker.isCycleMarker(nav) ||
           typeof nav === 'number' ||
           nav === null ||
-          typeof nav === 'boolean'
+          typeof nav === 'boolean',
       ).toBe(true)
     })
   })

@@ -77,7 +77,7 @@ function createUnsupportedFallback(
 /**
  * Normalizes an ScVal to a JSON-serializable format
  * Supports i32, u32, and provides fallback for unsupported variants
- * 
+ *
  * @param scVal - The ScVal to normalize
  * @param visited - Optional visited tracker for cycle detection
  * @returns Normalized value, with cycle markers for detected cycles
@@ -146,7 +146,7 @@ export function normalizeScVal(
         // Recursively normalize each item while preserving order
 
         // Pass visited tracker to detect cycles in nested structures
-        return scVal.value.map(item => normalizeScVal(item, visited))
+        return scVal.value.map((item) => normalizeScVal(item, visited))
       }
       return []
 

@@ -17,7 +17,9 @@ describe('selectExpandedNodeCount', () => {
   })
 
   it('should count only unique node IDs', () => {
-    expect(selectExpandedNodeCount(makeState(['a', 'b', 'a', 'c', 'b']))).toBe(3)
+    expect(selectExpandedNodeCount(makeState(['a', 'b', 'a', 'c', 'b']))).toBe(
+      3,
+    )
   })
 
   it('should return 0 for an empty array', () => {

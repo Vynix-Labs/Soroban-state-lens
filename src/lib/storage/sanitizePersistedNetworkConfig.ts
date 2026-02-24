@@ -16,9 +16,7 @@ const FALLBACK: NetworkConfig = DEFAULT_NETWORKS.futurenet
  * @param input The raw persisted value (unknown shape).
  * @returns A sanitized NetworkConfig with guaranteed valid fields.
  */
-export function sanitizePersistedNetworkConfig(
-  input: unknown,
-): NetworkConfig {
+export function sanitizePersistedNetworkConfig(input: unknown): NetworkConfig {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     return { ...FALLBACK }
   }
@@ -33,9 +31,7 @@ export function sanitizePersistedNetworkConfig(
     ? raw.networkPassphrase
     : FALLBACK.networkPassphrase
 
-  const rpcUrl = isNonEmptyString(raw.rpcUrl)
-    ? raw.rpcUrl
-    : FALLBACK.rpcUrl
+  const rpcUrl = isNonEmptyString(raw.rpcUrl) ? raw.rpcUrl : FALLBACK.rpcUrl
 
   return {
     networkId,

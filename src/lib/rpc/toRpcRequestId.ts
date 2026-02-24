@@ -1,4 +1,4 @@
-let lastId = 0;
+let lastId = 0
 
 /**
  * Returns a deterministic integer request ID.
@@ -7,18 +7,18 @@ let lastId = 0;
  * @returns A finite positive integer.
  */
 export function toRpcRequestId(seed?: number): number {
-    if (seed === undefined) {
-        return ++lastId;
-    }
+  if (seed === undefined) {
+    return ++lastId
+  }
 
-    // Handle non-finite or NaN seeds
-    if (!Number.isFinite(seed) || Number.isNaN(seed)) {
-        return 1;
-    }
+  // Handle non-finite or NaN seeds
+  if (!Number.isFinite(seed) || Number.isNaN(seed)) {
+    return 1
+  }
 
-    // Clamp invalid values and guarantee finite positive integer
-    const absoluteValue = Math.abs(Math.trunc(seed));
+  // Clamp invalid values and guarantee finite positive integer
+  const absoluteValue = Math.abs(Math.trunc(seed))
 
-    // Guarantee positive (non-zero) integer
-    return absoluteValue || 1;
+  // Guarantee positive (non-zero) integer
+  return absoluteValue || 1
 }

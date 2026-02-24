@@ -22,12 +22,18 @@ describe('resolveNetworkPreset', () => {
   it('should handle case-insensitive matching', () => {
     expect(resolveNetworkPreset('TESTNET')).toEqual(DEFAULT_NETWORKS.testnet)
     expect(resolveNetworkPreset('Mainnet')).toEqual(DEFAULT_NETWORKS.mainnet)
-    expect(resolveNetworkPreset('FutureNet')).toEqual(DEFAULT_NETWORKS.futurenet)
+    expect(resolveNetworkPreset('FutureNet')).toEqual(
+      DEFAULT_NETWORKS.futurenet,
+    )
   })
 
   it('should handle leading and trailing whitespace', () => {
-    expect(resolveNetworkPreset('  testnet  ')).toEqual(DEFAULT_NETWORKS.testnet)
-    expect(resolveNetworkPreset('\tmainnet\n')).toEqual(DEFAULT_NETWORKS.mainnet)
+    expect(resolveNetworkPreset('  testnet  ')).toEqual(
+      DEFAULT_NETWORKS.testnet,
+    )
+    expect(resolveNetworkPreset('\tmainnet\n')).toEqual(
+      DEFAULT_NETWORKS.mainnet,
+    )
   })
 
   it('should return null for unknown network IDs', () => {
@@ -63,6 +69,8 @@ describe('resolveNetworkPreset', () => {
   it('should not allow mutation of the original config via the returned copy', () => {
     const result = resolveNetworkPreset('testnet')!
     result.rpcUrl = 'https://mutated.example.com'
-    expect(DEFAULT_NETWORKS.testnet.rpcUrl).toBe('https://soroban-testnet.stellar.org')
+    expect(DEFAULT_NETWORKS.testnet.rpcUrl).toBe(
+      'https://soroban-testnet.stellar.org',
+    )
   })
 })
