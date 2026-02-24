@@ -4,9 +4,7 @@ import { tanstackConfig } from '@tanstack/eslint-config'
 
 export default [
   {
-    ignores: [
-      'scripts/',
-    ],
+    ignores: ['scripts/'],
   },
   ...tanstackConfig,
 ]

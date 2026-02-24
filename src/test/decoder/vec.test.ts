@@ -120,7 +120,10 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(nestedVec)
-      expect(result).toEqual([[1, 2], [3, 4]])
+      expect(result).toEqual([
+        [1, 2],
+        [3, 4],
+      ])
     })
 
     it('should handle deeply nested vectors', () => {
@@ -178,9 +181,7 @@ describe('normalizeScVal - Vector Handling', () => {
           },
           {
             switch: ScValType.SCV_VEC,
-            value: [
-              { switch: ScValType.SCV_U32, value: 2 },
-            ],
+            value: [{ switch: ScValType.SCV_U32, value: 2 }],
           },
         ],
       }

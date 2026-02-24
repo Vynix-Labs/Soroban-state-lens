@@ -34,7 +34,7 @@ export interface SimulateTransactionResult {
  * Adapts a raw simulateTransaction response into a typed result shape
  */
 export function simulateTransactionAdapter(
-  response: SimulateTransactionResponse | null | undefined
+  response: SimulateTransactionResponse | null | undefined,
 ): SimulateTransactionResult {
   if (!response) {
     return { success: false, error: 'No response provided' }

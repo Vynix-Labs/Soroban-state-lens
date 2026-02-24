@@ -24,7 +24,7 @@ export class AbortError extends Error {
 }
 
 export async function getLedgerEntries(
-  params: GetLedgerEntriesParams
+  params: GetLedgerEntriesParams,
 ): Promise<GetLedgerEntriesResult> {
   const { rpcUrl, keys, signal } = params
 

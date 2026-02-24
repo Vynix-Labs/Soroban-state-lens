@@ -5,9 +5,9 @@
 export function normalizeContractIdInput(raw: string): string {
   // Handle cases where non-string values might be passed accidentally
   if (typeof raw !== 'string') {
-    return '';
+    return ''
   }
 
   // Remove all whitespace (leading, trailing, and internal) and uppercase
-  return raw.replace(/\s+/g, '').toUpperCase();
+  return raw.replace(/\s+/g, '').toUpperCase()
 }

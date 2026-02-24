@@ -39,7 +39,7 @@ describe('lensStore', () => {
       expect(state.networkConfig.rpcUrl).toBe('https://test.rpc.url')
       // Original fields should be preserved
       expect(state.networkConfig.networkPassphrase).toBe(
-        DEFAULT_NETWORKS.futurenet.networkPassphrase
+        DEFAULT_NETWORKS.futurenet.networkPassphrase,
       )
     })
 

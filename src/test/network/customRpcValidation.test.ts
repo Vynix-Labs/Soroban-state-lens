@@ -4,7 +4,11 @@
 
 import { describe, expect, test } from 'vitest'
 
-import { INVALID_RPC_URLS, VALID_RPC_URLS, validateRpcUrl } from '../../lib/network/validation'
+import {
+  INVALID_RPC_URLS,
+  VALID_RPC_URLS,
+  validateRpcUrl,
+} from '../../lib/network/validation'
 
 describe('validateRpcUrl', () => {
   describe('valid URLs', () => {

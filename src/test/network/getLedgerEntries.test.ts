@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { AbortError, getLedgerEntries } from '../../lib/network/getLedgerEntries'
+import {
+  AbortError,
+  getLedgerEntries,
+} from '../../lib/network/getLedgerEntries'
 
 import type { GetLedgerEntriesParams } from '../../lib/network/getLedgerEntries'
 import type * as StellarSDK from '@stellar/stellar-sdk'
@@ -37,7 +40,7 @@ describe('getLedgerEntries', () => {
       () =>
         ({
           getLedgerEntries: mockGetLedgerEntries,
-        }) as unknown as InstanceType<typeof rpc.Server>
+        }) as unknown as InstanceType<typeof rpc.Server>,
     )
   })
 
@@ -118,7 +121,7 @@ describe('getLedgerEntries', () => {
         getLedgerEntries({
           rpcUrl: mockRpcUrl,
           keys: mockKeys,
-        })
+        }),
       ).rejects.toThrow('Network failure')
     })
 
@@ -129,7 +132,7 @@ describe('getLedgerEntries', () => {
         getLedgerEntries({
           rpcUrl: mockRpcUrl,
           keys: mockKeys,
-        })
+        }),
       ).rejects.toThrow('Invalid response')
     })
   })
@@ -144,7 +147,7 @@ describe('getLedgerEntries', () => {
           rpcUrl: mockRpcUrl,
           keys: mockKeys,
           signal: controller.signal,
-        })
+        }),
       ).rejects.toThrow(AbortError)
 
       expect(mockGetLedgerEntries).not.toHaveBeenCalled()
@@ -166,7 +169,7 @@ describe('getLedgerEntries', () => {
           rpcUrl: mockRpcUrl,
           keys: mockKeys,
           signal: controller.signal,
-        })
+        }),
       ).rejects.toThrow(AbortError)
     })
 
@@ -208,7 +211,7 @@ describe('getLedgerEntries', () => {
           rpcUrl: mockRpcUrl,
           keys: mockKeys,
           signal: controller.signal,
-        })
+        }),
       ).rejects.toThrow(AbortError)
     })
 

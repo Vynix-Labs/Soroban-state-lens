@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { ScValType, normalizeScVal } from '../../workers/decoder/normalizeScVal'
-import type { ScVal, UnsupportedFallback } from '../../workers/decoder/normalizeScVal'
+import type {
+  ScVal,
+  UnsupportedFallback,
+} from '../../workers/decoder/normalizeScVal'
 
 describe('normalizeScVal - Numeric Primitives', () => {
   describe('i32 support', () => {
@@ -130,10 +133,10 @@ describe('normalizeScVal - Numeric Primitives', () => {
         switch: ScValType.SCV_BYTES,
         value: [1, 2, 3],
       }
-      
+
       const result1 = normalizeScVal(scVal) as UnsupportedFallback
       const result2 = normalizeScVal(scVal) as UnsupportedFallback
-      
+
       expect(result1).toEqual(result2)
       expect(JSON.stringify(result1)).toBe(JSON.stringify(result2))
     })

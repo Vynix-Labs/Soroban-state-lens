@@ -93,7 +93,7 @@ export const createSafeStorage = <T>(): PersistStorage<T> | undefined =>
  */
 export function mergeNetworkConfig(
   persistedState: unknown,
-  currentState: { networkConfig: NetworkConfig }
+  currentState: { networkConfig: NetworkConfig },
 ): { networkConfig: NetworkConfig } {
   if (
     typeof persistedState === 'object' &&

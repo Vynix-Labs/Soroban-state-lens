@@ -12,10 +12,12 @@ export interface FootprintKeys {
  * Extracts and deduplicates footprint keys from a simulation response
  * Returns stable ordered, deduplicated read/write key lists
  */
-export function extractFootprintKeys(footprint?: {
-  readOnly?: Array<string>
-  readWrite?: Array<string>
-} | null): FootprintKeys {
+export function extractFootprintKeys(
+  footprint?: {
+    readOnly?: Array<string>
+    readWrite?: Array<string>
+  } | null,
+): FootprintKeys {
   if (!footprint) {
     return { readOnly: [], readWrite: [] }
   }

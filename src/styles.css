@@ -67,7 +67,6 @@ code {
 }
 
 @keyframes pulse-slow {
-
   0%,
   100% {
     opacity: 0.1;

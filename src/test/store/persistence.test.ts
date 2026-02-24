@@ -156,7 +156,10 @@ describe('persistence', () => {
   describe('clearPersistedNetworkConfig', () => {
     it('removes the storage key', () => {
       // Set a value first
-      localStorage.setItem(NETWORK_CONFIG_STORAGE_KEY, JSON.stringify({ test: true }))
+      localStorage.setItem(
+        NETWORK_CONFIG_STORAGE_KEY,
+        JSON.stringify({ test: true }),
+      )
       expect(localStorage.getItem(NETWORK_CONFIG_STORAGE_KEY)).not.toBeNull()
 
       // Clear it
