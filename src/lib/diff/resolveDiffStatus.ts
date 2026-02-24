@@ -1,5 +1,5 @@
 /**
- * Resolves the diff status between two values
+ * Resolves the diff status between two value
  *
  * @param prev - The previous value
  * @param next - The next value
