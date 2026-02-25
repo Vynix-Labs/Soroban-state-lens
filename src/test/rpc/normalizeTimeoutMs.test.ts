@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { normalizeTimeoutMs } from '../../lib/rpc/normalizeTimeoutMs';
 
 describe('normalizeTimeoutMs', () => {
@@ -13,7 +13,6 @@ describe('normalizeTimeoutMs', () => {
   });
 
   it('accepts bigint input', () => {
-    // eslint-disable-next-line no-undef
     expect(normalizeTimeoutMs(4000n as unknown)).toBe(4000);
   });
 

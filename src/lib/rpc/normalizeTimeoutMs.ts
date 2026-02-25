@@ -1,6 +1,6 @@
 export function normalizeTimeoutMs(input: unknown, fallback = 10000): number {
   // Try to coerce common inputs to a number (number, string, bigint)
-  let n: number = NaN;
+  let n = NaN;
 
   if (typeof input === 'number') {
     n = input;
