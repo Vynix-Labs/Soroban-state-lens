@@ -19,9 +19,7 @@ describe('DecoderWorker Comlink Integration', () => {
   it('should successfully call ping through Comlink and receive pong response', async () => {
     // Arrange
     const mockWorkerAPI = {
-      ping: vi
-        .fn()
-        .mockResolvedValue({ status: 'pong' }),
+      ping: vi.fn().mockResolvedValue({ status: 'pong' }),
     } as unknown as Comlink.Remote<DecoderWorkerApi>
 
     // Mock Comlink.wrap to return our mock

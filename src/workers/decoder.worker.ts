@@ -1,9 +1,6 @@
 import * as Comlink from 'comlink'
 
-import {
-  normalizeScAddress,
-  normalizeScVal,
-} from './decoder/normalizeScVal'
+import { normalizeScAddress, normalizeScVal } from './decoder/normalizeScVal'
 import type {
   DecoderWorkerApi,
   DecoderWorkerError,
@@ -41,7 +38,8 @@ const decoderWorkerApi: DecoderWorkerApi = {
         value: normalizedValue,
       })
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorMessage =
+        error instanceof Error ? error.message : String(error)
       const errorDetails: Record<string, unknown> = {}
 
       if (error instanceof Error) {

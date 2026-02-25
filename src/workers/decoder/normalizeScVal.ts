@@ -1,9 +1,9 @@
 import { Address, xdr } from '@stellar/stellar-sdk'
 import { VisitedTracker, createVisitedTracker } from './guards'
 import type {
-  NormalizedValue,
-  NormalizedUnsupported,
   NormalizedAddress,
+  NormalizedUnsupported,
+  NormalizedValue,
 } from '../../types/normalized'
 
 // Re-export guards for external use

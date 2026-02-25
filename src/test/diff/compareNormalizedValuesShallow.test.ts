@@ -65,7 +65,9 @@ describe('compareNormalizedValuesShallow', () => {
     })
 
     it('should return true for identical arrays with mixed primitives', () => {
-      expect(compareNormalizedValuesShallow([1, 'a', true], [1, 'a', true])).toBe(true)
+      expect(
+        compareNormalizedValuesShallow([1, 'a', true], [1, 'a', true]),
+      ).toBe(true)
     })
 
     it('should return false for different length arrays', () => {
@@ -94,15 +96,21 @@ describe('compareNormalizedValuesShallow', () => {
     })
 
     it('should return true for identical objects with primitives', () => {
-      expect(compareNormalizedValuesShallow({ a: 1, b: 2 }, { a: 1, b: 2 })).toBe(true)
+      expect(
+        compareNormalizedValuesShallow({ a: 1, b: 2 }, { a: 1, b: 2 }),
+      ).toBe(true)
     })
 
     it('should return true for identical objects with strings', () => {
-      expect(compareNormalizedValuesShallow({ key: 'value' }, { key: 'value' })).toBe(true)
+      expect(
+        compareNormalizedValuesShallow({ key: 'value' }, { key: 'value' }),
+      ).toBe(true)
     })
 
     it('should return true for objects with different key order', () => {
-      expect(compareNormalizedValuesShallow({ a: 1, b: 2 }, { b: 2, a: 1 })).toBe(true)
+      expect(
+        compareNormalizedValuesShallow({ a: 1, b: 2 }, { b: 2, a: 1 }),
+      ).toBe(true)
     })
 
     it('should return false for objects with different values', () => {
@@ -110,11 +118,15 @@ describe('compareNormalizedValuesShallow', () => {
     })
 
     it('should return false for objects with extra keys', () => {
-      expect(compareNormalizedValuesShallow({ a: 1 }, { a: 1, b: 2 })).toBe(false)
+      expect(compareNormalizedValuesShallow({ a: 1 }, { a: 1, b: 2 })).toBe(
+        false,
+      )
     })
 
     it('should return false for objects with missing keys', () => {
-      expect(compareNormalizedValuesShallow({ a: 1, b: 2 }, { a: 1 })).toBe(false)
+      expect(compareNormalizedValuesShallow({ a: 1, b: 2 }, { a: 1 })).toBe(
+        false,
+      )
     })
 
     it('should return false for objects with different keys', () => {
@@ -128,11 +140,15 @@ describe('compareNormalizedValuesShallow', () => {
     })
 
     it('should return false for nested objects (shallow only)', () => {
-      expect(compareNormalizedValuesShallow({ a: { b: 1 } }, { a: { b: 1 } })).toBe(false)
+      expect(
+        compareNormalizedValuesShallow({ a: { b: 1 } }, { a: { b: 1 } }),
+      ).toBe(false)
     })
 
     it('should return false for array vs object with same content', () => {
-      expect(compareNormalizedValuesShallow([1, 2], { 0: 1, 1: 2, length: 2 })).toBe(false)
+      expect(
+        compareNormalizedValuesShallow([1, 2], { 0: 1, 1: 2, length: 2 }),
+      ).toBe(false)
     })
   })
 

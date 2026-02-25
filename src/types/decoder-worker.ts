@@ -3,10 +3,7 @@
  * Provides strong typing for all worker request/response payloads and error handling.
  */
 
-import type {
-  NormalizedAddress,
-  NormalizedValue,
-} from './normalized'
+import type { NormalizedAddress, NormalizedValue } from './normalized'
 import type { ScVal } from '../workers/decoder/normalizeScVal'
 
 /**
@@ -66,7 +63,9 @@ export interface NormalizeAddressResponse {
 /**
  * Union of possible successful normalize responses.
  */
-export type NormalizeResponse = NormalizeValueResponse | NormalizeAddressResponse
+export type NormalizeResponse =
+  | NormalizeValueResponse
+  | NormalizeAddressResponse
 
 /**
  * Result type for normalize method - either success or error.

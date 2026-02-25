@@ -1,6 +1,12 @@
 // Normalized representations for decoder outputs
 
-export type PrimitiveKind = 'bool' | 'u32' | 'i32' | 'string' | 'symbol' | 'void'
+export type PrimitiveKind =
+  | 'bool'
+  | 'u32'
+  | 'i32'
+  | 'string'
+  | 'symbol'
+  | 'void'
 
 export interface NormalizedPrimitive {
   kind: 'primitive'
@@ -10,7 +16,7 @@ export interface NormalizedPrimitive {
 
 export interface NormalizedVec {
   kind: 'vec'
-  items: NormalizedValue[]
+  items: Array<NormalizedValue>
 }
 
 export interface NormalizedMapEntry {
@@ -20,7 +26,7 @@ export interface NormalizedMapEntry {
 
 export interface NormalizedMap {
   kind: 'map'
-  entries: NormalizedMapEntry[]
+  entries: Array<NormalizedMapEntry>
 }
 
 export type NormalizedAddressType =
