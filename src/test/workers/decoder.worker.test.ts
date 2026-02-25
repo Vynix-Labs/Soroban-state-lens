@@ -1,23 +1,28 @@
 import { describe, expect, it, vi } from 'vitest'
 import * as Comlink from 'comlink'
-import type { DecoderWorkerAPI } from '../../workers/decoder.worker'
+
+import type { DecoderWorkerApi } from '../../types/decoder-worker'
 
 // Mock Comlink.wrap to return a mock worker API
 vi.mock('comlink', () => ({
   wrap: vi.fn(() => ({
-    ping: vi.fn().mockResolvedValue('pong'),
+    ping: vi.fn().mockResolvedValue({ status: 'pong' }),
   })),
 }))
 
 // Mock Worker constructor
-global.Worker = vi.fn().mockImplementation(() => ({})) as any
+global.Worker = vi.fn().mockImplementation(function () {
+  return {}
+})
 
 describe('DecoderWorker Comlink Integration', () => {
   it('should successfully call ping through Comlink and receive pong response', async () => {
     // Arrange
     const mockWorkerAPI = {
-      ping: vi.fn().mockResolvedValue('pong'),
-    } as unknown as Comlink.Remote<DecoderWorkerAPI>
+      ping: vi
+        .fn()
+        .mockResolvedValue({ status: 'pong' }),
+    } as unknown as Comlink.Remote<DecoderWorkerApi>
 
     // Mock Comlink.wrap to return our mock
     vi.mocked(Comlink.wrap).mockReturnValue(mockWorkerAPI)
@@ -26,7 +31,7 @@ describe('DecoderWorker Comlink Integration', () => {
     const result = await mockWorkerAPI.ping()
 
     // Assert
-    expect(result).toBe('pong')
+    expect(result).toEqual({ status: 'pong' })
     expect(mockWorkerAPI.ping).toHaveBeenCalledOnce()
   })
 

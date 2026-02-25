@@ -47,6 +47,10 @@ export interface LedgerDataSlice {
   upsertLedgerEntries: (entries: Array<LedgerEntry>) => void
   removeLedgerEntry: (key: LedgerKey) => void
   clearLedgerData: () => void
+  batchLedgerUpdate: (
+    upserts: Array<LedgerEntry>,
+    removals: Array<LedgerKey>,
+  ) => void
 }
 
 // Expanded nodes slice

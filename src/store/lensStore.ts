@@ -20,6 +20,8 @@ import type {
   NetworkConfigSlice,
 } from './types'
 
+export type { LedgerEntry, LedgerKey } from './types'
+
 // Re-export for backwards compatibility
 export { DEFAULT_NETWORKS }
 
@@ -84,6 +86,21 @@ const createLedgerDataSlice = (
     set(() => ({
       ledgerData: {},
     })),
+
+  batchLedgerUpdate: (
+    entries: Array<LedgerEntry>,
+    removals: Array<LedgerKey>,
+  ) =>
+    set((state) => {
+      const newData = { ...state.ledgerData }
+      for (const entry of entries) {
+        newData[entry.key] = entry
+      }
+      for (const key of removals) {
+        delete newData[key]
+      }
+      return { ledgerData: newData }
+    }),
 })
 
 /**
@@ -185,4 +202,22 @@ export const resetStore = () => {
     ledgerData: {},
     expandedNodes: [],
   })
+}
+
+/**
+ * Standalone action helpers — callable outside React components
+ */
+export const lensActions = {
+  setNetworkConfig: (config: Partial<NetworkConfig>) =>
+    useLensStore.getState().setNetworkConfig(config),
+  resetNetworkConfig: () => useLensStore.getState().resetNetworkConfig(),
+  toggleExpanded: (nodeId: string) =>
+    useLensStore.getState().toggleExpanded(nodeId),
+  expandAll: (nodeIds: Array<string>) =>
+    useLensStore.getState().expandAll(nodeIds),
+  collapseAll: () => useLensStore.getState().collapseAll(),
+  batchLedgerUpdate: (
+    upserts: Array<LedgerEntry>,
+    removals: Array<LedgerKey>,
+  ) => useLensStore.getState().batchLedgerUpdate(upserts, removals),
 }

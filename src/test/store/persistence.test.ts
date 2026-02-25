@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import {
   DEFAULT_NETWORK_CONFIG,
   NETWORK_CONFIG_STORAGE_KEY,
@@ -8,6 +7,30 @@ import {
   mergeNetworkConfig,
 } from '../../store/persistence'
 import { DEFAULT_NETWORKS } from '../../store/types'
+
+// Simple localStorage mock for node environment
+const localStorageMock = (function () {
+  let store: Record<string, string> = {}
+  return {
+    getItem: vi.fn((key: string) => store[key] || null),
+    setItem: vi.fn((key: string, value: string) => {
+      store[key] = value.toString()
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete store[key]
+    }),
+    clear: vi.fn(() => {
+      store = {}
+    }),
+  }
+})()
+
+// Mock window and localStorage globally for this test
+Object.defineProperty(global, 'window', { value: global, writable: true })
+Object.defineProperty(global, 'localStorage', {
+  value: localStorageMock,
+  writable: true,
+})
 
 describe('persistence', () => {
   beforeEach(() => {

@@ -1,4 +1,10 @@
 import { Address, xdr } from '@stellar/stellar-sdk'
+import { VisitedTracker, createVisitedTracker } from './guards'
+import type { CycleMarker } from './guards'
+
+// Re-export guards for external use
+export { VisitedTracker, createVisitedTracker }
+export type { CycleMarker }
 
 /**
  * ScVal normalization utilities for Soroban State Lens
@@ -49,6 +55,7 @@ export type NormalizedValue =
   | number
   | string
   | null
+  | CycleMarker
   | UnsupportedFallback
   | Array<NormalizedValue>
   | { [key: string]: NormalizedValue }
@@ -70,10 +77,28 @@ function createUnsupportedFallback(
 /**
  * Normalizes an ScVal to a JSON-serializable format
  * Supports i32, u32, and provides fallback for unsupported variants
+ *
+ * @param scVal - The ScVal to normalize
+ * @param visited - Optional visited tracker for cycle detection
+ * @returns Normalized value, with cycle markers for detected cycles
  */
 export function normalizeScVal(
   scVal: ScVal | null | undefined,
+  visited?: VisitedTracker,
 ): NormalizedValue {
+  // Initialize visited tracker on first call
+  if (visited === undefined) {
+    visited = createVisitedTracker()
+  }
+
+  // Cycle detection: check if we've already started processing this object
+  if (scVal && typeof scVal === 'object') {
+    if (visited.hasVisited(scVal)) {
+      return VisitedTracker.createCycleMarker(visited.getDepth())
+    }
+    visited.markVisited(scVal)
+  }
+
   if (!scVal || typeof scVal.switch !== 'string') {
     return createUnsupportedFallback('Invalid', scVal)
   }
@@ -116,10 +141,12 @@ export function normalizeScVal(
       return typeof scVal.value === 'string' ? scVal.value : ''
 
     case ScValType.SCV_VEC:
-      // Handle vectors with recursive normalization
+      // Handle vectors with recursive normalization and cycle detection
       if (Array.isArray(scVal.value)) {
         // Recursively normalize each item while preserving order
-        return scVal.value.map((item) => normalizeScVal(item))
+
+        // Pass visited tracker to detect cycles in nested structures
+        return scVal.value.map((item) => normalizeScVal(item, visited))
       }
       return []
 
