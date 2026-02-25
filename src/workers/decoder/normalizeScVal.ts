@@ -5,6 +5,7 @@ import type {
   NormalizedError,
   NormalizedMapEntry,
   NormalizedValue,
+  TruncatedMarker,
   UnsupportedFallback,
 } from '../../types/normalized'
 
@@ -13,7 +14,7 @@ export { VisitedTracker, createVisitedTracker }
 export type { CycleMarker }
 
 // Re-export normalized types so consumers can import from a single location
-export type { NormalizedError, NormalizedMapEntry, NormalizedValue, UnsupportedFallback }
+export type { NormalizedError, NormalizedMapEntry, NormalizedValue, TruncatedMarker, UnsupportedFallback }
 
 /**
  * ScVal normalization utilities for Soroban State Lens
@@ -70,17 +71,42 @@ function createUnsupportedFallback(
 }
 
 /**
+ * Options for normalizeScVal recursion limits.
+ */
+export interface NormalizeScValOptions {
+  /** When set, nodes at this depth or deeper are replaced with a truncated marker. */
+  maxDepth?: number
+}
+
+function createTruncatedMarker(depth: number): TruncatedMarker {
+  return { __truncated: true, depth }
+}
+
+/**
  * Normalizes an ScVal to a JSON-serializable format
  * Supports i32, u32, and provides fallback for unsupported variants
  *
  * @param scVal - The ScVal to normalize
  * @param visited - Optional visited tracker for cycle detection
- * @returns Normalized value, with cycle markers for detected cycles
+ * @param options - Optional limits (e.g. maxDepth)
+ * @param currentDepth - Internal recursion depth; do not pass from caller
+ * @returns Normalized value, with cycle or truncated markers when applicable
  */
 export function normalizeScVal(
   scVal: ScVal | null | undefined,
   visited?: VisitedTracker,
+  options?: NormalizeScValOptions,
+  currentDepth?: number,
 ): NormalizedValue {
+  const depth = currentDepth ?? 0
+
+  if (
+    options?.maxDepth !== undefined &&
+    depth >= options.maxDepth
+  ) {
+    return createTruncatedMarker(depth)
+  }
+
   // Initialize visited tracker on first call
   if (visited === undefined) {
     visited = createVisitedTracker()
@@ -163,10 +189,9 @@ export function normalizeScVal(
     case ScValType.SCV_VEC:
       // Handle vectors with recursive normalization and cycle detection
       if (Array.isArray(scVal.value)) {
-        // Recursively normalize each item while preserving order
-
-        // Pass visited tracker to detect cycles in nested structures
-        return scVal.value.map((item) => normalizeScVal(item, visited))
+        return scVal.value.map((item) =>
+          normalizeScVal(item, visited, options, depth + 1),
+        )
       }
       return []
 

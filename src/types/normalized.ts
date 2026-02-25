@@ -7,6 +7,7 @@
  *
  * Discriminant conventions:
  *   __cycle      → CycleMarker        (cycle detected during traversal)
+ *   __truncated  → TruncatedMarker    (max depth reached during traversal)
  *   __error      → NormalizedError    (ScVal error variant)
  *   __unsupported → UnsupportedFallback (unrecognised or unimplemented variant)
  */
@@ -20,6 +21,18 @@
  */
 export interface CycleMarker {
   __cycle: true
+  depth?: number
+}
+
+// ---------------------------------------------------------------------------
+// TruncatedMarker
+// ---------------------------------------------------------------------------
+
+/**
+ * Returned in place of a value when normalization hits the configured max depth.
+ */
+export interface TruncatedMarker {
+  __truncated: true
   depth?: number
 }
 
@@ -90,6 +103,7 @@ export type NormalizedValue =
   | string
   | null
   | CycleMarker
+  | TruncatedMarker
   | NormalizedError
   | UnsupportedFallback
   | Array<NormalizedValue>
