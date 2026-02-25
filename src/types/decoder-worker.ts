@@ -6,8 +6,8 @@
 import type {
   NormalizedAddress,
   NormalizedValue,
-  ScVal,
-} from '../workers/decoder/normalizeScVal'
+} from './normalized'
+import type { ScVal } from '../workers/decoder/normalizeScVal'
 
 /**
  * Typed error object for predictable error handling in worker communication.

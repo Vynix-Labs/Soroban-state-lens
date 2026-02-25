@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ScValType, normalizeScVal } from '../../workers/decoder/normalizeScVal'
-import type {
-  ScVal,
-  UnsupportedFallback,
-} from '../../workers/decoder/normalizeScVal'
+import type { ScVal } from '../../workers/decoder/normalizeScVal'
+import type { NormalizedValue } from '../../types/normalized'
 
 describe('normalizeScVal - Numeric Primitives', () => {
   describe('i32 support', () => {
@@ -23,8 +21,10 @@ describe('normalizeScVal - Numeric Primitives', () => {
           switch: ScValType.SCV_I32,
           value,
         }
-        const result = normalizeScVal(scVal)
-        expect(result).toBe(expected)
+        const result = normalizeScVal(scVal) as NormalizedValue
+        expect(result).toHaveProperty('kind', 'primitive')
+        // @ts-ignore primitive
+        expect((result as any).value).toBe(expected)
       })
     })
 
@@ -43,10 +43,10 @@ describe('normalizeScVal - Numeric Primitives', () => {
           switch: ScValType.SCV_I32,
           value,
         }
-        const result = normalizeScVal(scVal) as UnsupportedFallback
-        expect(result.__unsupported).toBe(true)
-        expect(result.variant).toBe(ScValType.SCV_I32)
-        expect(result.rawData).toBe(expected)
+        const result = normalizeScVal(scVal) as NormalizedValue
+        expect((result as any).kind).toBe('unsupported')
+        expect((result as any).variant).toBe(ScValType.SCV_I32)
+        expect((result as any).rawData).toBe(expected)
       })
     })
   })
@@ -66,8 +66,10 @@ describe('normalizeScVal - Numeric Primitives', () => {
           switch: ScValType.SCV_U32,
           value,
         }
-        const result = normalizeScVal(scVal)
-        expect(result).toBe(expected)
+        const result = normalizeScVal(scVal) as NormalizedValue
+        expect(result).toHaveProperty('kind', 'primitive')
+        // @ts-ignore primitive
+        expect((result as any).value).toBe(expected)
       })
     })
 
@@ -86,10 +88,10 @@ describe('normalizeScVal - Numeric Primitives', () => {
           switch: ScValType.SCV_U32,
           value,
         }
-        const result = normalizeScVal(scVal) as UnsupportedFallback
-        expect(result.__unsupported).toBe(true)
-        expect(result.variant).toBe(ScValType.SCV_U32)
-        expect(result.rawData).toBe(expected)
+        const result = normalizeScVal(scVal) as NormalizedValue
+        expect((result as any).kind).toBe('unsupported')
+        expect((result as any).variant).toBe(ScValType.SCV_U32)
+        expect((result as any).rawData).toBe(expected)
       })
     })
   })
@@ -110,8 +112,8 @@ describe('normalizeScVal - Numeric Primitives', () => {
           switch: variant,
           value: 'test-data',
         }
-        const result = normalizeScVal(scVal) as UnsupportedFallback
-        expect(result.__unsupported).toBe(true)
+        const result = normalizeScVal(scVal) as unknown as { kind: string; variant: string; rawData: unknown }
+        expect(result.kind).toBe('unsupported')
         expect(result.variant).toBe(variant)
         expect(result.rawData).toBe('test-data')
       })
@@ -122,8 +124,8 @@ describe('normalizeScVal - Numeric Primitives', () => {
         switch: ScValType.SCV_U64,
         // No value property
       }
-      const result = normalizeScVal(scVal) as UnsupportedFallback
-      expect(result.__unsupported).toBe(true)
+      const result = normalizeScVal(scVal) as unknown as { kind: string; variant: string; rawData: unknown }
+      expect(result.kind).toBe('unsupported')
       expect(result.variant).toBe(ScValType.SCV_U64)
       expect(result.rawData).toBe(null)
     })
@@ -134,8 +136,8 @@ describe('normalizeScVal - Numeric Primitives', () => {
         value: [1, 2, 3],
       }
 
-      const result1 = normalizeScVal(scVal) as UnsupportedFallback
-      const result2 = normalizeScVal(scVal) as UnsupportedFallback
+      const result1 = normalizeScVal(scVal) as NormalizedValue
+      const result2 = normalizeScVal(scVal) as NormalizedValue
 
       expect(result1).toEqual(result2)
       expect(JSON.stringify(result1)).toBe(JSON.stringify(result2))
@@ -153,9 +155,9 @@ describe('normalizeScVal - Numeric Primitives', () => {
       ]
 
       invalidInputs.forEach(({ input, expectedVariant }) => {
-        const result = normalizeScVal(input as any) as UnsupportedFallback
-        expect(result.__unsupported).toBe(true)
-        expect(result.variant).toBe(expectedVariant)
+        const result = normalizeScVal(input as any) as NormalizedValue
+        expect((result as any).kind).toBe('unsupported')
+        expect((result as any).variant).toBe(expectedVariant)
       })
     })
 
@@ -170,8 +172,10 @@ describe('normalizeScVal - Numeric Primitives', () => {
 
       supportedCases.forEach(({ switch: switchType, value, expected }) => {
         const scVal: ScVal = { switch: switchType, value }
-        const result = normalizeScVal(scVal)
-        expect(result).toBe(expected)
+        const result = normalizeScVal(scVal) as NormalizedValue
+        expect(result).toHaveProperty('kind', 'primitive')
+        // @ts-ignore primitive
+        expect((result as any).value).toBe(expected)
       })
     })
   })

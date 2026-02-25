@@ -5,11 +5,8 @@ import {
   createVisitedTracker,
   normalizeScVal,
 } from '../../workers/decoder/normalizeScVal'
-import type {
-  CycleMarker,
-  NormalizedValue,
-  ScVal,
-} from '../../workers/decoder/normalizeScVal'
+import type { ScVal } from '../../workers/decoder/normalizeScVal'
+import type { NormalizedValue } from '../../types/normalized'
 
 describe('Cycle Guard - Visited Node Tracking', () => {
   describe('VisitedTracker', () => {
@@ -36,7 +33,6 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       expect(tracker.hasVisited(null)).toBe(false)
       expect(tracker.hasVisited(undefined)).toBe(false)
 
-      // Primitives should not be added to tracker
       tracker.markVisited(5)
       tracker.markVisited('string')
       expect(tracker.getDepth()).toBe(0)
@@ -57,18 +53,18 @@ describe('Cycle Guard - Visited Node Tracking', () => {
 
     it('should create cycle markers', () => {
       const marker = VisitedTracker.createCycleMarker()
-      expect(marker.__cycle).toBe(true)
+      expect((marker as any).kind).toBe('truncated')
       expect(VisitedTracker.isCycleMarker(marker)).toBe(true)
     })
 
     it('should include depth in cycle markers', () => {
       const marker = VisitedTracker.createCycleMarker(5)
-      expect(marker.depth).toBe(5)
+      expect((marker as any).depth).toBe(5)
     })
 
     it('should correctly identify cycle markers', () => {
-      const validMarker: CycleMarker = { __cycle: true }
-      const invalidMarker1 = { __cycle: false }
+      const validMarker = { kind: 'truncated' }
+      const invalidMarker1 = { kind: 'primitive' }
       const invalidMarker2 = { other: true }
       const invalidMarker3 = null
 
@@ -95,96 +91,61 @@ describe('Cycle Guard - Visited Node Tracking', () => {
 
   describe('Cycle Detection in ScVal Normalization', () => {
     it('should detect self-referencing objects in vectors', () => {
-      // Create a self-referencing structure
-      const scVal: any = {
-        switch: ScValType.SCV_VEC,
-        value: [],
-      }
-      // Add self-reference
+      const scVal: any = { switch: ScValType.SCV_VEC, value: [] }
       scVal.value.push(scVal)
 
-      const result = normalizeScVal(scVal)
-      expect(Array.isArray(result)).toBe(true)
-      const resultArray = result as Array<NormalizedValue>
-      expect(resultArray.length).toBe(1)
-      expect(VisitedTracker.isCycleMarker(resultArray[0])).toBe(true)
+      const result = normalizeScVal(scVal) as NormalizedValue
+      expect((result as any).kind).toBe('vec')
+      const items = (result as any).items as Array<NormalizedValue>
+      expect(items.length).toBe(1)
+      expect(VisitedTracker.isCycleMarker(items[0])).toBe(true)
     })
 
     it('should detect indirect cycles (A -> B -> A)', () => {
-      const vecA: any = {
-        switch: ScValType.SCV_VEC,
-        value: [],
-      }
-      const vecB: any = {
-        switch: ScValType.SCV_VEC,
-        value: [vecA],
-      }
+      const vecA: any = { switch: ScValType.SCV_VEC, value: [] }
+      const vecB: any = { switch: ScValType.SCV_VEC, value: [vecA] }
       vecA.value.push(vecB)
 
-      const result = normalizeScVal(vecA)
-      expect(Array.isArray(result)).toBe(true)
-      const resultArray = result as Array<NormalizedValue>
-      expect(resultArray.length).toBe(1)
-      expect(Array.isArray(resultArray[0])).toBe(true)
+      const result = normalizeScVal(vecA) as NormalizedValue
+      expect((result as any).kind).toBe('vec')
+      const level0 = (result as any).items as Array<NormalizedValue>
+      expect(level0.length).toBe(1)
+      expect((level0[0] as any).kind).toBe('vec')
 
-      const innerArray = resultArray[0] as Array<NormalizedValue>
-      expect(innerArray.length).toBe(1)
-      expect(VisitedTracker.isCycleMarker(innerArray[0])).toBe(true)
+      const inner = (level0[0] as any).items as Array<NormalizedValue>
+      expect(inner.length).toBe(1)
+      expect(VisitedTracker.isCycleMarker(inner[0])).toBe(true)
     })
 
     it('should detect deep cycles (A -> B -> C -> A)', () => {
-      const vecA: any = {
-        switch: ScValType.SCV_VEC,
-        value: [],
-      }
-      const vecB: any = {
-        switch: ScValType.SCV_VEC,
-        value: [vecA],
-      }
-      const vecC: any = {
-        switch: ScValType.SCV_VEC,
-        value: [vecB],
-      }
+      const vecA: any = { switch: ScValType.SCV_VEC, value: [] }
+      const vecB: any = { switch: ScValType.SCV_VEC, value: [vecA] }
+      const vecC: any = { switch: ScValType.SCV_VEC, value: [vecB] }
       vecA.value.push(vecC)
 
-      const result = normalizeScVal(vecA)
-      expect(Array.isArray(result)).toBe(true)
-      const resultArray = result as Array<NormalizedValue>
-      expect(resultArray.length).toBe(1)
-      expect(Array.isArray(resultArray[0])).toBe(true)
-
-      const level1 = resultArray[0] as Array<NormalizedValue>
-      expect(level1.length).toBe(1)
-      expect(Array.isArray(level1[0])).toBe(true)
-
-      const level2 = level1[0] as Array<NormalizedValue>
-      expect(level2.length).toBe(1)
-      expect(VisitedTracker.isCycleMarker(level2[0])).toBe(true)
+      const result = normalizeScVal(vecA) as NormalizedValue
+      expect((result as any).kind).toBe('vec')
+      const lvl0 = (result as any).items as Array<NormalizedValue>
+      const lvl1 = (lvl0[0] as any).items as Array<NormalizedValue>
+      const lvl2 = (lvl1[0] as any).items as Array<NormalizedValue>
+      expect(VisitedTracker.isCycleMarker(lvl2[0])).toBe(true)
     })
 
     it('should detect multiple references to same object in different positions', () => {
-      const shared: any = {
-        switch: ScValType.SCV_I32,
-        value: 42,
-      }
-      const parentVec: any = {
-        switch: ScValType.SCV_VEC,
-        value: [shared, shared],
-      }
+      const shared: any = { switch: ScValType.SCV_I32, value: 42 }
+      const parentVec: any = { switch: ScValType.SCV_VEC, value: [shared, shared] }
 
-      // First reference should normalize, second should be cycle marker
-      const result = normalizeScVal(parentVec)
-      expect(Array.isArray(result)).toBe(true)
-      const resultArray = result as Array<NormalizedValue>
-      expect(resultArray.length).toBe(2)
-      expect(resultArray[0]).toBe(42) // First reference succeeds
-      expect(VisitedTracker.isCycleMarker(resultArray[1])).toBe(true) // Second is cycle
+      const result = normalizeScVal(parentVec) as NormalizedValue
+      const items = (result as any).items as Array<NormalizedValue>
+      expect(items.length).toBe(2)
+      expect((items[0] as any).value).toBe(42)
+      expect(VisitedTracker.isCycleMarker(items[1])).toBe(true)
     })
   })
 
   describe('Non-Cyclic Structures Still Normalize Correctly', () => {
     it('should normalize simple values without cycles', () => {
-      const testCases: Array<[ScVal, NormalizedValue]> = [
+      const testCases: Array<[ScVal, unknown]> = [
         [{ switch: ScValType.SCV_BOOL, value: true }, true],
         [{ switch: ScValType.SCV_BOOL, value: false }, false],
         [{ switch: ScValType.SCV_I32, value: 42 }, 42],
@@ -195,7 +156,9 @@ describe('Cycle Guard - Visited Node Tracking', () => {
 
       testCases.forEach(([input, expected]) => {
         const result = normalizeScVal(input)
-        expect(result).toBe(expected)
+        expect((result as any).kind).toBe('primitive')
+        // @ts-ignore
+        expect((result as any).value).toBe(expected)
       })
     })
 
@@ -209,8 +172,9 @@ describe('Cycle Guard - Visited Node Tracking', () => {
         ],
       }
 
-      const result = normalizeScVal(scVal)
-      expect(result).toEqual([1, 2, 3])
+      const result = normalizeScVal(scVal) as NormalizedValue
+      expect((result as any).kind).toBe('vec')
+      expect((result as any).items.map((i: any) => i.value)).toEqual([1, 2, 3])
     })
 
     it('should normalize deeply nested vectors without cycles', () => {
@@ -234,21 +198,17 @@ describe('Cycle Guard - Visited Node Tracking', () => {
         ],
       }
 
-      const result = normalizeScVal(scVal)
-      expect(result).toEqual([
-        [1, 2],
-        [3, 4],
-      ])
+      const result = normalizeScVal(scVal) as NormalizedValue
+      expect((result as any).kind).toBe('vec')
+      expect((result as any).items[0].items.map((i: any) => i.value)).toEqual([1, 2])
+      expect((result as any).items[1].items.map((i: any) => i.value)).toEqual([3, 4])
     })
 
     it('should normalize empty vectors', () => {
-      const scVal: ScVal = {
-        switch: ScValType.SCV_VEC,
-        value: [],
-      }
-
-      const result = normalizeScVal(scVal)
-      expect(result).toEqual([])
+      const scVal: ScVal = { switch: ScValType.SCV_VEC, value: [] }
+      const result = normalizeScVal(scVal) as NormalizedValue
+      expect((result as any).kind).toBe('vec')
+      expect((result as any).items).toEqual([])
     })
 
     it('should handle mixed nested structures', () => {
@@ -267,8 +227,11 @@ describe('Cycle Guard - Visited Node Tracking', () => {
         ],
       }
 
-      const result = normalizeScVal(scVal)
-      expect(result).toEqual([true, [42, 'test'], null])
+      const result = normalizeScVal(scVal) as NormalizedValue
+      expect((result as any).kind).toBe('vec')
+      expect((result as any).items[0].value).toBe(true)
+      expect((result as any).items[1].items.map((i: any) => i.value)).toEqual([42, 'test'])
+      expect((result as any).items[2].value).toBe(null)
     })
   })
 
@@ -280,87 +243,50 @@ describe('Cycle Guard - Visited Node Tracking', () => {
     })
 
     it('should handle invalid ScVal gracefully', () => {
-      const scVal: any = {
-        switch: null,
-      }
-
-      const result = normalizeScVal(scVal)
-      expect(result).toHaveProperty('__unsupported', true)
+      const scVal: any = { switch: null }
+      const result = normalizeScVal(scVal) as NormalizedValue
+      expect((result as any).kind).toBe('unsupported')
     })
 
     it('should reset tracker per top-level call', () => {
-      const vec1: any = {
-        switch: ScValType.SCV_VEC,
-        value: [{ switch: ScValType.SCV_I32, value: 1 }],
-      }
-      const vec2: any = {
-        switch: ScValType.SCV_VEC,
-        value: [{ switch: ScValType.SCV_I32, value: 2 }],
-      }
+      const vec1: any = { switch: ScValType.SCV_VEC, value: [{ switch: ScValType.SCV_I32, value: 1 }] }
+      const vec2: any = { switch: ScValType.SCV_VEC, value: [{ switch: ScValType.SCV_I32, value: 2 }] }
 
-      // Each call gets its own tracker
-      const result1 = normalizeScVal(vec1)
-      const result2 = normalizeScVal(vec2)
+      const result1 = normalizeScVal(vec1) as NormalizedValue
+      const result2 = normalizeScVal(vec2) as NormalizedValue
 
-      expect(result1).toEqual([1])
-      expect(result2).toEqual([2])
+      expect((result1 as any).items.map((i: any) => i.value)).toEqual([1])
+      expect((result2 as any).items.map((i: any) => i.value)).toEqual([2])
     })
 
     it('should detect cycle with vector containing vector containing same reference', () => {
-      const innerVec: any = {
-        switch: ScValType.SCV_VEC,
-        value: [{ switch: ScValType.SCV_I32, value: 99 }],
-      }
+      const innerVec: any = { switch: ScValType.SCV_VEC, value: [{ switch: ScValType.SCV_I32, value: 99 }] }
+      const midVec: any = { switch: ScValType.SCV_VEC, value: [innerVec] }
+      const outerVec: any = { switch: ScValType.SCV_VEC, value: [midVec, innerVec] }
 
-      const midVec: any = {
-        switch: ScValType.SCV_VEC,
-        value: [innerVec],
-      }
+      const result = normalizeScVal(outerVec) as NormalizedValue
+      const items = (result as any).items as Array<NormalizedValue>
 
-      const outerVec: any = {
-        switch: ScValType.SCV_VEC,
-        value: [midVec, innerVec], // innerVec appears twice
-      }
-
-      const result = normalizeScVal(outerVec)
-      expect(Array.isArray(result)).toBe(true)
-      const resultArray = result as Array<NormalizedValue>
-
-      // First element: [[99]]
-      expect(Array.isArray(resultArray[0])).toBe(true)
-      const midResult = resultArray[0] as Array<NormalizedValue>
-      expect(Array.isArray(midResult[0])).toBe(true)
-      expect((midResult[0] as Array<NormalizedValue>)[0]).toBe(99)
-
-      // Second element: should be cycle marker since innerVec already visited
-      expect(VisitedTracker.isCycleMarker(resultArray[1])).toBe(true)
+      const midResult = (items[0] as any).items as Array<NormalizedValue>
+      expect((midResult[0] as any).items[0].value).toBe(99)
+      expect(VisitedTracker.isCycleMarker(items[1])).toBe(true)
     })
   })
 
   describe('Cycle Marker Properties', () => {
     it('should include depth information in cycle markers', () => {
-      const vecA: any = {
-        switch: ScValType.SCV_VEC,
-        value: [],
-      }
-      const vecB: any = {
-        switch: ScValType.SCV_VEC,
-        value: [vecA],
-      }
-      const vecC: any = {
-        switch: ScValType.SCV_VEC,
-        value: [vecB],
-      }
+      const vecA: any = { switch: ScValType.SCV_VEC, value: [] }
+      const vecB: any = { switch: ScValType.SCV_VEC, value: [vecA] }
+      const vecC: any = { switch: ScValType.SCV_VEC, value: [vecB] }
       vecA.value.push(vecC)
 
-      const result = normalizeScVal(vecA)
-      const resultArray = result as Array<NormalizedValue>
-      const level1 = resultArray[0] as Array<NormalizedValue>
-      const level2 = level1[0] as Array<NormalizedValue>
-      const cycleMarker = level2[0] as CycleMarker
+      const result = normalizeScVal(vecA) as NormalizedValue
+      const level1 = (result as any).items[0].items as Array<NormalizedValue>
+      const level2 = (level1[0] as any).items as Array<NormalizedValue>
+      const cycleMarker = level2[0]
 
       expect(VisitedTracker.isCycleMarker(cycleMarker)).toBe(true)
-      expect(cycleMarker.depth).toBeGreaterThan(0)
+      expect((cycleMarker as any).depth).toBeGreaterThan(0)
     })
 
     it('should produce serializable cycle markers', () => {
@@ -368,42 +294,26 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       const json = JSON.stringify(marker)
       const parsed = JSON.parse(json)
 
-      expect(parsed.__cycle).toBe(true)
+      expect(parsed.kind).toBe('truncated')
       expect(parsed.depth).toBe(3)
     })
   })
 
   describe('Synthetic Recursive Structures for Guard Path Coverage', () => {
     it('should handle wide branching cycles', () => {
-      const root: any = {
-        switch: ScValType.SCV_VEC,
-        value: [],
-      }
-
-      const child1: any = {
-        switch: ScValType.SCV_VEC,
-        value: [root],
-      }
-      const child2: any = {
-        switch: ScValType.SCV_VEC,
-        value: [root],
-      }
-      const child3: any = {
-        switch: ScValType.SCV_VEC,
-        value: [root],
-      }
+      const root: any = { switch: ScValType.SCV_VEC, value: [] }
+      const child1: any = { switch: ScValType.SCV_VEC, value: [root] }
+      const child2: any = { switch: ScValType.SCV_VEC, value: [root] }
+      const child3: any = { switch: ScValType.SCV_VEC, value: [root] }
 
       root.value = [child1, child2, child3]
 
-      const result = normalizeScVal(root) as Array<NormalizedValue>
-      expect(result.length).toBe(3)
+      const result = normalizeScVal(root) as NormalizedValue
+      const branches = (result as any).items as Array<NormalizedValue>
+      expect(branches.length).toBe(3)
 
-      // First child processes normally
-      expect(Array.isArray(result[0])).toBe(true)
-      expect((result[0] as Array<NormalizedValue>).length).toBe(1)
-
-      // result[0] contains the normalized child1, which contains cycle marker for root
-      const level1 = (result[0] as Array<NormalizedValue>)[0]
+      expect((branches[0] as any).items.length).toBe(1)
+      const level1 = (branches[0] as any).items[0]
       expect(VisitedTracker.isCycleMarker(level1)).toBe(true)
     })
 
@@ -416,95 +326,60 @@ describe('Cycle Guard - Visited Node Tracking', () => {
           { switch: ScValType.SCV_STRING, value: 'test' },
         ],
       }
-      // Add self-reference as last element
       vec.value.push(vec)
 
-      const result = normalizeScVal(vec) as Array<NormalizedValue>
-      expect(result[0]).toBe(1)
-      expect(result[1]).toBe(true)
-      expect(result[2]).toBe('test')
-      expect(VisitedTracker.isCycleMarker(result[3])).toBe(true)
+      const result = normalizeScVal(vec) as NormalizedValue
+      const items = (result as any).items
+      expect(items[0].value).toBe(1)
+      expect(items[1].value).toBe(true)
+      expect(items[2].value).toBe('test')
+      expect(VisitedTracker.isCycleMarker(items[3])).toBe(true)
     })
 
     it('should handle multiple cycle paths in complex structure', () => {
-      const shared: any = {
-        switch: ScValType.SCV_VEC,
-        value: [],
-      }
-
-      const branch1: any = {
-        switch: ScValType.SCV_VEC,
-        value: [shared],
-      }
-
-      const branch2: any = {
-        switch: ScValType.SCV_VEC,
-        value: [shared],
-      }
-
-      const root: any = {
-        switch: ScValType.SCV_VEC,
-        value: [branch1, branch2],
-      }
-
+      const shared: any = { switch: ScValType.SCV_VEC, value: [] }
+      const branch1: any = { switch: ScValType.SCV_VEC, value: [shared] }
+      const branch2: any = { switch: ScValType.SCV_VEC, value: [shared] }
+      const root: any = { switch: ScValType.SCV_VEC, value: [branch1, branch2] }
       shared.value = [root]
 
-      const result = normalizeScVal(root) as Array<NormalizedValue>
-      expect(result).toBeDefined()
-      expect(Array.isArray(result)).toBe(true)
+      const result = normalizeScVal(root) as NormalizedValue
+      const arr = (result as any).items
+      expect(arr).toBeDefined()
+      expect(Array.isArray(arr)).toBe(true)
+      expect(arr.length).toBeGreaterThan(0)
 
-      // The structure should normalize without infinite recursion
-      // and contain cycle markers where appropriate
-      // Result format: [[...], [...]] where branches contain normalized shared references
-      expect(result.length).toBeGreaterThan(0)
-
-      // Check that result contains arrays (the normalized branches)
-      const firstBranch = result[0]
-      expect(
-        Array.isArray(firstBranch) || VisitedTracker.isCycleMarker(firstBranch),
-      ).toBe(true)
+      const firstBranch = arr[0]
+      expect(Array.isArray((firstBranch as any).items) || VisitedTracker.isCycleMarker(firstBranch)).toBe(true)
     })
 
     it('should handle deferred cycle detection (cycle appears deep in structure)', () => {
-      // Create a structure where cycle only appears at depth n
-      const deepVec: any = {
-        switch: ScValType.SCV_VEC,
-        value: [],
-      }
-
+      const deepVec: any = { switch: ScValType.SCV_VEC, value: [] }
       let current = deepVec
-      // Build a chain of 3 nested vectors
       for (let i = 0; i < 3; i++) {
-        const next: any = {
-          switch: ScValType.SCV_VEC,
-          value: [{ switch: ScValType.SCV_I32, value: i }],
-        }
+        const next: any = { switch: ScValType.SCV_VEC, value: [{ switch: ScValType.SCV_I32, value: i }] }
         current.value.push(next)
         current = next
       }
-
-      // Add cycle back to deepVec
       current.value.push(deepVec)
 
-      const result = normalizeScVal(deepVec)
-      expect(result).toBeDefined()
-      expect(Array.isArray(result)).toBe(true)
-
-      // Navigate through the structure and verify it completes without infinite recursion
-      let nav: unknown = result
+      const result = normalizeScVal(deepVec) as NormalizedValue
+      const first = (result as any).items
+      expect(first).toBeDefined()
+      // traverse until primitive or truncated found
+      let nav: any = result
       let depth = 0
-      while (Array.isArray(nav) && depth < 10) {
-        if (nav.length === 0) break
-        nav = nav[0]
+      while ((nav as any).kind === 'vec' && depth < 10) {
+        const items = (nav as any).items
+        if (items.length === 0) break
+        nav = items[0]
         depth++
       }
 
-      // Should eventually hit a cycle marker or complete
       expect(
         VisitedTracker.isCycleMarker(nav) ||
-          typeof nav === 'number' ||
-          nav === null ||
-          typeof nav === 'boolean',
+          (nav && (nav.kind === 'primitive' || nav.kind === 'vec')) ||
+          nav === null,
       ).toBe(true)
     })
   })

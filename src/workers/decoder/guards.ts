@@ -3,13 +3,7 @@
  * Prevents infinite recursion from cyclic object references
  */
 
-/**
- * Marker object indicating a cycle was detected during normalization
- */
-export interface CycleMarker {
-  __cycle: true
-  depth?: number
-}
+import type { NormalizedTruncated } from '../../types/normalized'
 
 /**
  * Visited node tracker for cycle detection
@@ -66,9 +60,9 @@ export class VisitedTracker {
   /**
    * Create a cycle marker to return when a cycle is detected
    */
-  static createCycleMarker(depth?: number): CycleMarker {
+  static createCycleMarker(depth?: number): NormalizedTruncated {
     return {
-      __cycle: true,
+      kind: 'truncated',
       depth,
     }
   }
@@ -76,12 +70,12 @@ export class VisitedTracker {
   /**
    * Check if a value is a cycle marker
    */
-  static isCycleMarker(value: unknown): value is CycleMarker {
+  static isCycleMarker(value: unknown): value is NormalizedTruncated {
     return (
       typeof value === 'object' &&
       value !== null &&
-      '__cycle' in value &&
-      (value as CycleMarker).__cycle
+      'kind' in value &&
+      (value as Record<string, unknown>).kind === 'truncated'
     )
   }
 
