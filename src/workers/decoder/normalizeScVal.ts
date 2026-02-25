@@ -1,10 +1,19 @@
 import { Address, xdr } from '@stellar/stellar-sdk'
 import { VisitedTracker, createVisitedTracker } from './guards'
 import type { CycleMarker } from './guards'
+import type {
+  NormalizedError,
+  NormalizedMapEntry,
+  NormalizedValue,
+  UnsupportedFallback,
+} from '../../types/normalized'
 
 // Re-export guards for external use
 export { VisitedTracker, createVisitedTracker }
 export type { CycleMarker }
+
+// Re-export normalized types so consumers can import from a single location
+export type { NormalizedError, NormalizedMapEntry, NormalizedValue, UnsupportedFallback }
 
 /**
  * ScVal normalization utilities for Soroban State Lens
@@ -28,6 +37,7 @@ export enum ScValType {
   SCV_BYTES = 'ScvBytes',
   SCV_STRING = 'ScvString',
   SCV_SYMBOL = 'ScvSymbol',
+  SCV_ERROR = 'ScvError',
   SCV_VEC = 'ScvVec',
   SCV_MAP = 'ScvMap',
   SCV_ADDRESS = 'ScvAddress',
@@ -42,23 +52,8 @@ export interface ScVal {
   value?: unknown
 }
 
-// Fallback object for unsupported variants
-export interface UnsupportedFallback {
-  __unsupported: true
-  variant: string
-  rawData: unknown
-}
-
-// Normalized output types
-export type NormalizedValue =
-  | boolean
-  | number
-  | string
-  | null
-  | CycleMarker
-  | UnsupportedFallback
-  | Array<NormalizedValue>
-  | { [key: string]: NormalizedValue }
+// Local re-definition kept for backwards-compat (structurally identical to
+// the canonical types in src/types/normalized.ts).
 
 /**
  * Creates a deterministic fallback object for unsupported ScVal variants
@@ -139,6 +134,31 @@ export function normalizeScVal(
 
     case ScValType.SCV_SYMBOL:
       return typeof scVal.value === 'string' ? scVal.value : ''
+
+    case ScValType.SCV_ERROR: {
+      // ScvError carries { type: string, code: number } in the simple model
+      const raw = scVal.value
+      if (
+        raw !== null &&
+        raw !== undefined &&
+        typeof raw === 'object' &&
+        'type' in (raw) &&
+        'code' in (raw)
+      ) {
+        const err = raw as { type: unknown; code: unknown }
+        return {
+          __error: true,
+          type: String(err.type),
+          code: Number(err.code),
+        } satisfies NormalizedError
+      }
+      // Malformed error value – return a safe default
+      return {
+        __error: true,
+        type: 'unknown',
+        code: 0,
+      } satisfies NormalizedError
+    }
 
     case ScValType.SCV_VEC:
       // Handle vectors with recursive normalization and cycle detection

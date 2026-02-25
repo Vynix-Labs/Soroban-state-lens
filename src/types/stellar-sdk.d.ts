@@ -14,7 +14,7 @@ declare module '@stellar/stellar-sdk' {
   export namespace rpc {
     class Server {
       constructor(serverUrl: string, options?: any)
-      getLedgerEntries(...keys: Array<any>): Promise<GetLedgerEntriesResponse>
+      getLedgerEntries(...keys: Array<any>): Promise<Api.GetLedgerEntriesResponse>
     }
 
     namespace Api {
@@ -25,11 +25,6 @@ declare module '@stellar/stellar-sdk' {
         liveUntilLedgerSeq?: number
       }
     }
-  }
-
-  interface GetLedgerEntriesResponse {
-    entries: Array<rpc.Api.LedgerEntryResult>
-    latestLedger: number
   }
 
   export class Address {
