@@ -47,8 +47,8 @@ export function compareNormalizedValuesShallow(a: unknown, b: unknown): boolean 
 
   // Plain objects - shallow comparison
   if (typeof a === 'object' && typeof b === 'object' && !Array.isArray(a) && !Array.isArray(b)) {
-    const keysA = Object.keys(a as object)
-    const keysB = Object.keys(b as object)
+    const keysA = Object.keys(a)
+    const keysB = Object.keys(b)
 
     if (keysA.length !== keysB.length) {
       return false
