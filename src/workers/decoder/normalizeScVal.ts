@@ -250,7 +250,11 @@ export function normalizeScVal(
           }),
         )
       }
-      return []
+      // null/undefined value means an empty map
+      if (scVal.value == null) {
+        return []
+      }
+      return createUnsupportedFallback(ScValType.SCV_MAP, scVal.value)
 
     // All other variants return unsupported fallback
     default:
