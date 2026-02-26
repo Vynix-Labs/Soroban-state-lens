@@ -119,10 +119,18 @@ export function normalizeScVal(
 
   switch (scVal.switch) {
     case ScValType.SCV_BOOL:
-      return typeof scVal.value === 'boolean' ? scVal.value : false
+      return {
+        kind: 'primitive',
+        primitive: 'bool',
+        value: typeof scVal.value === 'boolean' ? scVal.value : false,
+      }
 
     case ScValType.SCV_VOID:
-      return null
+      return {
+        kind: 'primitive',
+        primitive: 'void',
+        value: null,
+      }
 
     case ScValType.SCV_U32:
       if (
@@ -131,7 +139,11 @@ export function normalizeScVal(
         scVal.value >= 0 &&
         scVal.value <= 0xffffffff
       ) {
-        return scVal.value
+        return {
+          kind: 'primitive',
+          primitive: 'u32',
+          value: scVal.value,
+        }
       }
       return createUnsupportedFallback(ScValType.SCV_U32, scVal.value)
 
@@ -142,15 +154,27 @@ export function normalizeScVal(
         scVal.value >= -0x80000000 &&
         scVal.value <= 0x7fffffff
       ) {
-        return scVal.value
+        return {
+          kind: 'primitive',
+          primitive: 'i32',
+          value: scVal.value,
+        }
       }
       return createUnsupportedFallback(ScValType.SCV_I32, scVal.value)
 
     case ScValType.SCV_STRING:
-      return typeof scVal.value === 'string' ? scVal.value : ''
+      return {
+        kind: 'primitive',
+        primitive: 'string',
+        value: typeof scVal.value === 'string' ? scVal.value : '',
+      }
 
     case ScValType.SCV_SYMBOL:
-      return typeof scVal.value === 'string' ? scVal.value : ''
+      return {
+        kind: 'primitive',
+        primitive: 'symbol',
+        value: typeof scVal.value === 'string' ? scVal.value : '',
+      }
 
     case ScValType.SCV_ERROR: {
       // ScvError carries { type: string, code: number } in the simple model
@@ -179,9 +203,15 @@ export function normalizeScVal(
 
     case ScValType.SCV_VEC:
       if (Array.isArray(scVal.value)) {
-        return scVal.value.map((item) => normalizeScVal(item, visited, options, depth + 1))
+        return {
+          kind: 'vec',
+          items: scVal.value.map((item) => normalizeScVal(item, visited, options, depth + 1)),
+        }
       }
-      return []
+      return {
+        kind: 'vec',
+        items: [],
+      }
 
     default:
       return createUnsupportedFallback(scVal.switch, scVal.value)
