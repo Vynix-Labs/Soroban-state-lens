@@ -1,11 +1,11 @@
 import { Address, xdr } from '@stellar/stellar-sdk'
 import { VisitedTracker, createVisitedTracker } from './guards'
 import type {
+  CycleMarker,
   NormalizedAddress,
   NormalizedError,
   NormalizedMapEntry,
   NormalizedUnsupported,
-  NormalizedValue,
   TruncatedMarker,
   UnsupportedFallback,
 } from '../../types/normalized'
@@ -14,7 +14,7 @@ import type {
 export { VisitedTracker, createVisitedTracker }
 
 // Re-export normalized types so consumers can import from a single location
-export type { NormalizedError, NormalizedMapEntry, NormalizedValue, TruncatedMarker, UnsupportedFallback }
+export type { NormalizedError, NormalizedMapEntry, TruncatedMarker, UnsupportedFallback }
 
 /**
  * ScVal normalization utilities for Soroban State Lens
@@ -53,6 +53,31 @@ export interface ScVal {
   value?: unknown
 }
 
+
+/**
+ * A single entry in a normalized map, preserving the original key as a
+ * normalized value so that complex (non-string) keys are not lost.
+ */
+export interface MapEntry {
+  key: NormalizedValue
+  value: NormalizedValue
+}
+
+// Normalized output types
+export type NormalizedValue =
+  | boolean
+  | number
+  | string
+  | null
+  | CycleMarker
+  | UnsupportedFallback
+  | MapEntry
+  | Array<NormalizedValue>
+  | { [key: string]: NormalizedValue }
+
+/**
+ * Creates a deterministic fallback object for unsupported ScVal variants
+ */
 function createUnsupportedFallback(
   variant: string,
   rawData: unknown,
@@ -213,6 +238,25 @@ export function normalizeScVal(
         items: [],
       }
 
+    case ScValType.SCV_MAP:
+      // Map keys in Soroban can be complex objects, so we cannot coerce the
+      // map to a plain JS object.  Instead we return an ordered array of
+      // { key, value } entry pairs that preserve both key type and map order.
+      if (Array.isArray(scVal.value)) {
+        return scVal.value.map(
+          (entry: { key: ScVal; val: ScVal }): MapEntry => ({
+            key: normalizeScVal(entry.key, visited),
+            value: normalizeScVal(entry.val, visited),
+          }),
+        )
+      }
+      // null/undefined value means an empty map
+      if (scVal.value == null) {
+        return []
+      }
+      return createUnsupportedFallback(ScValType.SCV_MAP, scVal.value)
+
+    // All other variants return unsupported fallback
     default:
       return createUnsupportedFallback(scVal.switch, scVal.value)
   }
