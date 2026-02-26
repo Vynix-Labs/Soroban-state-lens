@@ -15,13 +15,16 @@
  */
 export function buildTreeNodePath(parts: Array<string>): string {
   // Validate input - reject null/undefined or empty parts
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (!parts || parts.length === 0) {
     throw new Error('Path parts array cannot be empty')
   }
 
   // Validate each part is non-empty after trimming
   for (const part of parts) {
-    if (part === null || part === undefined) {
+    // Handle null/undefined cases for runtime safety (when called with 'any' types)
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (part == null) {
       throw new Error('Path part cannot be null or undefined')
     }
     if (part.trim() === '') {
