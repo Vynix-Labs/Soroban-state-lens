@@ -2,12 +2,19 @@ import { Address, xdr } from '@stellar/stellar-sdk'
 import { VisitedTracker, createVisitedTracker } from './guards'
 import type {
   NormalizedAddress,
+  NormalizedError,
+  NormalizedMapEntry,
   NormalizedUnsupported,
   NormalizedValue,
+  TruncatedMarker,
+  UnsupportedFallback,
 } from '../../types/normalized'
 
 // Re-export guards for external use
 export { VisitedTracker, createVisitedTracker }
+
+// Re-export normalized types so consumers can import from a single location
+export type { NormalizedError, NormalizedMapEntry, NormalizedValue, TruncatedMarker, UnsupportedFallback }
 
 /**
  * ScVal normalization utilities for Soroban State Lens
@@ -31,6 +38,7 @@ export enum ScValType {
   SCV_BYTES = 'ScvBytes',
   SCV_STRING = 'ScvString',
   SCV_SYMBOL = 'ScvSymbol',
+  SCV_ERROR = 'ScvError',
   SCV_VEC = 'ScvVec',
   SCV_MAP = 'ScvMap',
   SCV_ADDRESS = 'ScvAddress',
@@ -56,10 +64,44 @@ function createUnsupportedFallback(
   }
 }
 
+/**
+ * Options for normalizeScVal recursion limits.
+ */
+export interface NormalizeScValOptions {
+  /** When set, nodes at this depth or deeper are replaced with a truncated marker. */
+  maxDepth?: number
+}
+
+function createTruncatedMarker(depth: number): TruncatedMarker {
+  return { __truncated: true, depth }
+}
+
+/**
+ * Normalizes an ScVal to a JSON-serializable format
+ * Supports i32, u32, and provides fallback for unsupported variants
+ *
+ * @param scVal - The ScVal to normalize
+ * @param visited - Optional visited tracker for cycle detection
+ * @param options - Optional limits (e.g. maxDepth)
+ * @param currentDepth - Internal recursion depth; do not pass from caller
+ * @returns Normalized value, with cycle or truncated markers when applicable
+ */
 export function normalizeScVal(
   scVal: ScVal | null | undefined,
   visited?: VisitedTracker,
-): NormalizedValue {
+  options?: NormalizeScValOptions,
+  currentDepth?: number,
+): any {
+  const depth = currentDepth ?? 0
+
+  if (
+    options?.maxDepth !== undefined &&
+    depth >= options.maxDepth
+  ) {
+    return createTruncatedMarker(depth)
+  }
+
+  // Initialize visited tracker on first call
   if (visited === undefined) {
     visited = createVisitedTracker()
   }
@@ -77,18 +119,10 @@ export function normalizeScVal(
 
   switch (scVal.switch) {
     case ScValType.SCV_BOOL:
-      return {
-        kind: 'primitive',
-        primitive: 'bool',
-        value: typeof scVal.value === 'boolean' ? scVal.value : false,
-      }
+      return typeof scVal.value === 'boolean' ? scVal.value : false
 
     case ScValType.SCV_VOID:
-      return {
-        kind: 'primitive',
-        primitive: 'void',
-        value: null,
-      }
+      return null
 
     case ScValType.SCV_U32:
       if (
@@ -97,11 +131,7 @@ export function normalizeScVal(
         scVal.value >= 0 &&
         scVal.value <= 0xffffffff
       ) {
-        return {
-          kind: 'primitive',
-          primitive: 'u32',
-          value: scVal.value,
-        }
+        return scVal.value
       }
       return createUnsupportedFallback(ScValType.SCV_U32, scVal.value)
 
@@ -112,39 +142,46 @@ export function normalizeScVal(
         scVal.value >= -0x80000000 &&
         scVal.value <= 0x7fffffff
       ) {
-        return {
-          kind: 'primitive',
-          primitive: 'i32',
-          value: scVal.value,
-        }
+        return scVal.value
       }
       return createUnsupportedFallback(ScValType.SCV_I32, scVal.value)
 
     case ScValType.SCV_STRING:
-      return {
-        kind: 'primitive',
-        primitive: 'string',
-        value: typeof scVal.value === 'string' ? scVal.value : '',
-      }
+      return typeof scVal.value === 'string' ? scVal.value : ''
 
     case ScValType.SCV_SYMBOL:
-      return {
-        kind: 'primitive',
-        primitive: 'symbol',
-        value: typeof scVal.value === 'string' ? scVal.value : '',
+      return typeof scVal.value === 'string' ? scVal.value : ''
+
+    case ScValType.SCV_ERROR: {
+      // ScvError carries { type: string, code: number } in the simple model
+      const raw = scVal.value
+      if (
+        raw !== null &&
+        raw !== undefined &&
+        typeof raw === 'object' &&
+        'type' in (raw) &&
+        'code' in (raw)
+      ) {
+        const err = raw as { type: unknown; code: unknown }
+        return {
+          __error: true,
+          type: String(err.type),
+          code: Number(err.code),
+        } satisfies NormalizedError
       }
+      // Malformed error value – return a safe default
+      return {
+        __error: true,
+        type: 'unknown',
+        code: 0,
+      } satisfies NormalizedError
+    }
 
     case ScValType.SCV_VEC:
       if (Array.isArray(scVal.value)) {
-        return {
-          kind: 'vec',
-          items: scVal.value.map((item) => normalizeScVal(item, visited)),
-        }
+        return scVal.value.map((item) => normalizeScVal(item, visited, options, depth + 1))
       }
-      return {
-        kind: 'vec',
-        items: [],
-      }
+      return []
 
     default:
       return createUnsupportedFallback(scVal.switch, scVal.value)

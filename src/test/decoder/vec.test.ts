@@ -282,8 +282,8 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(complexOrder)
-      expect((result as any).kind).toBe('vec')
-      expect((result as any).items.map((i: any) => i.value)).toEqual([
+      expect((result).kind).toBe('vec')
+      expect((result).items.map((i: any) => i.value)).toEqual([
         100,
         false,
         'test',

@@ -6,7 +6,7 @@ import {
   normalizeScVal,
 } from '../../workers/decoder/normalizeScVal'
 import type { ScVal } from '../../workers/decoder/normalizeScVal'
-import type { NormalizedValue } from '../../types/normalized'
+// (NormalizedValue type import removed — unused in tests)
 
 describe('Cycle Guard - Visited Node Tracking', () => {
   describe('VisitedTracker', () => {
@@ -96,7 +96,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
 
       const result = normalizeScVal(scVal)
       expect(result.kind).toBe('vec')
-      const items = (result as any).items
+      const items = (result).items
       expect(items.length).toBe(1)
       expect(VisitedTracker.isCycleMarker(items[0])).toBe(true)
     })
@@ -108,7 +108,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
 
       const result = normalizeScVal(vecA)
       expect(result.kind).toBe('vec')
-      const level0 = (result as any).items
+      const level0 = (result).items
       expect(level0.length).toBe(1)
       expect(level0[0].kind).toBe('vec')
 
@@ -125,7 +125,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
 
       const result = normalizeScVal(vecA)
       expect(result.kind).toBe('vec')
-      const lvl0 = (result as any).items
+      const lvl0 = (result).items
       const lvl1 = lvl0[0].items
       const lvl2 = lvl1[0].items
       expect(VisitedTracker.isCycleMarker(lvl2[0])).toBe(true)
@@ -139,7 +139,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       }
 
       const result = normalizeScVal(parentVec)
-      const items = (result as any).items
+      const items = (result).items
       expect(items.length).toBe(2)
       expect(items[0].value).toBe(42)
       expect(VisitedTracker.isCycleMarker(items[1])).toBe(true)
@@ -159,9 +159,9 @@ describe('Cycle Guard - Visited Node Tracking', () => {
 
       testCases.forEach(([input, expected]) => {
         const result = normalizeScVal(input)
-        expect((result as any).kind).toBe('primitive')
+        expect((result).kind).toBe('primitive')
         // @ts-ignore -- Reason: test inspects runtime normalized '.value' field
-        expect((result as any).value).toBe(expected)
+        expect((result).value).toBe(expected)
       })
     })
 
@@ -176,8 +176,8 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       }
 
       const result = normalizeScVal(scVal)
-      expect((result as any).kind).toBe('vec')
-      expect((result as any).items.map((i: any) => i.value)).toEqual([1, 2, 3])
+      expect((result).kind).toBe('vec')
+      expect((result).items.map((i: any) => i.value)).toEqual([1, 2, 3])
     })
 
     it('should normalize deeply nested vectors without cycles', () => {
@@ -202,11 +202,11 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       }
 
       const result = normalizeScVal(scVal)
-      expect((result as any).kind).toBe('vec')
-      expect((result as any).items[0].items.map((i: any) => i.value)).toEqual([
+      expect((result).kind).toBe('vec')
+      expect((result).items[0].items.map((i: any) => i.value)).toEqual([
         1, 2,
       ])
-      expect((result as any).items[1].items.map((i: any) => i.value)).toEqual([
+      expect((result).items[1].items.map((i: any) => i.value)).toEqual([
         3, 4,
       ])
     })
@@ -214,8 +214,8 @@ describe('Cycle Guard - Visited Node Tracking', () => {
     it('should normalize empty vectors', () => {
       const scVal: ScVal = { switch: ScValType.SCV_VEC, value: [] }
       const result = normalizeScVal(scVal)
-      expect((result as any).kind).toBe('vec')
-      expect((result as any).items).toEqual([])
+      expect((result).kind).toBe('vec')
+      expect((result).items).toEqual([])
     })
 
     it('should handle mixed nested structures', () => {
@@ -235,13 +235,13 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       }
 
       const result = normalizeScVal(scVal)
-      expect((result as any).kind).toBe('vec')
-      expect((result as any).items[0].value).toBe(true)
-      expect((result as any).items[1].items.map((i: any) => i.value)).toEqual([
+      expect((result).kind).toBe('vec')
+      expect((result).items[0].value).toBe(true)
+      expect((result).items[1].items.map((i: any) => i.value)).toEqual([
         42,
         'test',
       ])
-      expect((result as any).items[2].value).toBe(null)
+      expect((result).items[2].value).toBe(null)
     })
   })
 
@@ -255,7 +255,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
     it('should handle invalid ScVal gracefully', () => {
       const scVal: any = { switch: null }
       const result = normalizeScVal(scVal)
-      expect((result as any).kind).toBe('unsupported')
+      expect((result).kind).toBe('unsupported')
     })
 
     it('should reset tracker per top-level call', () => {
@@ -271,8 +271,8 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       const result1 = normalizeScVal(vec1)
       const result2 = normalizeScVal(vec2)
 
-      expect((result1 as any).items.map((i: any) => i.value)).toEqual([1])
-      expect((result2 as any).items.map((i: any) => i.value)).toEqual([2])
+      expect((result1).items.map((i: any) => i.value)).toEqual([1])
+      expect((result2).items.map((i: any) => i.value)).toEqual([2])
     })
 
     it('should detect cycle with vector containing vector containing same reference', () => {
@@ -287,7 +287,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       }
 
       const result = normalizeScVal(outerVec)
-      const items = (result as any).items
+      const items = (result).items
 
       const midResult = items[0].items
       expect(midResult[0].items[0].value).toBe(99)
@@ -303,7 +303,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       vecA.value.push(vecC)
 
       const result = normalizeScVal(vecA)
-      const level1 = (result as any).items[0].items
+      const level1 = (result).items[0].items
       const level2 = level1[0].items
       const cycleMarker = level2[0]
 
@@ -331,7 +331,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       root.value = [child1, child2, child3]
 
       const result = normalizeScVal(root)
-      const branches = (result as any).items
+      const branches = (result).items
       expect(branches.length).toBe(3)
 
       expect(branches[0].items.length).toBe(1)
@@ -351,7 +351,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       vec.value.push(vec)
 
       const result = normalizeScVal(vec)
-      const items = (result as any).items
+      const items = (result).items
       expect(items[0].value).toBe(1)
       expect(items[1].value).toBe(true)
       expect(items[2].value).toBe('test')
@@ -366,7 +366,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       shared.value = [root]
 
       const result = normalizeScVal(root)
-      const arr = (result as any).items
+      const arr = (result).items
       expect(arr).toBeDefined()
       expect(Array.isArray(arr)).toBe(true)
       expect(arr.length).toBeGreaterThan(0)
@@ -392,7 +392,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       current.value.push(deepVec)
 
       const result = normalizeScVal(deepVec)
-      const first = (result as any).items
+      const first = (result).items
       expect(first).toBeDefined()
       // traverse until primitive or truncated found
       let nav: any = result
