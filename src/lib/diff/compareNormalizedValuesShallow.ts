@@ -11,7 +11,10 @@
  * @param b Second value to compare.
  * @returns True if values are shallowly equal, false otherwise.
  */
-export function compareNormalizedValuesShallow(a: unknown, b: unknown): boolean {
+export function compareNormalizedValuesShallow(
+  a: unknown,
+  b: unknown,
+): boolean {
   // Handle NaN (NaN !== NaN in JavaScript, so we use Object.is)
   if (Number.isNaN(a) && Number.isNaN(b)) {
     return true
@@ -46,7 +49,12 @@ export function compareNormalizedValuesShallow(a: unknown, b: unknown): boolean 
   }
 
   // Plain objects - shallow comparison
-  if (typeof a === 'object' && typeof b === 'object' && !Array.isArray(a) && !Array.isArray(b)) {
+  if (
+    typeof a === 'object' &&
+    typeof b === 'object' &&
+    !Array.isArray(a) &&
+    !Array.isArray(b)
+  ) {
     const keysA = Object.keys(a)
     const keysB = Object.keys(b)
 
@@ -55,7 +63,10 @@ export function compareNormalizedValuesShallow(a: unknown, b: unknown): boolean 
     }
 
     for (const key of keysA) {
-      if ((a as Record<string, unknown>)[key] !== (b as Record<string, unknown>)[key]) {
+      if (
+        (a as Record<string, unknown>)[key] !==
+        (b as Record<string, unknown>)[key]
+      ) {
         return false
       }
     }

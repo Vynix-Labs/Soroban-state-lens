@@ -18,37 +18,39 @@ function makeScVal(switchType: ScValType, value?: unknown): ScVal {
 // ---------------------------------------------------------------------------
 
 describe('normalizeScVal – Bool', () => {
-  it('normalizes true to boolean true', () => {
-    const result = normalizeScVal(makeScVal(ScValType.SCV_BOOL, true))
-    expect(result).toBe(true)
-    expect(typeof result).toBe('boolean')
+  it('normalizes true to primitive object with boolean value', () => {
+    const result: any = normalizeScVal(makeScVal(ScValType.SCV_BOOL, true))
+    expect(result.kind).toBe('primitive')
+    expect(result.primitive).toBe('bool')
+    expect(result.value).toBe(true)
   })
 
-  it('normalizes false to boolean false', () => {
-    const result = normalizeScVal(makeScVal(ScValType.SCV_BOOL, false))
-    expect(result).toBe(false)
-    expect(typeof result).toBe('boolean')
+  it('normalizes false to primitive object with boolean value', () => {
+    const result: any = normalizeScVal(makeScVal(ScValType.SCV_BOOL, false))
+    expect(result.kind).toBe('primitive')
+    expect(result.primitive).toBe('bool')
+    expect(result.value).toBe(false)
   })
 
   it('defaults to false when value is not a boolean', () => {
     const invalidCases = [0, 1, 'true', null, undefined, {}, []]
 
     invalidCases.forEach((badValue) => {
-      const result = normalizeScVal(makeScVal(ScValType.SCV_BOOL, badValue))
-      expect(result).toBe(false)
+      const result: any = normalizeScVal(makeScVal(ScValType.SCV_BOOL, badValue))
+      expect(result.kind).toBe('primitive')
+      expect(result.primitive).toBe('bool')
+      expect(result.value).toBe(false)
     })
   })
 
   it('preserves exact fixture output shape for true', () => {
-    expect(normalizeScVal(makeScVal(ScValType.SCV_BOOL, true))).toStrictEqual(
-      true,
-    )
+    const r: any = normalizeScVal(makeScVal(ScValType.SCV_BOOL, true))
+    expect(r).toStrictEqual({ kind: 'primitive', primitive: 'bool', value: true })
   })
 
   it('preserves exact fixture output shape for false', () => {
-    expect(normalizeScVal(makeScVal(ScValType.SCV_BOOL, false))).toStrictEqual(
-      false,
-    )
+    const r: any = normalizeScVal(makeScVal(ScValType.SCV_BOOL, false))
+    expect(r).toStrictEqual({ kind: 'primitive', primitive: 'bool', value: false })
   })
 })
 
@@ -58,23 +60,30 @@ describe('normalizeScVal – Bool', () => {
 
 describe('normalizeScVal – Void', () => {
   it('normalizes void with no value to null', () => {
-    const result = normalizeScVal(makeScVal(ScValType.SCV_VOID))
-    expect(result).toBe(null)
+    const result: any = normalizeScVal(makeScVal(ScValType.SCV_VOID))
+    expect(result.kind).toBe('primitive')
+    expect(result.primitive).toBe('void')
+    expect(result.value).toBe(null)
   })
 
   it('normalizes void with undefined value to null', () => {
-    const result = normalizeScVal(makeScVal(ScValType.SCV_VOID, undefined))
-    expect(result).toBe(null)
+    const result: any = normalizeScVal(makeScVal(ScValType.SCV_VOID, undefined))
+    expect(result.kind).toBe('primitive')
+    expect(result.primitive).toBe('void')
+    expect(result.value).toBe(null)
   })
 
   it('normalizes void even when an unexpected payload is present', () => {
     // Void always produces null regardless of any stray payload
-    const result = normalizeScVal(makeScVal(ScValType.SCV_VOID, 42))
-    expect(result).toBe(null)
+    const result: any = normalizeScVal(makeScVal(ScValType.SCV_VOID, 42))
+    expect(result.kind).toBe('primitive')
+    expect(result.primitive).toBe('void')
+    expect(result.value).toBe(null)
   })
 
   it('preserves exact fixture output shape', () => {
-    expect(normalizeScVal(makeScVal(ScValType.SCV_VOID))).toStrictEqual(null)
+    const r: any = normalizeScVal(makeScVal(ScValType.SCV_VOID))
+    expect(r).toStrictEqual({ kind: 'primitive', primitive: 'void', value: null })
   })
 })
 
@@ -94,9 +103,11 @@ describe('normalizeScVal – Symbol', () => {
 
   symbolFixtures.forEach(({ value, expected }) => {
     it(`normalizes symbol "${value}" to string "${expected}"`, () => {
-      const result = normalizeScVal(makeScVal(ScValType.SCV_SYMBOL, value))
-      expect(result).toBe(expected)
-      expect(typeof result).toBe('string')
+      const result: any = normalizeScVal(makeScVal(ScValType.SCV_SYMBOL, value))
+      expect(result.kind).toBe('primitive')
+      expect(result.primitive).toBe('symbol')
+      expect(result.value).toBe(expected)
+      expect(typeof result.value).toBe('string')
     })
   })
 
@@ -104,15 +115,16 @@ describe('normalizeScVal – Symbol', () => {
     const invalidCases = [42, true, null, undefined, [], {}]
 
     invalidCases.forEach((badValue) => {
-      const result = normalizeScVal(makeScVal(ScValType.SCV_SYMBOL, badValue))
-      expect(result).toBe('')
+      const result: any = normalizeScVal(makeScVal(ScValType.SCV_SYMBOL, badValue))
+      expect(result.kind).toBe('primitive')
+      expect(result.primitive).toBe('symbol')
+      expect(result.value).toBe('')
     })
   })
 
   it('preserves exact fixture output shape', () => {
-    expect(
-      normalizeScVal(makeScVal(ScValType.SCV_SYMBOL, 'transfer')),
-    ).toStrictEqual('transfer')
+    const r: any = normalizeScVal(makeScVal(ScValType.SCV_SYMBOL, 'transfer'))
+    expect(r).toStrictEqual({ kind: 'primitive', primitive: 'symbol', value: 'transfer' })
   })
 })
 

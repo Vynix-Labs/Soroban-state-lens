@@ -14,7 +14,7 @@ describe('normalizeScAddress - ScAddress normalization', () => {
 
     expect(normalized).not.toBeNull()
     expect(normalized).toEqual({
-      type: 'address',
+      kind: 'address',
       addressType: 'account',
       value: accountAddress.toString(),
     })
@@ -29,7 +29,7 @@ describe('normalizeScAddress - ScAddress normalization', () => {
 
     expect(normalized).not.toBeNull()
     expect(normalized).toEqual({
-      type: 'address',
+      kind: 'address',
       addressType: 'contract',
       value: contractAddress.toString(),
     })

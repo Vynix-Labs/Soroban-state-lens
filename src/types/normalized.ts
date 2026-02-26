@@ -97,14 +97,76 @@ export interface NormalizedMapEntry {
  * Structured variants (error, unsupported, cycle, map entries, nested vecs)
  * use tagged object shapes with a unique discriminant property.
  */
+// export type NormalizedValue =
+//   | boolean
+//   | number
+//   | string
+//   | null
+//   | CycleMarker
+//   | TruncatedMarker
+//   | NormalizedError
+//   | UnsupportedFallback
+//   | Array<NormalizedValue>
+//   | { [key: string]: NormalizedValue }
+// Normalized representations for decoder outputs
+
+export type PrimitiveKind =
+  | 'bool'
+  | 'u32'
+  | 'i32'
+  | 'string'
+  | 'symbol'
+  | 'void'
+
+export interface NormalizedPrimitive {
+  kind: 'primitive'
+  primitive: PrimitiveKind
+  value: boolean | number | string | null
+}
+
+export interface NormalizedVec {
+  kind: 'vec'
+  items: Array<NormalizedValue>
+}
+
+export interface NormalizedMap {
+  kind: 'map'
+  entries: Array<NormalizedMapEntry>
+}
+
+export type NormalizedAddressType =
+  | 'account'
+  | 'contract'
+  | 'muxedAccount'
+  | 'claimableBalance'
+  | 'liquidityPool'
+  | 'unknown'
+
+export interface NormalizedAddress {
+  kind: 'address'
+  addressType: NormalizedAddressType
+  value: string
+}
+
+export interface NormalizedTruncated {
+  kind: 'truncated'
+  depth?: number
+}
+
+export interface NormalizedUnsupported {
+  kind: 'unsupported'
+  variant: string
+  rawData: unknown
+}
+
 export type NormalizedValue =
-  | boolean
-  | number
-  | string
-  | null
-  | CycleMarker
+  | NormalizedPrimitive
+  | NormalizedVec
+  | NormalizedMap
+  | NormalizedAddress
   | TruncatedMarker
+  | NormalizedTruncated
   | NormalizedError
-  | UnsupportedFallback
-  | Array<NormalizedValue>
-  | { [key: string]: NormalizedValue }
+  | NormalizedUnsupported
+
+// export { NormalizedMapEntry }

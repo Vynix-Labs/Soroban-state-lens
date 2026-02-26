@@ -1,9 +1,10 @@
 import { Address, xdr } from '@stellar/stellar-sdk'
 import { VisitedTracker, createVisitedTracker } from './guards'
-import type { CycleMarker } from './guards'
 import type {
+  NormalizedAddress,
   NormalizedError,
   NormalizedMapEntry,
+  NormalizedUnsupported,
   NormalizedValue,
   TruncatedMarker,
   UnsupportedFallback,
@@ -11,7 +12,6 @@ import type {
 
 // Re-export guards for external use
 export { VisitedTracker, createVisitedTracker }
-export type { CycleMarker }
 
 // Re-export normalized types so consumers can import from a single location
 export type { NormalizedError, NormalizedMapEntry, NormalizedValue, TruncatedMarker, UnsupportedFallback }
@@ -53,18 +53,12 @@ export interface ScVal {
   value?: unknown
 }
 
-// Local re-definition kept for backwards-compat (structurally identical to
-// the canonical types in src/types/normalized.ts).
-
-/**
- * Creates a deterministic fallback object for unsupported ScVal variants
- */
 function createUnsupportedFallback(
   variant: string,
   rawData: unknown,
-): UnsupportedFallback {
+): NormalizedUnsupported {
   return {
-    __unsupported: true,
+    kind: 'unsupported',
     variant,
     rawData: rawData === undefined ? null : rawData,
   }
@@ -97,7 +91,7 @@ export function normalizeScVal(
   visited?: VisitedTracker,
   options?: NormalizeScValOptions,
   currentDepth?: number,
-): NormalizedValue {
+): any {
   const depth = currentDepth ?? 0
 
   if (
@@ -112,7 +106,6 @@ export function normalizeScVal(
     visited = createVisitedTracker()
   }
 
-  // Cycle detection: check if we've already started processing this object
   if (scVal && typeof scVal === 'object') {
     if (visited.hasVisited(scVal)) {
       return VisitedTracker.createCycleMarker(visited.getDepth())
@@ -126,40 +119,62 @@ export function normalizeScVal(
 
   switch (scVal.switch) {
     case ScValType.SCV_BOOL:
-      return typeof scVal.value === 'boolean' ? scVal.value : false
+      return {
+        kind: 'primitive',
+        primitive: 'bool',
+        value: typeof scVal.value === 'boolean' ? scVal.value : false,
+      }
 
     case ScValType.SCV_VOID:
-      return null
+      return {
+        kind: 'primitive',
+        primitive: 'void',
+        value: null,
+      }
 
     case ScValType.SCV_U32:
-      // Handle u32 - ensure it's a valid 32-bit unsigned integer
       if (
         typeof scVal.value === 'number' &&
         Number.isInteger(scVal.value) &&
         scVal.value >= 0 &&
         scVal.value <= 0xffffffff
       ) {
-        return scVal.value
+        return {
+          kind: 'primitive',
+          primitive: 'u32',
+          value: scVal.value,
+        }
       }
       return createUnsupportedFallback(ScValType.SCV_U32, scVal.value)
 
     case ScValType.SCV_I32:
-      // Handle i32 - ensure it's a valid 32-bit signed integer
       if (
         typeof scVal.value === 'number' &&
         Number.isInteger(scVal.value) &&
         scVal.value >= -0x80000000 &&
         scVal.value <= 0x7fffffff
       ) {
-        return scVal.value
+        return {
+          kind: 'primitive',
+          primitive: 'i32',
+          value: scVal.value,
+        }
       }
       return createUnsupportedFallback(ScValType.SCV_I32, scVal.value)
 
     case ScValType.SCV_STRING:
-      return typeof scVal.value === 'string' ? scVal.value : ''
+      return {
+        kind: 'primitive',
+        primitive: 'string',
+        value: typeof scVal.value === 'string' ? scVal.value : '',
+      }
 
     case ScValType.SCV_SYMBOL:
-      return typeof scVal.value === 'string' ? scVal.value : ''
+      return {
+        kind: 'primitive',
+        primitive: 'symbol',
+        value: typeof scVal.value === 'string' ? scVal.value : '',
+      }
 
     case ScValType.SCV_ERROR: {
       // ScvError carries { type: string, code: number } in the simple model
@@ -187,41 +202,24 @@ export function normalizeScVal(
     }
 
     case ScValType.SCV_VEC:
-      // Handle vectors with recursive normalization and cycle detection
       if (Array.isArray(scVal.value)) {
-        return scVal.value.map((item) =>
-          normalizeScVal(item, visited, options, depth + 1),
-        )
+        return {
+          kind: 'vec',
+          items: scVal.value.map((item) => normalizeScVal(item, visited, options, depth + 1)),
+        }
       }
-      return []
+      return {
+        kind: 'vec',
+        items: [],
+      }
 
-    // All other variants return unsupported fallback
     default:
       return createUnsupportedFallback(scVal.switch, scVal.value)
   }
-} // @ts-ignore - resolved at runtime via application bundler
-// @ts-ignore - module is provided by the runtime bundle
-
-export type NormalizedAddressType =
-  | 'account'
-  | 'contract'
-  | 'muxedAccount'
-  | 'claimableBalance'
-  | 'liquidityPool'
-  | 'unknown'
-
-export interface NormalizedAddress {
-  type: 'address'
-  addressType: NormalizedAddressType
-  value: string
 }
 
-/**
- * Normalize an `xdr.ScVal` that represents an `ScAddress` into a
- * human-readable StrKey form.
- *
- * For non-address values, this returns `null`.
- */
+export type { NormalizedAddress } from '../../types/normalized'
+
 export function normalizeScAddress(
   scVal: any | null | undefined,
 ): NormalizedAddress | null {
@@ -236,10 +234,7 @@ export function normalizeScAddress(
   const address = Address.fromScVal(scVal)
   const value = address.toString()
 
-  // Infer the address type from the StrKey prefix.
-  // G... = ed25519 account, C... = contract, M... = muxed account,
-  // B... = claimable balance, P... = liquidity pool.
-  let addressType: NormalizedAddressType
+  let addressType: any
   const prefix = value[0]
 
   switch (prefix) {
@@ -263,7 +258,7 @@ export function normalizeScAddress(
   }
 
   return {
-    type: 'address',
+    kind: 'address',
     addressType,
     value,
   }

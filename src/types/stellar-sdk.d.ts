@@ -57,4 +57,12 @@ declare module '@stellar/stellar-sdk' {
       }
     }
   }
+
+  export class Address {
+    static account(buffer: any): Address
+    static contract(buffer: any): Address
+    static fromScVal(scv: any): Address
+    toScVal(): any
+    toString(): string
+  }
 }

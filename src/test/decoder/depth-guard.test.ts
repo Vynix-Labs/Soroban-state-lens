@@ -3,7 +3,7 @@ import {
   ScValType,
   normalizeScVal,
 } from '../../workers/decoder/normalizeScVal'
-import type { NormalizedValue, TruncatedMarker } from '../../types/normalized'
+import type { TruncatedMarker } from '../../types/normalized'
 
 function isTruncatedMarker(value: unknown): value is TruncatedMarker {
   return (
@@ -30,8 +30,11 @@ describe('Depth Guard - maxDepth', () => {
           },
         ],
       }
-      const result = normalizeScVal(scVal, undefined, { maxDepth: 3 })
-      expect(result).toEqual([1, [2, 3]])
+      const result: any = normalizeScVal(scVal, undefined, { maxDepth: 3 })
+      expect(result.kind).toBe('vec')
+      expect(result.items[0].value).toBe(1)
+      expect(result.items[1].kind).toBe('vec')
+      expect(result.items[1].items.map((i: any) => i.value)).toEqual([2, 3])
     })
 
     it('truncates vec children when maxDepth is 1', () => {
@@ -45,12 +48,13 @@ describe('Depth Guard - maxDepth', () => {
           },
         ],
       }
-      const result = normalizeScVal(scVal, undefined, { maxDepth: 1 }) as Array<NormalizedValue>
-      expect(result.length).toBe(2)
-      expect(isTruncatedMarker(result[0])).toBe(true)
-      expect(isTruncatedMarker(result[1])).toBe(true)
-      expect((result[0] as TruncatedMarker).depth).toBe(1)
-      expect((result[1] as TruncatedMarker).depth).toBe(1)
+      const result: any = normalizeScVal(scVal, undefined, { maxDepth: 1 })
+      expect(result.kind).toBe('vec')
+      expect(result.items.length).toBe(2)
+      expect(isTruncatedMarker(result.items[0])).toBe(true)
+      expect(isTruncatedMarker(result.items[1])).toBe(true)
+      expect((result.items[0] as TruncatedMarker).depth).toBe(1)
+      expect((result.items[1] as TruncatedMarker).depth).toBe(1)
     })
   })
 
@@ -66,10 +70,11 @@ describe('Depth Guard - maxDepth', () => {
           },
         ],
       }
-      const result = normalizeScVal(scVal, undefined, { maxDepth: 2 }) as Array<NormalizedValue>
-      expect(result[0]).toBe(1)
-      expect(Array.isArray(result[1])).toBe(true)
-      const inner = result[1] as Array<NormalizedValue>
+      const result: any = normalizeScVal(scVal, undefined, { maxDepth: 2 })
+      expect(result.kind).toBe('vec')
+      expect(result.items[0].value).toBe(1)
+      expect(result.items[1].kind).toBe('vec')
+      const inner = result.items[1].items as Array<unknown>
       expect(inner.length).toBe(1)
       expect(isTruncatedMarker(inner[0])).toBe(true)
       expect((inner[0] as TruncatedMarker).depth).toBe(2)
@@ -104,11 +109,11 @@ describe('Depth Guard - maxDepth', () => {
           },
         ],
       }
-      const result = normalizeScVal(scVal, undefined, { maxDepth: 1 }) as Array<NormalizedValue>
-      expect(Array.isArray(result)).toBe(true)
-      expect(result.length).toBe(1)
-      expect(isTruncatedMarker(result[0])).toBe(true)
-      expect((result[0] as TruncatedMarker).depth).toBe(1)
+      const result: any = normalizeScVal(scVal, undefined, { maxDepth: 1 })
+      expect(result.kind).toBe('vec')
+      expect(result.items.length).toBe(1)
+      expect(isTruncatedMarker(result.items[0])).toBe(true)
+      expect((result.items[0] as TruncatedMarker).depth).toBe(1)
     })
 
     it('deep nesting produces truncated at each level past maxDepth', () => {
@@ -131,8 +136,8 @@ describe('Depth Guard - maxDepth', () => {
           },
         ],
       }
-      const result = normalizeScVal(scVal, undefined, { maxDepth: 2 }) as Array<NormalizedValue>
-      const level1 = result[0] as Array<NormalizedValue>
+      const result: any = normalizeScVal(scVal, undefined, { maxDepth: 2 })
+      const level1 = result.items[0].items as Array<unknown>
       expect(level1.length).toBe(1)
       expect(isTruncatedMarker(level1[0])).toBe(true)
       expect((level1[0] as TruncatedMarker).depth).toBe(2)
@@ -150,8 +155,10 @@ describe('Depth Guard - maxDepth', () => {
           },
         ],
       }
-      const result = normalizeScVal(scVal)
-      expect(result).toEqual([[42]])
+      const result: any = normalizeScVal(scVal)
+      expect(result.kind).toBe('vec')
+      expect(result.items[0].kind).toBe('vec')
+      expect(result.items[0].items[0].value).toBe(42)
     })
 
     it('behaves as before when options.maxDepth omitted', () => {
@@ -164,8 +171,10 @@ describe('Depth Guard - maxDepth', () => {
           },
         ],
       }
-      const result = normalizeScVal(scVal, undefined, {})
-      expect(result).toEqual([[42]])
+      const result: any = normalizeScVal(scVal, undefined, {})
+      expect(result.kind).toBe('vec')
+      expect(result.items[0].kind).toBe('vec')
+      expect(result.items[0].items[0].value).toBe(42)
     })
   })
 
@@ -180,8 +189,8 @@ describe('Depth Guard - maxDepth', () => {
           },
         ],
       }
-      const result = normalizeScVal(scVal, undefined, { maxDepth: 1 }) as Array<NormalizedValue>
-      const marker = result[0] as TruncatedMarker
+      const result: any = normalizeScVal(scVal, undefined, { maxDepth: 1 })
+      const marker = result.items[0] as TruncatedMarker
       const json = JSON.stringify(marker)
       const parsed = JSON.parse(json)
       expect(parsed.__truncated).toBe(true)

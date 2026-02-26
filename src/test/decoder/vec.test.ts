@@ -10,8 +10,10 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(emptyVec)
-      expect(result).toEqual([])
-      expect(Array.isArray(result)).toBe(true)
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items).toEqual([])
+      expect(Array.isArray(r.items)).toBe(true)
     })
 
     it('should normalize undefined vec to empty array', () => {
@@ -21,7 +23,9 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(undefinedVec)
-      expect(result).toEqual([])
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items).toEqual([])
     })
 
     it('should normalize null vec to empty array', () => {
@@ -31,7 +35,9 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(nullVec)
-      expect(result).toEqual([])
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items).toEqual([])
     })
   })
 
@@ -47,8 +53,10 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(flatVecInt)
-      expect(result).toEqual([1, 2, 3])
-      expect((result as Array<unknown>).length).toBe(3)
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items.length).toBe(3)
+      expect(r.items.map((i: any) => i.value)).toEqual([1, 2, 3])
     })
 
     it('should preserve order in flat vectors', () => {
@@ -62,7 +70,9 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(orderedVec)
-      expect(result).toEqual([5, 1, 9])
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items.map((i: any) => i.value)).toEqual([5, 1, 9])
     })
 
     it('should normalize flat vec of mixed scalar types', () => {
@@ -76,10 +86,9 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(mixedVec)
-      expect((result as Array<unknown>).length).toBe(3)
-      expect((result as Array<unknown>)[0]).toBe(42)
-      expect((result as Array<unknown>)[1]).toBe(true)
-      expect((result as Array<unknown>)[2]).toBe('hello')
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items.map((i: any) => i.value)).toEqual([42, true, 'hello'])
     })
 
     it('should handle i32 values in vectors', () => {
@@ -93,7 +102,9 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(i32Vec)
-      expect(result).toEqual([-100, 42, 0])
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items.map((i: any) => i.value)).toEqual([-100, 42, 0])
     })
   })
 
@@ -120,10 +131,11 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(nestedVec)
-      expect(result).toEqual([
-        [1, 2],
-        [3, 4],
-      ])
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items[0].kind).toBe('vec')
+      expect(r.items[0].items.map((i: any) => i.value)).toEqual([1, 2])
+      expect(r.items[1].items.map((i: any) => i.value)).toEqual([3, 4])
     })
 
     it('should handle deeply nested vectors', () => {
@@ -146,7 +158,11 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(deeplyNestedVec)
-      expect(result).toEqual([[[1, 2]]])
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items[0].kind).toBe('vec')
+      expect(r.items[0].items[0].kind).toBe('vec')
+      expect(r.items[0].items[0].items.map((i: any) => i.value)).toEqual([1, 2])
     })
 
     it('should preserve child types in nested structures', () => {
@@ -165,7 +181,10 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(nestedMixedVec)
-      expect(result).toEqual([[10, false], 20])
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items[0].items.map((i: any) => i.value)).toEqual([10, false])
+      expect(r.items[1].value).toBe(20)
     })
 
     it('should preserve order in nested vectors', () => {
@@ -187,7 +206,10 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(orderedNestedVec)
-      expect(result).toEqual([[3, 1], [2]])
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items[0].items.map((i: any) => i.value)).toEqual([3, 1])
+      expect(r.items[1].items.map((i: any) => i.value)).toEqual([2])
     })
 
     it('should handle mixed nested and flat structure', () => {
@@ -207,7 +229,11 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(mixedNestedVec)
-      expect(result).toEqual([1, [2, 3], 4])
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items[0].value).toBe(1)
+      expect(r.items[1].items.map((i: any) => i.value)).toEqual([2, 3])
+      expect(r.items[2].value).toBe(4)
     })
 
     it('should handle vectors with void values', () => {
@@ -221,7 +247,9 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(vecWithVoid)
-      expect(result).toEqual([1, null, 2])
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items.map((i: any) => i.value)).toEqual([1, null, 2])
     })
 
     it('should handle vectors with symbols', () => {
@@ -234,7 +262,9 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(vecWithSymbols)
-      expect(result).toEqual(['transfer', 'approve'])
+      const r: any = result
+      expect(r.kind).toBe('vec')
+      expect(r.items.map((i: any) => i.value)).toEqual(['transfer', 'approve'])
     })
   })
 
@@ -252,12 +282,14 @@ describe('normalizeScVal - Vector Handling', () => {
       }
 
       const result = normalizeScVal(complexOrder)
-      expect(result).toEqual([100, false, 'test', 50, true])
-      expect((result as Array<unknown>)[0]).toBe(100)
-      expect((result as Array<unknown>)[1]).toBe(false)
-      expect((result as Array<unknown>)[2]).toBe('test')
-      expect((result as Array<unknown>)[3]).toBe(50)
-      expect((result as Array<unknown>)[4]).toBe(true)
+      expect((result).kind).toBe('vec')
+      expect((result).items.map((i: any) => i.value)).toEqual([
+        100,
+        false,
+        'test',
+        50,
+        true,
+      ])
     })
   })
 })
