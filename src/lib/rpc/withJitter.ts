@@ -8,21 +8,21 @@
  *          Returns 0 for ms <= 0.
  */
 export function withJitter(
-    ms: number,
-    ratio = 0.2,
-    random = Math.random,
+  ms: number,
+  ratio = 0.2,
+  random = Math.random,
 ): number {
-    if (ms <= 0) {
-        return 0;
-    }
+  if (ms <= 0) {
+    return 0
+  }
 
-    // Clamp ratio to [0, 1]
-    const clampedRatio = Math.max(0, Math.min(1, ratio));
+  // Clamp ratio to [0, 1]
+  const clampedRatio = Math.max(0, Math.min(1, ratio))
 
-    const min = ms * (1 - clampedRatio);
-    const max = ms * (1 + clampedRatio);
+  const min = ms * (1 - clampedRatio)
+  const max = ms * (1 + clampedRatio)
 
-    const result = min + random() * (max - min);
+  const result = min + random() * (max - min)
 
-    return Math.round(result);
+  return Math.round(result)
 }

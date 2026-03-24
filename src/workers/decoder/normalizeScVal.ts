@@ -14,7 +14,12 @@ import type {
 export { VisitedTracker, createVisitedTracker }
 
 // Re-export normalized types so consumers can import from a single location
-export type { NormalizedError, NormalizedMapEntry, TruncatedMarker, UnsupportedFallback }
+export type {
+  NormalizedError,
+  NormalizedMapEntry,
+  TruncatedMarker,
+  UnsupportedFallback,
+}
 
 /**
  * ScVal normalization utilities for Soroban State Lens
@@ -52,7 +57,6 @@ export interface ScVal {
   switch: ScValType
   value?: unknown
 }
-
 
 /**
  * A single entry in a normalized map, preserving the original key as a
@@ -119,10 +123,7 @@ export function normalizeScVal(
 ): any {
   const depth = currentDepth ?? 0
 
-  if (
-    options?.maxDepth !== undefined &&
-    depth >= options.maxDepth
-  ) {
+  if (options?.maxDepth !== undefined && depth >= options.maxDepth) {
     return createTruncatedMarker(depth)
   }
 
@@ -208,8 +209,8 @@ export function normalizeScVal(
         raw !== null &&
         raw !== undefined &&
         typeof raw === 'object' &&
-        'type' in (raw) &&
-        'code' in (raw)
+        'type' in raw &&
+        'code' in raw
       ) {
         const err = raw as { type: unknown; code: unknown }
         return {
@@ -230,7 +231,9 @@ export function normalizeScVal(
       if (Array.isArray(scVal.value)) {
         return {
           kind: 'vec',
-          items: scVal.value.map((item) => normalizeScVal(item, visited, options, depth + 1)),
+          items: scVal.value.map((item) =>
+            normalizeScVal(item, visited, options, depth + 1),
+          ),
         }
       }
       return {

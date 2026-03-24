@@ -30,7 +30,11 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           // Keep React in its own long-lived cache chunk
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/scheduler')) {
+          if (
+            id.includes('node_modules/react') ||
+            id.includes('node_modules/react-dom') ||
+            id.includes('node_modules/scheduler')
+          ) {
             return 'react'
           }
           // TanStack (router, devtools, etc.) in one chunk
@@ -42,7 +46,10 @@ export default defineConfig({
             return 'stellar-design-system'
           }
           // stellar-sdk (including transitive stellar-base / stellar-sdk.min)
-          if (id.includes('node_modules/@stellar/stellar-sdk') || id.includes('node_modules/stellar-base')) {
+          if (
+            id.includes('node_modules/@stellar/stellar-sdk') ||
+            id.includes('node_modules/stellar-base')
+          ) {
             return 'stellar-sdk'
           }
         },

@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  ScValType,
-  normalizeScVal,
-} from '../../workers/decoder/normalizeScVal'
+import { ScValType, normalizeScVal } from '../../workers/decoder/normalizeScVal'
 import type { TruncatedMarker } from '../../types/normalized'
 
 function isTruncatedMarker(value: unknown): value is TruncatedMarker {
@@ -83,9 +80,7 @@ describe('Depth Guard - maxDepth', () => {
     it('root is replaced with truncated when maxDepth is 0', () => {
       const scVal = {
         switch: ScValType.SCV_VEC,
-        value: [
-          { switch: ScValType.SCV_I32, value: 1 },
-        ],
+        value: [{ switch: ScValType.SCV_I32, value: 1 }],
       }
       const result = normalizeScVal(scVal, undefined, { maxDepth: 0 })
       expect(isTruncatedMarker(result)).toBe(true)

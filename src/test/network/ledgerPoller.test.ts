@@ -112,7 +112,10 @@ describe('startLedgerHeadPoll', () => {
 
     it('does not call onLedgerChange when RPC returns error', async () => {
       const onLedgerChange = vi.fn()
-      mockCallRpc.mockResolvedValue({ message: 'Network error', code: 'NETWORK_ERROR' })
+      mockCallRpc.mockResolvedValue({
+        message: 'Network error',
+        code: 'NETWORK_ERROR',
+      })
 
       const stop = startLedgerHeadPoll({
         rpcConfig: defaultRpcConfig,

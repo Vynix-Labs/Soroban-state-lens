@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronRight, ChevronUp, Filter, X } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 
 interface SidebarProps {
   open: boolean
@@ -53,6 +54,81 @@ export default function Sidebar({
     )
   }
 
+  // For focus inside the sidebar
+  const sidebarRef = useRef<HTMLElement | null>(null)
+
+  // For focusing the opener button when the sidebar closes
+  const openerRef = useRef<HTMLElement | null>(null)
+
+  // Whwn sidebar opens , save the focus , so when it closes we can return it
+  useEffect(() => {
+    if (open) {
+      openerRef.current = document.activeElement as HTMLElement
+    }
+  }, [open])
+
+  useEffect(() => {
+    // store focus only when sidebar opens
+    if (!open) return
+
+    // Get all focusable elements inside the sidebar
+    const container = sidebarRef.current
+    if (!container) return
+
+    const focusable = container.querySelectorAll(
+      'a, button, input, textarea, select, [tabindex]:not([tabindex="-1"])',
+    )
+
+    // get first and last focusable elements
+    const first = focusable[0] as HTMLElement
+    const last = focusable[focusable.length - 1] as HTMLElement
+
+    // Focus first element when opened
+    first.focus()
+
+    // Handle keydown events for focus trapping and closing
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape closes sidebar
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+        return
+      }
+
+      // Trap focus (keyboard control)
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          // Shift + Tab (backward)
+          if (document.activeElement === first) {
+            e.preventDefault()
+            last.focus()
+          }
+        } else {
+          // Tab (forward)
+          if (document.activeElement === last) {
+            e.preventDefault()
+            first.focus()
+          }
+        }
+      }
+    }
+
+    // Attach event listerner
+    document.addEventListener('keydown', handleKeyDown)
+
+    // cleanup or remove event listener when sidebar closes
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open, onClose])
+
+  // Return focus to opener when sidebar closes
+  useEffect(() => {
+    if (!open && openerRef.current) {
+      openerRef.current.focus()
+    }
+  }, [open])
+
   // Overlay variant: mobile drawer
   return (
     <>
@@ -67,6 +143,7 @@ export default function Sidebar({
 
       {/* Drawer */}
       <aside
+        ref={sidebarRef}
         className={`fixed top-0 left-0 h-full w-100 max-w-[85vw] bg-background-dark border-r border-border-dark shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col lg:hidden ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
