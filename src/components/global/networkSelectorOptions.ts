@@ -6,7 +6,7 @@ export interface NetworkSelectorOption {
 }
 
 export function buildNetworkSelectorOptions(
-  networks: Record<string, NetworkConfig>,
+  networks: Record<string, NetworkConfig> | null | undefined,
 ): Array<NetworkSelectorOption> {
   if (!networks) {
     return []
