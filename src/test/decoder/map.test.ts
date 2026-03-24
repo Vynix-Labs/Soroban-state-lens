@@ -203,7 +203,11 @@ describe('normalizeScVal - Map Handling', () => {
           { kind: 'primitive', primitive: 'u32', value: 2 },
         ],
       })
-      expect(result[0].value).toEqual({ kind: 'primitive', primitive: 'string', value: 'tuple-key' })
+      expect(result[0].value).toEqual({
+        kind: 'primitive',
+        primitive: 'string',
+        value: 'tuple-key',
+      })
     })
 
     it('preserves nested map as key', () => {
@@ -232,7 +236,11 @@ describe('normalizeScVal - Map Handling', () => {
           value: { kind: 'primitive', primitive: 'u32', value: 42 },
         },
       ])
-      expect(result[0].value).toEqual({ kind: 'primitive', primitive: 'bool', value: true })
+      expect(result[0].value).toEqual({
+        kind: 'primitive',
+        primitive: 'bool',
+        value: true,
+      })
     })
   })
 
@@ -251,7 +259,7 @@ describe('normalizeScVal - Map Handling', () => {
         value: mapValue,
       }) as Array<MapEntry>
 
-      const resultKeys = result.map((e: any) => (e.key).value)
+      const resultKeys = result.map((e: any) => e.key.value)
       expect(resultKeys).toEqual(keys)
     })
 
@@ -274,9 +282,21 @@ describe('normalizeScVal - Map Handling', () => {
         ],
       }) as Array<MapEntry>
 
-      expect(result[0].key).toEqual({ kind: 'primitive', primitive: 'u32', value: 10 })
-      expect(result[1].key).toEqual({ kind: 'primitive', primitive: 'symbol', value: 'second' })
-      expect(result[2].key).toEqual({ kind: 'primitive', primitive: 'bool', value: true })
+      expect(result[0].key).toEqual({
+        kind: 'primitive',
+        primitive: 'u32',
+        value: 10,
+      })
+      expect(result[1].key).toEqual({
+        kind: 'primitive',
+        primitive: 'symbol',
+        value: 'second',
+      })
+      expect(result[2].key).toEqual({
+        kind: 'primitive',
+        primitive: 'bool',
+        value: true,
+      })
     })
   })
 
@@ -301,7 +321,11 @@ describe('normalizeScVal - Map Handling', () => {
       }) as Array<MapEntry>
 
       expect(result).toHaveLength(1)
-      expect(result[0].key).toEqual({ kind: 'primitive', primitive: 'symbol', value: 'outer' })
+      expect(result[0].key).toEqual({
+        kind: 'primitive',
+        primitive: 'symbol',
+        value: 'outer',
+      })
       const inner = result[0].value as Array<MapEntry>
       expect(Array.isArray(inner)).toBe(true)
       expect(inner).toHaveLength(1)

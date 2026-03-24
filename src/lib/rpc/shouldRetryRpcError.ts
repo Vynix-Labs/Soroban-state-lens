@@ -12,41 +12,42 @@ import { classifyRpcHttpStatus } from './classifyRpcHttpStatus'
  * @returns true if the error should be retried, false otherwise.
  */
 export function shouldRetryRpcError(err: {
-    code?: string | number
-    status?: number
+  code?: string | number
+  status?: number
 }): boolean {
-    // 1. Handle HTTP status if present
-    if (err.status !== undefined) {
-        const classification = classifyRpcHttpStatus(err.status)
-        if (classification === 'retryable') {
-            return true
-        }
-        if (classification === 'fatal') {
-            return false
-        }
+  // 1. Handle HTTP status if present
+  if (err.status !== undefined) {
+    const classification = classifyRpcHttpStatus(err.status)
+    if (classification === 'retryable') {
+      return true
+    }
+    if (classification === 'fatal') {
+      return false
+    }
+  }
+
+  // 2. Handle specific codes
+  if (err.code !== undefined) {
+    const codeStr = String(err.code)
+
+    // Transient environment/client-side conditions
+    if (codeStr === 'TIMEOUT' || codeStr === 'NETWORK_ERROR') {
+      return true
     }
 
-    // 2. Handle specific codes
-    if (err.code !== undefined) {
-        const codeStr = String(err.code)
-
-        // Transient environment/client-side conditions
-        if (codeStr === 'TIMEOUT' || codeStr === 'NETWORK_ERROR') {
-            return true
-        }
-
-        // JSON-RPC 2.0 transient error codes
-        const codeNum = typeof err.code === 'number' ? err.code : parseInt(codeStr, 10)
-        if (!isNaN(codeNum)) {
-            if (codeNum === -32603) {
-                return true
-            }
-            if (codeNum >= -32099 && codeNum <= -32000) {
-                return true
-            }
-        }
+    // JSON-RPC 2.0 transient error codes
+    const codeNum =
+      typeof err.code === 'number' ? err.code : parseInt(codeStr, 10)
+    if (!isNaN(codeNum)) {
+      if (codeNum === -32603) {
+        return true
+      }
+      if (codeNum >= -32099 && codeNum <= -32000) {
+        return true
+      }
     }
+  }
 
-    // 3. Default to false for missing fields or unknown conditions
-    return false
+  // 3. Default to false for missing fields or unknown conditions
+  return false
 }

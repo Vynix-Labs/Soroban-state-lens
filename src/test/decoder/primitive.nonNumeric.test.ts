@@ -36,7 +36,9 @@ describe('normalizeScVal – Bool', () => {
     const invalidCases = [0, 1, 'true', null, undefined, {}, []]
 
     invalidCases.forEach((badValue) => {
-      const result: any = normalizeScVal(makeScVal(ScValType.SCV_BOOL, badValue))
+      const result: any = normalizeScVal(
+        makeScVal(ScValType.SCV_BOOL, badValue),
+      )
       expect(result.kind).toBe('primitive')
       expect(result.primitive).toBe('bool')
       expect(result.value).toBe(false)
@@ -45,12 +47,20 @@ describe('normalizeScVal – Bool', () => {
 
   it('preserves exact fixture output shape for true', () => {
     const r: any = normalizeScVal(makeScVal(ScValType.SCV_BOOL, true))
-    expect(r).toStrictEqual({ kind: 'primitive', primitive: 'bool', value: true })
+    expect(r).toStrictEqual({
+      kind: 'primitive',
+      primitive: 'bool',
+      value: true,
+    })
   })
 
   it('preserves exact fixture output shape for false', () => {
     const r: any = normalizeScVal(makeScVal(ScValType.SCV_BOOL, false))
-    expect(r).toStrictEqual({ kind: 'primitive', primitive: 'bool', value: false })
+    expect(r).toStrictEqual({
+      kind: 'primitive',
+      primitive: 'bool',
+      value: false,
+    })
   })
 })
 
@@ -83,7 +93,11 @@ describe('normalizeScVal – Void', () => {
 
   it('preserves exact fixture output shape', () => {
     const r: any = normalizeScVal(makeScVal(ScValType.SCV_VOID))
-    expect(r).toStrictEqual({ kind: 'primitive', primitive: 'void', value: null })
+    expect(r).toStrictEqual({
+      kind: 'primitive',
+      primitive: 'void',
+      value: null,
+    })
   })
 })
 
@@ -115,7 +129,9 @@ describe('normalizeScVal – Symbol', () => {
     const invalidCases = [42, true, null, undefined, [], {}]
 
     invalidCases.forEach((badValue) => {
-      const result: any = normalizeScVal(makeScVal(ScValType.SCV_SYMBOL, badValue))
+      const result: any = normalizeScVal(
+        makeScVal(ScValType.SCV_SYMBOL, badValue),
+      )
       expect(result.kind).toBe('primitive')
       expect(result.primitive).toBe('symbol')
       expect(result.value).toBe('')
@@ -124,7 +140,11 @@ describe('normalizeScVal – Symbol', () => {
 
   it('preserves exact fixture output shape', () => {
     const r: any = normalizeScVal(makeScVal(ScValType.SCV_SYMBOL, 'transfer'))
-    expect(r).toStrictEqual({ kind: 'primitive', primitive: 'symbol', value: 'transfer' })
+    expect(r).toStrictEqual({
+      kind: 'primitive',
+      primitive: 'symbol',
+      value: 'transfer',
+    })
   })
 })
 
@@ -162,7 +182,10 @@ describe('normalizeScVal – Error', () => {
     })
 
     it('preserves exact fixture output shape for contract error', () => {
-      const scVal = makeScVal(ScValType.SCV_ERROR, { type: 'contract', code: 1 })
+      const scVal = makeScVal(ScValType.SCV_ERROR, {
+        type: 'contract',
+        code: 1,
+      })
       expect(normalizeScVal(scVal)).toStrictEqual({
         __error: true,
         type: 'contract',
@@ -218,7 +241,11 @@ describe('normalizeScVal – Error', () => {
       // Must not throw
       const serialized = JSON.stringify(result)
       expect(typeof serialized).toBe('string')
-      expect(JSON.parse(serialized)).toEqual({ __error: true, type: 'unknown', code: 0 })
+      expect(JSON.parse(serialized)).toEqual({
+        __error: true,
+        type: 'unknown',
+        code: 0,
+      })
     })
   })
 

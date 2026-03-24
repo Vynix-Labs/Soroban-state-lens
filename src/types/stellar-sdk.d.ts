@@ -14,7 +14,9 @@ declare module '@stellar/stellar-sdk' {
   export namespace rpc {
     class Server {
       constructor(serverUrl: string, options?: any)
-      getLedgerEntries(...keys: Array<any>): Promise<Api.GetLedgerEntriesResponse>
+      getLedgerEntries(
+        ...keys: Array<any>
+      ): Promise<Api.GetLedgerEntriesResponse>
     }
 
     namespace Api {
