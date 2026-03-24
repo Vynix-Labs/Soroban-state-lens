@@ -12,10 +12,15 @@ export function formatScSymbol(value: string): string {
     return "?";
   }
   // 🚨 Check control characters FIRST (before trim)
-  const hasControlChars = /[\x00-\x1F\x7F]/.test(value);
-  if (hasControlChars) {
-    return "?";
+
+  // 🚨 Detect control characters WITHOUT regex
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (code <= 31 || code === 127) {
+      return "?";
+    }
   }
+
   const trimmed = value.trim();
 
   // Empty after trimming
