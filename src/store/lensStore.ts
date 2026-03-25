@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-import { DEFAULT_NETWORKS } from './types'
+import { ConnectionStatus, DEFAULT_NETWORKS } from './types'
 import {
   DEFAULT_NETWORK_CONFIG,
   NETWORK_CONFIG_STORAGE_KEY,
@@ -32,6 +32,7 @@ const createNetworkConfigSlice = (
   set: (fn: (state: LensStore) => Partial<LensStore>) => void,
 ): NetworkConfigSlice => ({
   networkConfig: DEFAULT_NETWORK_CONFIG,
+  connectionStatus: ConnectionStatus.IDLE,
   lastCustomUrl: undefined,
 
   setNetworkConfig: (config: Partial<NetworkConfig>) =>
@@ -42,6 +43,16 @@ const createNetworkConfigSlice = (
   resetNetworkConfig: () =>
     set(() => ({
       networkConfig: DEFAULT_NETWORK_CONFIG,
+    })),
+
+  setConnectionStatus: (status: ConnectionStatus) =>
+    set(() => ({
+      connectionStatus: status,
+    })),
+
+  resetConnectionStatus: () =>
+    set(() => ({
+      connectionStatus: ConnectionStatus.IDLE,
     })),
 
   setLastCustomUrl: (url: string) =>
@@ -166,7 +177,7 @@ export const useLensStore = create<LensStore>()(
     {
       name: NETWORK_CONFIG_STORAGE_KEY,
       storage: createSafeStorage<PersistedState>(),
-      // Only persist networkConfig slice
+      // Only persist networkConfig slice (excluding connectionStatus)
       partialize: (state): PersistedState => ({
         networkConfig: state.networkConfig,
       }),
@@ -199,6 +210,7 @@ export const getStoreState = () => useLensStore.getState()
 export const resetStore = () => {
   useLensStore.setState({
     networkConfig: DEFAULT_NETWORK_CONFIG,
+    connectionStatus: ConnectionStatus.IDLE,
     ledgerData: {},
     expandedNodes: [],
   })
@@ -211,6 +223,9 @@ export const lensActions = {
   setNetworkConfig: (config: Partial<NetworkConfig>) =>
     useLensStore.getState().setNetworkConfig(config),
   resetNetworkConfig: () => useLensStore.getState().resetNetworkConfig(),
+  setConnectionStatus: (status: ConnectionStatus) =>
+    useLensStore.getState().setConnectionStatus(status),
+  resetConnectionStatus: () => useLensStore.getState().resetConnectionStatus(),
   toggleExpanded: (nodeId: string) =>
     useLensStore.getState().toggleExpanded(nodeId),
   expandAll: (nodeIds: Array<string>) =>
