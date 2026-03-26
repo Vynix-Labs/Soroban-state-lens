@@ -57,8 +57,9 @@ export default defineConfig({
     },
   },
   test: {
-    environment: 'node',
-    pool: 'threads',
+    environment: 'jsdom',
+    globals: true,
     setupFiles: ['./src/test/setup.test.ts'],
-  },
+    pool: 'threads',
+  },  
 })
