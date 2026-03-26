@@ -1,6 +1,7 @@
 import { createJSONStorage } from 'zustand/middleware'
 
 import { DEFAULT_NETWORKS } from './types'
+import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
 
 import type { NetworkConfig } from './types'
 import type { PersistStorage } from 'zustand/middleware'
@@ -26,19 +27,22 @@ export interface PersistedState {
  * Validates that a value is a valid NetworkConfig object
  */
 export function isValidNetworkConfig(value: unknown): value is NetworkConfig {
-  if (typeof value !== 'object' || value === null) {
+  const result = validateNetworkConfigPatch(value)
+
+  if (!result.valid || !result.patch) {
     return false
   }
 
-  const config = value as Record<string, unknown>
+  // Ensure all required fields are present and non-empty
+  const { networkId, networkPassphrase, rpcUrl } = result.patch
 
   return (
-    typeof config.networkId === 'string' &&
-    typeof config.networkPassphrase === 'string' &&
-    typeof config.rpcUrl === 'string' &&
-    config.networkId.length > 0 &&
-    config.networkPassphrase.length > 0 &&
-    config.rpcUrl.length > 0
+    typeof networkId === 'string' &&
+    networkId.length > 0 &&
+    typeof networkPassphrase === 'string' &&
+    networkPassphrase.length > 0 &&
+    typeof rpcUrl === 'string' &&
+    rpcUrl.length > 0
   )
 }
 
@@ -104,10 +108,15 @@ export function mergeNetworkConfig(
 
     if (isValidNetworkConfig(persisted.networkConfig)) {
       return { networkConfig: persisted.networkConfig }
+    } else {
+      console.warn(
+        '[LensStore] Persisted network config is invalid, falling back to default',
+        persisted.networkConfig,
+      )
     }
   }
 
-  // Return current state (with defaults) if persisted data is invalid
+  // Return current state (with defaults) if persisted data is invalid or missing
   return currentState
 }
 

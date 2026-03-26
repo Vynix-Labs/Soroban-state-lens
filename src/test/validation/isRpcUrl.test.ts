@@ -48,8 +48,16 @@ describe('isRpcUrl', () => {
   it('should return false for URLs with whitespace in them', () => {
     // URL constructor might actually handle leading/trailing space if validated before,
     // but we check the input strictly.
-    expect(isRpcUrl(' https://soroban-testnet.stellar.org ')).toBe(true) // URL constructor trims
-    // However, if we want "strict" rejection of whitespace-only input, we handled that.
-    // Let's re-verify the "Return true only for valid absolute http/https URLs with host" requirement.
+    expect(isRpcUrl('https://soroban-testnet.stellar.org')).toBe(true) // URL constructor trims
+    expect(isRpcUrl(' http://localhost:8000 ')).toBe(true)
+  })
+
+  it('should return false for ftp URLs', () => {
+    expect(isRpcUrl('ftp://soroban-testnet.stellar.org')).toBe(false)
+  })
+
+  it('should return true for valid Soroban RPC URLs', () => {
+    expect(isRpcUrl('https://soroban-testnet.stellar.org')).toBe(true)
+    expect(isRpcUrl('https://rpc-futurenet.stellar.org')).toBe(true)
   })
 })

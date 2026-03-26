@@ -13,12 +13,17 @@
  * @returns True if the value is a valid RPC URL, false otherwise.
  */
 export function isRpcUrl(value: string): boolean {
-  if (!value || value.trim() === '') {
+  if (typeof value !== 'string') {
+    return false
+  }
+
+  const trimmedValue = value.trim()
+  if (trimmedValue === '') {
     return false
   }
 
   try {
-    const url = new URL(value)
+    const url = new URL(trimmedValue)
 
     // Enforce protocol (http or https only)
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {

@@ -2,6 +2,14 @@
  * Store type definitions for Soroban State Lens
  */
 
+// Network configuration status
+export enum ConnectionStatus {
+  IDLE = 'idle',
+  LOADING = 'loading',
+  SUCCESS = 'success',
+  ERROR = 'error',
+}
+
 // Network configuration
 export interface NetworkConfig {
   networkId: string
@@ -34,9 +42,12 @@ export type ExpandedNodes = Set<string>
 // Network config slice
 export interface NetworkConfigSlice {
   networkConfig: NetworkConfig
+  connectionStatus: ConnectionStatus
   lastCustomUrl?: string
   setNetworkConfig: (config: Partial<NetworkConfig>) => void
   resetNetworkConfig: () => void
+  setConnectionStatus: (status: ConnectionStatus) => void
+  resetConnectionStatus: () => void
   setLastCustomUrl: (url: string) => void
 }
 

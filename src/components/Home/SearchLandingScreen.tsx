@@ -6,34 +6,6 @@ const SearchLandingScreen = () => {
       <div className="absolute inset-0 bg-grid-pattern z-0 pointer-events-none"></div>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#0d1117_90%)] z-0 pointer-events-none"></div>
 
-      <nav className="relative z-20 w-full flex justify-end px-10 py-6">
-        <div className="flex items-center gap-8">
-          <a
-            className="text-gray-400 hover:text-primary text-sm font-medium transition-colors"
-            href="#"
-          >
-            Docs
-          </a>
-          <a
-            className="text-gray-400 hover:text-primary text-sm font-medium transition-colors"
-            href="#"
-          >
-            API
-          </a>
-          <a
-            className="text-gray-400 hover:text-primary text-sm font-medium transition-colors"
-            href="#"
-          >
-            Settings
-          </a>
-          <button className="flex items-center gap-2 text-white bg-surface-dark border border-border-dark hover:border-primary/50 hover:bg-[#1c2128] transition-all rounded px-3 py-1.5 text-xs font-bold uppercase tracking-wider">
-            <span className="material-symbols-outlined text-[16px]">
-              account_balance_wallet
-            </span>
-            <span>Connect</span>
-          </button>
-        </div>
-      </nav>
       {/* <!-- Main Content Area --> */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center w-full px-4">
         {/* <!-- Center Container --> */}
@@ -43,21 +15,30 @@ const SearchLandingScreen = () => {
           {/* <!-- Content Wrapper --> */}
           <div className="relative z-10 w-full flex flex-col items-center justify-center gap-8">
             {/* <!-- Heading --> */}
-            <div className="text-center space-y-2">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="size-8 bg-primary/20 rounded flex items-center justify-center text-primary">
-                  <span className="material-symbols-outlined">view_in_ar</span>
+            <div className="text-center space-y-4">
+              <div className="flex flex-col items-center justify-center gap-2 mb-2">
+                <div className="size-12 bg-primary/20 rounded-xl flex items-center justify-center text-primary mb-2 shadow-[0_0_20px_rgba(165,87,255,0.2)]">
+                  <span className="material-symbols-outlined text-3xl">
+                    view_in_ar
+                  </span>
                 </div>
-                <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400">
                   SOROBAN STATE LENS
                 </h1>
               </div>
-              <p className="text-gray-500 font-mono text-sm tracking-wide">
-                HIGH-DENSITY BLOCKCHAIN STATE EXPLORER
+              <p className="text-gray-400 max-w-[600px] mx-auto text-base md:text-lg leading-relaxed">
+                A high-density blockchain state explorer for Soroban smart
+                contracts. Explore storage, ledger entries, and transaction
+                simulations in real-time.
               </p>
             </div>
             {/* <!-- Search Module --> */}
-            <div className="w-full max-w-[600px] group/search">
+            <div className="w-full max-w-[600px] group/search space-y-4">
+              <div className="text-center">
+                <p className="text-primary/80 font-mono text-xs uppercase tracking-[0.2em] font-bold">
+                  Enter a Contract ID to begin exploring
+                </p>
+              </div>
               <label className="flex flex-col w-full relative">
                 {/* <!-- Glow Effect Container --> */}
                 <div className="absolute -inset-0.5 bg-primary/20 rounded-lg blur opacity-0 group-focus-within/search:opacity-100 transition duration-500"></div>
