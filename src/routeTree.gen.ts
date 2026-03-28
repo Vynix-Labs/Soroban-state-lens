@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SdsDemoRouteImport } from './routes/sds-demo'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ContractsContractIdIndexRouteImport } from './routes/contracts/$contractId/index'
 
 const SdsDemoRoute = SdsDemoRouteImport.update({
   id: '/sds-demo',
@@ -22,31 +23,41 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContractsContractIdIndexRoute =
+  ContractsContractIdIndexRouteImport.update({
+    id: '/contracts/$contractId/',
+    path: '/contracts/$contractId/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
+  '/contracts/$contractId/': typeof ContractsContractIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
+  '/contracts/$contractId/': typeof ContractsContractIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
+  '/contracts/$contractId/': typeof ContractsContractIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sds-demo'
+  fullPaths: '/' | '/sds-demo' | '/contracts/$contractId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sds-demo'
-  id: '__root__' | '/' | '/sds-demo'
+  to: '/' | '/sds-demo' | '/contracts/$contractId/'
+  id: '__root__' | '/' | '/sds-demo' | '/contracts/$contractId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SdsDemoRoute: typeof SdsDemoRoute
+  ContractsContractIdIndexRoute: typeof ContractsContractIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +76,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contracts/$contractId/': {
+      id: '/contracts/$contractId/'
+      path: '/contracts/$contractId'
+      fullPath: '/contracts/$contractId/'
+      preLoaderRoute: typeof ContractsContractIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SdsDemoRoute: SdsDemoRoute,
+  ContractsContractIdIndexRoute: ContractsContractIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
