@@ -76,6 +76,15 @@ function ContractLookUpInput() {
           }`}
           placeholder="Search ledger keys / contract IDs..."
           type="text"
+          onBlur={async () => {
+            const value = inputValue.trim()
+            if (!value) return
+            setValidationError(null)
+            const result = await validateContractId(value)
+            if (!result.ok) {
+              setValidationError(result.error || 'Invalid contract ID')
+            }
+          }}
           disabled={isValidating}
         />
         <div className="absolute inset-y-0 right-0 pr-2 flex items-center gap-2">
