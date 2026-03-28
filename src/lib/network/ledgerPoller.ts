@@ -1,13 +1,7 @@
 import { buildJsonRpcRequest } from '../rpc/buildJsonRpcRequest'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
 import { callRpc } from './rpcClient'
-import type { RpcConfig, RpcError } from './types'
-
-export interface GetLatestLedgerResult {
-  id?: string
-  protocolVersion?: number
-  sequence: number
-}
+import type { LatestLedgerResult, RpcConfig, RpcError } from './types'
 
 export interface LedgerHeadPollOptions {
   rpcConfig: RpcConfig
@@ -42,7 +36,7 @@ export function startLedgerHeadPoll(
     if (stoppedRef.current) return
 
     const body = buildJsonRpcRequest('getLatestLedger', {}, toRpcRequestId())
-    const response = await callRpc<{ result?: GetLatestLedgerResult }>(
+    const response = await callRpc<{ result?: LatestLedgerResult }>(
       rpcConfig,
       body,
     )
