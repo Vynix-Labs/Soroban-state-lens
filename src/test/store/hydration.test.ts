@@ -44,7 +44,10 @@ describe('LensStore Hydration', () => {
     // 1. Prepare storage with a valid config (Testnet)
     const persistedState = {
       state: {
-        networkConfig: DEFAULT_NETWORKS.testnet
+        networkConfig: {
+          kind: 'preset',
+          networkId: 'testnet',
+        }
       },
       version: 0
     }
@@ -62,15 +65,12 @@ describe('LensStore Hydration', () => {
   })
 
   it('hydrates with a valid custom RPC config from storage', async () => {
-    const customConfig = {
-      networkId: 'custom-network',
-      networkPassphrase: 'Custom Passphrase',
-      rpcUrl: 'https://custom-rpc.com',
-    }
-    
     const persistedState = {
       state: {
-        networkConfig: customConfig
+        networkConfig: {
+          kind: 'custom',
+          rpcUrl: 'https://custom-rpc.com/',
+        }
       },
       version: 0
     }
@@ -79,7 +79,12 @@ describe('LensStore Hydration', () => {
     await useLensStore.persist.rehydrate()
 
     const state = useLensStore.getState()
-    expect(state.networkConfig).toEqual(customConfig)
+    expect(state.networkConfig).toEqual({
+      networkId: 'custom',
+      networkPassphrase: 'Custom Network',
+      rpcUrl: 'https://custom-rpc.com',
+      horizonUrl: DEFAULT_NETWORKS.futurenet.horizonUrl,
+    })
   })
 
   it('falls back to default network when storage is empty', async () => {
@@ -95,8 +100,8 @@ describe('LensStore Hydration', () => {
     const invalidPersistedState = {
       state: {
         networkConfig: {
+          kind: 'preset',
           networkId: 'invalid',
-          // missing required fields
         }
       },
       version: 0
@@ -113,8 +118,8 @@ describe('LensStore Hydration', () => {
     const invalidPersistedState = {
       state: {
         networkConfig: {
-          ...DEFAULT_NETWORKS.testnet,
-          someStrangeKey: 'intruder'
+          kind: 'mystery',
+          someStrangeKey: 'intruder',
         }
       },
       version: 0

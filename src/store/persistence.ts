@@ -1,9 +1,12 @@
 import { createJSONStorage } from 'zustand/middleware'
+import { parsePersistedNetworkConfig } from '../lib/storage/parsePersistedNetworkConfig'
+import { serializePersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
 
 import { DEFAULT_NETWORKS } from './types'
 import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
 
 import type { NetworkConfig } from './types'
+import type { PersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
 import type { PersistStorage } from 'zustand/middleware'
 
 /**
@@ -20,7 +23,7 @@ export const DEFAULT_NETWORK_CONFIG: NetworkConfig = DEFAULT_NETWORKS.futurenet
  * Persisted state shape (only networkConfig)
  */
 export interface PersistedState {
-  networkConfig: NetworkConfig
+  networkConfig: PersistedNetworkConfig
 }
 
 /**
@@ -105,19 +108,28 @@ export function mergeNetworkConfig(
     'networkConfig' in persistedState
   ) {
     const persisted = persistedState as { networkConfig: unknown }
+    const parsedNetworkConfig = parsePersistedNetworkConfig(
+      persisted.networkConfig,
+    )
 
-    if (isValidNetworkConfig(persisted.networkConfig)) {
-      return { networkConfig: persisted.networkConfig }
-    } else {
-      console.warn(
-        '[LensStore] Persisted network config is invalid, falling back to default',
-        persisted.networkConfig,
-      )
+    if (isValidNetworkConfig(parsedNetworkConfig)) {
+      return { networkConfig: parsedNetworkConfig }
     }
+
+    console.warn(
+      '[LensStore] Persisted network config is invalid, falling back to default',
+      persisted.networkConfig,
+    )
   }
 
   // Return current state (with defaults) if persisted data is invalid or missing
   return currentState
+}
+
+export function serializeNetworkConfigForStorage(
+  networkConfig: NetworkConfig,
+): PersistedNetworkConfig {
+  return serializePersistedNetworkConfig(networkConfig)
 }
 
 /**
