@@ -268,7 +268,7 @@ export function normalizeScVal(
       const str = bigIntLikeToString(scVal.value)
       if (str !== null) {
         const n = BigInt(str)
-        if (n >= 0n && n <= 0xFFFFFFFFFFFFFFFFn) {
+        if (n >= 0n && n <= 0xffffffffffffffffn) {
           return { kind: 'primitive', primitive: 'u64', value: str }
         }
       }
@@ -279,7 +279,7 @@ export function normalizeScVal(
       const str = bigIntLikeToString(scVal.value)
       if (str !== null) {
         const n = BigInt(str)
-        if (n >= -0x8000000000000000n && n <= 0x7FFFFFFFFFFFFFFFn) {
+        if (n >= -0x8000000000000000n && n <= 0x7fffffffffffffffn) {
           return { kind: 'primitive', primitive: 'i64', value: str }
         }
       }

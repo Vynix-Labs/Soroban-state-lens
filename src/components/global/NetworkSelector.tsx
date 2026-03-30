@@ -27,7 +27,9 @@ export default function NetworkSelector() {
   const [showCustomInput, setShowCustomInput] = useState(false)
   const [customRpcUrl, setCustomRpcUrl] = useState('')
   const [validationError, setValidationError] = useState('')
-  const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [testStatus, setTestStatus] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >('idle')
   const [testError, setTestError] = useState('')
   const [isHydrated, setIsHydrated] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -92,9 +94,9 @@ export default function NetworkSelector() {
         networkPassphrase: '',
         rpcUrl: urlToUse,
       })
-      setCustomRpcUrl(urlToUse)  // ← preserve any previously typed/saved URL
-      setShowCustomInput(true)   // ← show the input panel
-      setIsOpen(false)           // ← close the dropdown list
+      setCustomRpcUrl(urlToUse) // ← preserve any previously typed/saved URL
+      setShowCustomInput(true) // ← show the input panel
+      setIsOpen(false) // ← close the dropdown list
     }
   }
 
@@ -177,7 +179,6 @@ export default function NetworkSelector() {
       setValidationError(validation.error || 'Invalid URL')
     }
   }
-
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {

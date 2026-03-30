@@ -98,9 +98,7 @@ describe('normalizeScVal - Numeric Primitives', () => {
 
   describe('unsupported fallback behavior', () => {
     it('should return stable fallback for unsupported variants', () => {
-      const unsupportedVariants = [
-        ScValType.SCV_BYTES,
-      ]
+      const unsupportedVariants = [ScValType.SCV_BYTES]
 
       unsupportedVariants.forEach((variant) => {
         const scVal: ScVal = {

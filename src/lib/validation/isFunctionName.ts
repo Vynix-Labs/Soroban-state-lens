@@ -11,15 +11,14 @@
  * @returns True if the value is a valid function name, false otherwise.
  */
 export function isFunctionName(value: string): boolean {
-  if (
-    typeof value !== 'string' ||
-    value.trim() === ''
-  ) {
+  if (typeof value !== 'string' || value.trim() === '') {
     return false
   }
- const trimmed = value.trim()
+  const trimmed = value.trim()
 
- if(trimmed.length>64){return false}
+  if (trimmed.length > 64) {
+    return false
+  }
 
- return /^[a-z_][a-z0-9_]*$/.test(trimmed)
+  return /^[a-z_][a-z0-9_]*$/.test(trimmed)
 }

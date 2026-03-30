@@ -23,8 +23,14 @@ function makeState(entries: Array<LedgerEntry>): LensStore {
 }
 
 describe('selectLedgerEntryByKey', () => {
-  const entryA = makeEntry({ key: 'contract:ABC123:Balance', contractId: 'ABC123' })
-  const entryB = makeEntry({ key: 'contract:DEF456:Supply', contractId: 'DEF456' })
+  const entryA = makeEntry({
+    key: 'contract:ABC123:Balance',
+    contractId: 'ABC123',
+  })
+  const entryB = makeEntry({
+    key: 'contract:DEF456:Supply',
+    contractId: 'DEF456',
+  })
   const entryC = makeEntry({ key: 'account:GXYZ...:balance', contractId: '' })
 
   const state = makeState([entryA, entryB, entryC])
@@ -83,13 +89,16 @@ describe('selectLedgerEntryByKey', () => {
   })
 
   it('should handle keys with special characters', () => {
-    const specialEntry = makeEntry({ 
-      key: 'contract:SPECIAL!@#$%^&*():data', 
-      contractId: 'SPECIAL' 
+    const specialEntry = makeEntry({
+      key: 'contract:SPECIAL!@#$%^&*():data',
+      contractId: 'SPECIAL',
     })
     const stateWithSpecial = makeState([specialEntry])
-    
-    const result = selectLedgerEntryByKey(stateWithSpecial, 'contract:SPECIAL!@#$%^&*():data')
+
+    const result = selectLedgerEntryByKey(
+      stateWithSpecial,
+      'contract:SPECIAL!@#$%^&*():data',
+    )
     expect(result).toEqual(specialEntry)
   })
 })

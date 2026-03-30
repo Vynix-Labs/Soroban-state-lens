@@ -21,7 +21,10 @@ describe('mapScvMapEntry', () => {
     })
 
     it('should return a tuple with stringified object key', () => {
-      const result = mapScvMapEntry({ key: { type: 'account' }, val: 99 }, identity)
+      const result = mapScvMapEntry(
+        { key: { type: 'account' }, val: 99 },
+        identity,
+      )
       expect(result).toEqual(['{"type":"account"}', 99])
     })
 

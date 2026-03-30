@@ -16,5 +16,7 @@ export function isUnsupportedFallback(
 
   const candidate = value as Record<string, unknown>
 
-  return candidate.__unsupported === true && typeof candidate.variant === 'string'
+  return (
+    candidate.__unsupported === true && typeof candidate.variant === 'string'
+  )
 }

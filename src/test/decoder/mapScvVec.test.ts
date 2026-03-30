@@ -46,7 +46,9 @@ describe('mapScvVec', () => {
     })
 
     it('returns [] for undefined', () => {
-      expect(mapScvVec(undefined as unknown as Array<unknown>, (x) => x)).toEqual([])
+      expect(
+        mapScvVec(undefined as unknown as Array<unknown>, (x) => x),
+      ).toEqual([])
     })
 
     it('returns [] for a number', () => {
@@ -54,7 +56,9 @@ describe('mapScvVec', () => {
     })
 
     it('returns [] for a string', () => {
-      expect(mapScvVec('hello' as unknown as Array<unknown>, (x) => x)).toEqual([])
+      expect(mapScvVec('hello' as unknown as Array<unknown>, (x) => x)).toEqual(
+        [],
+      )
     })
 
     it('returns [] for a plain object', () => {

@@ -9,7 +9,9 @@ import type { UnsupportedFallback } from './normalizeScVal'
  * - Otherwise a deterministic fallback is returned with `variant: 'unknown'`
  *   and `rawData: null`.
  */
-export function normalizeUnsupportedFallback(value: unknown): UnsupportedFallback {
+export function normalizeUnsupportedFallback(
+  value: unknown,
+): UnsupportedFallback {
   if (isUnsupportedFallback(value)) {
     return {
       __unsupported: true,

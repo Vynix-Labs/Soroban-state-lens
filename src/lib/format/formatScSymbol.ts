@@ -8,25 +8,25 @@
  * - Otherwise returns the cleaned string
  */
 export function formatScSymbol(value: string): string {
-  if (typeof value !== "string") {
-    return "?";
+  if (typeof value !== 'string') {
+    return '?'
   }
   // 🚨 Check control characters FIRST (before trim)
 
   // 🚨 Detect control characters WITHOUT regex
   for (let i = 0; i < value.length; i++) {
-    const code = value.charCodeAt(i);
+    const code = value.charCodeAt(i)
     if (code <= 31 || code === 127) {
-      return "?";
+      return '?'
     }
   }
 
-  const trimmed = value.trim();
+  const trimmed = value.trim()
 
   // Empty after trimming
   if (!trimmed) {
-    return "?";
+    return '?'
   }
 
-  return trimmed;
+  return trimmed
 }

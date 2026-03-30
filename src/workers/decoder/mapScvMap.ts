@@ -17,7 +17,7 @@ export interface MapEntry {
  */
 export function mapScvMapEntry(
   entry: unknown,
-  normalize: (item: unknown) => unknown
+  normalize: (item: unknown) => unknown,
 ): [string, unknown] | undefined {
   // Check if entry is valid object with key and val properties
   if (
@@ -42,9 +42,9 @@ export function mapScvMapEntry(
       typeof normalizedKey === 'string'
         ? normalizedKey
         : typeof normalizedKey === 'number' ||
-          typeof normalizedKey === 'boolean'
-        ? String(normalizedKey)
-        : JSON.stringify(normalizedKey)
+            typeof normalizedKey === 'boolean'
+          ? String(normalizedKey)
+          : JSON.stringify(normalizedKey)
 
     return [stringKey, normalizedValue]
   } catch {
@@ -60,7 +60,7 @@ export function mapScvMapEntry(
  */
 export function mapScvMap(
   entries: Array<{ key: unknown; val: unknown }>,
-  normalize: (item: unknown) => unknown
+  normalize: (item: unknown) => unknown,
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {}
 

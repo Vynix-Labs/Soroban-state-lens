@@ -12,7 +12,7 @@ export interface EncodeDecodeRequestInput {
 
 /**
  * Validates and encodes a decode request payload for worker transport.
- * 
+ *
  * @param input - The request input containing xdr and optional maxDepth
  * @returns JSON string representation of the validated request
  * @throws Error when xdr is empty or invalid
@@ -31,13 +31,16 @@ export function encodeDecodeRequest(input: EncodeDecodeRequestInput): string {
   // Handle options with maxDepth clamping
   if (input.options) {
     const options: { maxDepth?: number } = {}
-    
+
     if (input.options.maxDepth !== undefined) {
       // Clamp maxDepth to reasonable bounds (1-1000)
-      const clampedMaxDepth = Math.max(1, Math.min(1000, input.options.maxDepth))
+      const clampedMaxDepth = Math.max(
+        1,
+        Math.min(1000, input.options.maxDepth),
+      )
       options.maxDepth = clampedMaxDepth
     }
-    
+
     request.options = options
   }
 

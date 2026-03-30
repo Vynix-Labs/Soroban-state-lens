@@ -20,7 +20,7 @@ function getLabels(issue) {
     `phase:${issue.phase}`,
     `area:${issue.area}`,
     `size:${issue.size}`,
-    `difficulty:${issue.difficulty}`
+    `difficulty:${issue.difficulty}`,
   )
   return labels
 }
@@ -83,7 +83,10 @@ function writeBacklogJson() {
 
 function getLabelConfig(name) {
   if (name === 'good first issue') {
-    return { color: '7057ff', description: 'Good starter task for new contributors' }
+    return {
+      color: '7057ff',
+      description: 'Good starter task for new contributors',
+    }
   }
   if (name === 'enhancement') {
     return { color: 'a2eeef', description: 'New feature or improvement' }
@@ -93,8 +96,20 @@ function getLabelConfig(name) {
   }
   if (name.startsWith('phase:')) {
     const phase = Number(name.split(':')[1] ?? '0')
-    const phaseColors = ['cfd3d7', 'bfd4f2', 'b7e4c7', 'ffd6a5', 'f1c0e8', 'cdb4db', 'fec89a', 'bee1e6']
-    return { color: phaseColors[phase] ?? 'cfd3d7', description: `Backlog phase ${phase}` }
+    const phaseColors = [
+      'cfd3d7',
+      'bfd4f2',
+      'b7e4c7',
+      'ffd6a5',
+      'f1c0e8',
+      'cdb4db',
+      'fec89a',
+      'bee1e6',
+    ]
+    return {
+      color: phaseColors[phase] ?? 'cfd3d7',
+      description: `Backlog phase ${phase}`,
+    }
   }
   if (name.startsWith('area:')) {
     const area = name.split(':')[1]
@@ -108,12 +123,18 @@ function getLabelConfig(name) {
       perf: 'e67700',
       qa: '495057',
     }
-    return { color: colors[area] ?? '6c757d', description: `Backlog area ${area}` }
+    return {
+      color: colors[area] ?? '6c757d',
+      description: `Backlog area ${area}`,
+    }
   }
   if (name.startsWith('size:')) {
     const size = name.split(':')[1]
     const colors = { xs: '2f9e44', s: '74c0fc', m: 'fab005' }
-    return { color: colors[size] ?? '74c0fc', description: `Backlog size ${size}` }
+    return {
+      color: colors[size] ?? '74c0fc',
+      description: `Backlog size ${size}`,
+    }
   }
   if (name.startsWith('difficulty:')) {
     const difficulty = name.split(':')[1]
@@ -138,12 +159,30 @@ function ensureLabels() {
   const labelNames = new Set(issues.flatMap((issue) => getLabels(issue)))
   for (const name of labelNames) {
     const { color, description } = getLabelConfig(name)
-    gh(['label', 'create', name, '--color', color, '--description', description, '--force'])
+    gh([
+      'label',
+      'create',
+      name,
+      '--color',
+      color,
+      '--description',
+      description,
+      '--force',
+    ])
   }
 }
 
 function getExistingTitles() {
-  const raw = gh(['issue', 'list', '--state', 'all', '--limit', '500', '--json', 'title'])
+  const raw = gh([
+    'issue',
+    'list',
+    '--state',
+    'all',
+    '--limit',
+    '500',
+    '--json',
+    'title',
+  ])
   const parsed = raw ? JSON.parse(raw) : []
   return new Set(parsed.map((issue) => issue.title))
 }
@@ -195,7 +234,9 @@ function listIssues(argv) {
       `area:${issue.area}`,
       `size:${issue.size}`,
       `difficulty:${issue.difficulty}`,
-      issue.dependencies.length ? `deps:${issue.dependencies.join(',')}` : 'deps:none',
+      issue.dependencies.length
+        ? `deps:${issue.dependencies.join(',')}`
+        : 'deps:none',
     ]
     console.log(meta.join('\t'))
   }
@@ -217,7 +258,14 @@ function publishIssues(argv) {
       continue
     }
 
-    const args = ['issue', 'create', '--title', issue.title, '--body', renderIssueBody(issue)]
+    const args = [
+      'issue',
+      'create',
+      '--title',
+      issue.title,
+      '--body',
+      renderIssueBody(issue),
+    ]
     for (const label of getLabels(issue)) {
       args.push('--label', label)
     }
@@ -228,7 +276,9 @@ function publishIssues(argv) {
     created += 1
   }
 
-  console.log(`\nCreated ${created} issues, skipped ${skipped} existing titles.`)
+  console.log(
+    `\nCreated ${created} issues, skipped ${skipped} existing titles.`,
+  )
 }
 
 function main() {
@@ -236,7 +286,9 @@ function main() {
 
   const [, , command = 'list', ...rest] = process.argv
   if (command === 'build') {
-    console.log(`Wrote ${issues.length} issues to ${path.relative(repoRoot, backlogJsonPath)}`)
+    console.log(
+      `Wrote ${issues.length} issues to ${path.relative(repoRoot, backlogJsonPath)}`,
+    )
     return
   }
   if (command === 'list') {

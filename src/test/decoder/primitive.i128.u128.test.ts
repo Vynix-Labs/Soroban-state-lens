@@ -1,9 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import {
-  ScValType,
-  normalizeScVal,
-} from '../../workers/decoder/normalizeScVal'
+import { ScValType, normalizeScVal } from '../../workers/decoder/normalizeScVal'
 import type { ScVal } from '../../workers/decoder/normalizeScVal'
 
 describe('normalizeScVal - i128 / u128', () => {

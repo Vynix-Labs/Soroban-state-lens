@@ -41,10 +41,18 @@ export function mapScvAddressToString(value: unknown): string {
   if (typeof value === 'object' && !Array.isArray(value)) {
     // Use toString if it's an own property OR if it's from a built-in class (Date, etc.)
     // but skip the default Object prototype toString
-    const hasOwnToString = Object.prototype.hasOwnProperty.call(value, 'toString')
-    const isBuiltInClass = ![null, Object.prototype].includes(Object.getPrototypeOf(value))
-    
-    if ((hasOwnToString || isBuiltInClass) && typeof (value as any).toString === 'function') {
+    const hasOwnToString = Object.prototype.hasOwnProperty.call(
+      value,
+      'toString',
+    )
+    const isBuiltInClass = ![null, Object.prototype].includes(
+      Object.getPrototypeOf(value),
+    )
+
+    if (
+      (hasOwnToString || isBuiltInClass) &&
+      typeof (value as any).toString === 'function'
+    ) {
       try {
         const stringResult = (value as any).toString()
         // Ensure toString actually returned a string

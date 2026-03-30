@@ -5,6 +5,7 @@ import {
   clearPersistedNetworkConfig,
   isValidNetworkConfig,
   mergeNetworkConfig,
+  serializeNetworkConfigForStorage,
 } from '../../store/persistence'
 import { DEFAULT_NETWORKS } from '../../store/types'
 
@@ -135,12 +136,31 @@ describe('persistence', () => {
   describe('mergeNetworkConfig', () => {
     const currentState = { networkConfig: DEFAULT_NETWORK_CONFIG }
 
-    it('returns persisted config when valid', () => {
+    it('returns persisted preset config when valid', () => {
       const persistedState = {
-        networkConfig: DEFAULT_NETWORKS.testnet,
+        networkConfig: {
+          kind: 'preset',
+          networkId: 'testnet',
+        },
       }
       const result = mergeNetworkConfig(persistedState, currentState)
       expect(result.networkConfig).toEqual(DEFAULT_NETWORKS.testnet)
+    })
+
+    it('returns persisted custom config when valid', () => {
+      const persistedState = {
+        networkConfig: {
+          kind: 'custom',
+          rpcUrl: 'https://rpc.custom.example.com/',
+        },
+      }
+      const result = mergeNetworkConfig(persistedState, currentState)
+      expect(result.networkConfig).toEqual({
+        networkId: 'custom',
+        networkPassphrase: 'Custom Network',
+        rpcUrl: 'https://rpc.custom.example.com',
+        horizonUrl: DEFAULT_NETWORKS.futurenet.horizonUrl,
+      })
     })
 
     it('returns current state when persisted state is null', () => {
@@ -173,6 +193,30 @@ describe('persistence', () => {
       const persistedState = 'not an object'
       const result = mergeNetworkConfig(persistedState, currentState)
       expect(result.networkConfig).toEqual(DEFAULT_NETWORK_CONFIG)
+    })
+  })
+
+  describe('serializeNetworkConfigForStorage', () => {
+    it('serializes presets using the compact stored shape', () => {
+      expect(
+        serializeNetworkConfigForStorage(DEFAULT_NETWORKS.mainnet),
+      ).toEqual({
+        kind: 'preset',
+        networkId: 'mainnet',
+      })
+    })
+
+    it('serializes custom rpc values safely', () => {
+      expect(
+        serializeNetworkConfigForStorage({
+          networkId: 'custom',
+          networkPassphrase: 'Custom Network',
+          rpcUrl: 'https://rpc.custom.example.com/',
+        }),
+      ).toEqual({
+        kind: 'custom',
+        rpcUrl: 'https://rpc.custom.example.com',
+      })
     })
   })
 

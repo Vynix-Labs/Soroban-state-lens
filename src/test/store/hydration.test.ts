@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useLensStore } from '../../store/lensStore'
-import { NETWORK_CONFIG_STORAGE_KEY, clearPersistedNetworkConfig } from '../../store/persistence'
+import {
+  NETWORK_CONFIG_STORAGE_KEY,
+  clearPersistedNetworkConfig,
+} from '../../store/persistence'
 import { DEFAULT_NETWORKS } from '../../store/types'
 
 // Simple localStorage mock
@@ -31,7 +34,7 @@ describe('LensStore Hydration', () => {
   beforeEach(() => {
     clearPersistedNetworkConfig()
     vi.clearAllMocks()
-    
+
     // We need to reset the store state manually since Zustand store is a singleton in tests
     useLensStore.setState({
       networkConfig: DEFAULT_NETWORKS.futurenet,
@@ -44,11 +47,17 @@ describe('LensStore Hydration', () => {
     // 1. Prepare storage with a valid config (Testnet)
     const persistedState = {
       state: {
-        networkConfig: DEFAULT_NETWORKS.testnet
+        networkConfig: {
+          kind: 'preset',
+          networkId: 'testnet',
+        },
       },
-      version: 0
+      version: 0,
     }
-    localStorage.setItem(NETWORK_CONFIG_STORAGE_KEY, JSON.stringify(persistedState))
+    localStorage.setItem(
+      NETWORK_CONFIG_STORAGE_KEY,
+      JSON.stringify(persistedState),
+    )
 
     // 2. Trigger hydration
     // Note: In Zustand v5, persist middleware hydrates automatically if storage is sync.
@@ -62,29 +71,34 @@ describe('LensStore Hydration', () => {
   })
 
   it('hydrates with a valid custom RPC config from storage', async () => {
-    const customConfig = {
-      networkId: 'custom-network',
-      networkPassphrase: 'Custom Passphrase',
-      rpcUrl: 'https://custom-rpc.com',
-    }
-    
     const persistedState = {
       state: {
-        networkConfig: customConfig
+        networkConfig: {
+          kind: 'custom',
+          rpcUrl: 'https://custom-rpc.com/',
+        },
       },
-      version: 0
+      version: 0,
     }
-    localStorage.setItem(NETWORK_CONFIG_STORAGE_KEY, JSON.stringify(persistedState))
+    localStorage.setItem(
+      NETWORK_CONFIG_STORAGE_KEY,
+      JSON.stringify(persistedState),
+    )
 
     await useLensStore.persist.rehydrate()
 
     const state = useLensStore.getState()
-    expect(state.networkConfig).toEqual(customConfig)
+    expect(state.networkConfig).toEqual({
+      networkId: 'custom',
+      networkPassphrase: 'Custom Network',
+      rpcUrl: 'https://custom-rpc.com',
+      horizonUrl: DEFAULT_NETWORKS.futurenet.horizonUrl,
+    })
   })
 
   it('falls back to default network when storage is empty', async () => {
     // Storage is already cleared in beforeEach
-    
+
     await useLensStore.persist.rehydrate()
 
     const state = useLensStore.getState()
@@ -95,13 +109,16 @@ describe('LensStore Hydration', () => {
     const invalidPersistedState = {
       state: {
         networkConfig: {
+          kind: 'preset',
           networkId: 'invalid',
-          // missing required fields
-        }
+        },
       },
-      version: 0
+      version: 0,
     }
-    localStorage.setItem(NETWORK_CONFIG_STORAGE_KEY, JSON.stringify(invalidPersistedState))
+    localStorage.setItem(
+      NETWORK_CONFIG_STORAGE_KEY,
+      JSON.stringify(invalidPersistedState),
+    )
 
     await useLensStore.persist.rehydrate()
 
@@ -113,13 +130,16 @@ describe('LensStore Hydration', () => {
     const invalidPersistedState = {
       state: {
         networkConfig: {
-          ...DEFAULT_NETWORKS.testnet,
-          someStrangeKey: 'intruder'
-        }
+          kind: 'mystery',
+          someStrangeKey: 'intruder',
+        },
       },
-      version: 0
+      version: 0,
     }
-    localStorage.setItem(NETWORK_CONFIG_STORAGE_KEY, JSON.stringify(invalidPersistedState))
+    localStorage.setItem(
+      NETWORK_CONFIG_STORAGE_KEY,
+      JSON.stringify(invalidPersistedState),
+    )
 
     await useLensStore.persist.rehydrate()
 

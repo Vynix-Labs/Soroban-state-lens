@@ -96,13 +96,19 @@ describe('normalizeUnsupportedFallback', () => {
 
   describe('edge cases – partial objects', () => {
     it('returns default when __unsupported is missing', () => {
-      const result = normalizeUnsupportedFallback({ variant: 'ScvU64', rawData: null })
+      const result = normalizeUnsupportedFallback({
+        variant: 'ScvU64',
+        rawData: null,
+      })
       expect(result.variant).toBe('unknown')
       expect(result.rawData).toBe(null)
     })
 
     it('returns default when variant is missing', () => {
-      const result = normalizeUnsupportedFallback({ __unsupported: true, rawData: null })
+      const result = normalizeUnsupportedFallback({
+        __unsupported: true,
+        rawData: null,
+      })
       expect(result.variant).toBe('unknown')
     })
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildNetworkSelectorOptions } from '../../components/global/networkSelectorOptions'
-import { DEFAULT_NETWORKS  } from '../../store/types'
-import type {NetworkConfig} from '../../store/types';
+import { DEFAULT_NETWORKS } from '../../store/types'
+import type { NetworkConfig } from '../../store/types'
 
 describe('buildNetworkSelectorOptions', () => {
   it('should return sorted options for DEFAULT_NETWORKS', () => {

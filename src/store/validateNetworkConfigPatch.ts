@@ -42,7 +42,9 @@ export function validateNetworkConfigPatch(input: unknown): {
     if (key in patch) {
       const value = patch[key]
       if (typeof value !== 'string') {
-        errors.push(`Invalid type for ${key}: expected string, got ${typeof value}`)
+        errors.push(
+          `Invalid type for ${key}: expected string, got ${typeof value}`,
+        )
       } else {
         // If type is correct, add to validated patch
         // Note: horizonUrl is optional, but if present, it must be a string

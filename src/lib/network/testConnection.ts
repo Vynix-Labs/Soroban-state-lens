@@ -1,5 +1,4 @@
-import { callRpc } from './rpcClient'
-import type { RpcError } from './types'
+import { getLatestLedgerConnectionCheck } from './getLatestLedger'
 
 export interface TestConnectionResult {
   success: boolean
@@ -7,49 +6,22 @@ export interface TestConnectionResult {
 }
 
 /**
- * Tests a Soroban RPC connection by calling the 'getNetwork' method.
+ * Tests a Soroban RPC connection by calling the 'getLatestLedger' method.
  *
  * @param url The RPC URL to test.
  * @returns A promise that resolves to a TestConnectionResult.
  */
-export async function testRpcConnection(url: string): Promise<TestConnectionResult> {
-  try {
-    const result = await callRpc<any>(
-      {
-        url,
-        timeout: 5000,
-      },
-      {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'getNetwork',
-        params: {},
-      },
-    )
+export async function testRpcConnection(
+  url: string,
+): Promise<TestConnectionResult> {
+  const result = await getLatestLedgerConnectionCheck(url)
 
-    if ('message' in (result as object) && (result as RpcError).message) {
-      const rpcError = result as RpcError
-      return {
-        success: false,
-        error: rpcError.message || 'Unknown RPC error',
-      }
-    }
+  if (result.success) {
+    return { success: true }
+  }
 
-    // Soroban RPC getNetwork returns an object with networkPassphrase, etc.
-    // If it's a valid JSON-RPC success response, it will have a 'result' property
-    // But callRpc returns the parsed JSON body (which is the whole JSON-RPC response)
-    if (result && typeof result === 'object' && 'result' in result) {
-      return { success: true }
-    }
-
-    return {
-      success: false,
-      error: 'Invalid response from RPC server',
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Connection failed',
-    }
+  return {
+    success: false,
+    error: result.error || 'Connection failed',
   }
 }

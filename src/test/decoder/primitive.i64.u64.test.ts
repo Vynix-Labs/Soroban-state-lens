@@ -1,9 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import {
-  ScValType,
-  normalizeScVal,
-} from '../../workers/decoder/normalizeScVal'
+import { ScValType, normalizeScVal } from '../../workers/decoder/normalizeScVal'
 import type { ScVal } from '../../workers/decoder/normalizeScVal'
 
 describe('normalizeScVal - i64 / u64', () => {
@@ -13,7 +10,10 @@ describe('normalizeScVal - i64 / u64', () => {
         { value: BigInt('0'), expected: '0' },
         { value: BigInt('1'), expected: '1' },
         { value: BigInt('42'), expected: '42' },
-        { value: BigInt('18446744073709551615'), expected: '18446744073709551615' }, // Max u64
+        {
+          value: BigInt('18446744073709551615'),
+          expected: '18446744073709551615',
+        }, // Max u64
       ]
 
       testCases.forEach(({ value, expected }) => {
@@ -71,8 +71,14 @@ describe('normalizeScVal - i64 / u64', () => {
         { value: BigInt('0'), expected: '0' },
         { value: BigInt('1'), expected: '1' },
         { value: BigInt('-1'), expected: '-1' },
-        { value: BigInt('9223372036854775807'), expected: '9223372036854775807' }, // Max i64
-        { value: BigInt('-9223372036854775808'), expected: '-9223372036854775808' }, // Min i64
+        {
+          value: BigInt('9223372036854775807'),
+          expected: '9223372036854775807',
+        }, // Max i64
+        {
+          value: BigInt('-9223372036854775808'),
+          expected: '-9223372036854775808',
+        }, // Min i64
       ]
 
       testCases.forEach(({ value, expected }) => {

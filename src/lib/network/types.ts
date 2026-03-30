@@ -10,3 +10,9 @@ export interface RpcError {
   details?: unknown
   isTimeout?: boolean
 }
+
+export interface LatestLedgerResult {
+  id?: string
+  protocolVersion?: number
+  sequence: number
+}

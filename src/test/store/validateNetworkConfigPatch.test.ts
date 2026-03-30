@@ -42,8 +42,12 @@ describe('validateNetworkConfigPatch', () => {
     }
     const result = validateNetworkConfigPatch(input)
     expect(result.valid).toBe(false)
-    expect(result.errors).toContain('Invalid type for networkId: expected string, got number')
-    expect(result.errors).toContain('Invalid type for rpcUrl: expected string, got boolean')
+    expect(result.errors).toContain(
+      'Invalid type for networkId: expected string, got number',
+    )
+    expect(result.errors).toContain(
+      'Invalid type for rpcUrl: expected string, got boolean',
+    )
   })
 
   it('should reject non-object inputs', () => {
@@ -63,6 +67,8 @@ describe('validateNetworkConfigPatch', () => {
     expect(result.valid).toBe(false)
     expect(result.errors).toHaveLength(2)
     expect(result.errors).toContain('Unknown key: extra')
-    expect(result.errors).toContain('Invalid type for networkId: expected string, got number')
+    expect(result.errors).toContain(
+      'Invalid type for networkId: expected string, got number',
+    )
   })
 })

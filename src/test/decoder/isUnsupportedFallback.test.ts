@@ -83,19 +83,31 @@ describe('isUnsupportedFallback', () => {
 
     it('returns false when __unsupported is 1 (truthy but not true)', () => {
       expect(
-        isUnsupportedFallback({ __unsupported: 1, variant: 'ScvU64', rawData: null }),
+        isUnsupportedFallback({
+          __unsupported: 1,
+          variant: 'ScvU64',
+          rawData: null,
+        }),
       ).toBe(false)
     })
 
     it('returns false when variant is a number instead of string', () => {
       expect(
-        isUnsupportedFallback({ __unsupported: true, variant: 42, rawData: null }),
+        isUnsupportedFallback({
+          __unsupported: true,
+          variant: 42,
+          rawData: null,
+        }),
       ).toBe(false)
     })
 
     it('returns false when variant is null', () => {
       expect(
-        isUnsupportedFallback({ __unsupported: true, variant: null, rawData: null }),
+        isUnsupportedFallback({
+          __unsupported: true,
+          variant: null,
+          rawData: null,
+        }),
       ).toBe(false)
     })
 

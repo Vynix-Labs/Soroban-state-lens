@@ -101,7 +101,9 @@ function ContractLookUpInput() {
             disabled={isValidating}
             className="inline-flex items-center justify-center rounded-md px-2 py-1 text-sm font-medium text-white bg-[#58a6ff] hover:bg-[#79b8ff] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+            <span className="material-symbols-outlined text-[18px]">
+              arrow_forward
+            </span>
           </button>
           <kbd className="hidden md:inline-flex items-center border border-border-dark rounded px-2 text-xs font-mono text-text-muted">
             ⌘K

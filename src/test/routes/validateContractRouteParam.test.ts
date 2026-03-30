@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validateContractRouteParam } from '../../routes/contracts/$contractId/validateContractRouteParam'
+import { validateContractRouteParam } from '../../routes/contracts/$contractId/-validateContractRouteParam'
 
 describe('validateContractRouteParam', () => {
   describe('happy path', () => {

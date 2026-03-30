@@ -43,7 +43,10 @@ export const issues = [
     dependencies: [],
     problem: 'Network choice resets on reload.',
     context: 'The selector updates in-memory state only.',
-    scopeIn: ['Add one storage key.', 'Serialize preset and custom RPC values safely.'],
+    scopeIn: [
+      'Add one storage key.',
+      'Serialize preset and custom RPC values safely.',
+    ],
     scopeOut: ['No UI changes.', 'No ledger-data persistence.'],
     checklist: [
       'Define the stored shape.',
@@ -69,9 +72,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D02'],
-    problem: 'Persistence is incomplete if the app never restores the saved selection.',
+    problem:
+      'Persistence is incomplete if the app never restores the saved selection.',
     context: 'Startup always falls back to the default network.',
-    scopeIn: ['Read saved network config during startup.', 'Initialize state from valid saved data.'],
+    scopeIn: [
+      'Read saved network config during startup.',
+      'Initialize state from valid saved data.',
+    ],
     scopeOut: ['No new selector UI.', 'No connection testing.'],
     checklist: [
       'Read the persisted payload once during initialization.',
@@ -98,8 +105,12 @@ export const issues = [
     goodFirst: true,
     dependencies: [],
     problem: 'The landing route still shows placeholder copy.',
-    context: 'The shell, lookup input, and network selector exist, but the route body does not guide the first action.',
-    scopeIn: ['Add a simple product summary.', 'Point users toward entering a contract ID.'],
+    context:
+      'The shell, lookup input, and network selector exist, but the route body does not guide the first action.',
+    scopeIn: [
+      'Add a simple product summary.',
+      'Point users toward entering a contract ID.',
+    ],
     scopeOut: ['No fetch pipeline.', 'No marketing page redesign.'],
     checklist: [
       'Replace placeholder text.',
@@ -126,7 +137,10 @@ export const issues = [
     dependencies: [],
     problem: 'The selector advertises Custom mode but has no endpoint field.',
     context: 'Choosing Custom does not reveal any editable RPC input today.',
-    scopeIn: ['Render one text input for a custom RPC URL.', 'Show it only when Custom is active.'],
+    scopeIn: [
+      'Render one text input for a custom RPC URL.',
+      'Show it only when Custom is active.',
+    ],
     scopeOut: ['No validation logic.', 'No connection testing.'],
     checklist: [
       'Detect Custom selection.',
@@ -152,10 +166,17 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D05'],
-    problem: 'Malformed custom endpoints will produce confusing failures later.',
+    problem:
+      'Malformed custom endpoints will produce confusing failures later.',
     context: 'The app needs a focused rule for what counts as a valid RPC URL.',
-    scopeIn: ['Validate trimmed HTTP and HTTPS URLs.', 'Return a clear valid or invalid result.'],
-    scopeOut: ['No network call.', 'No UI rendering beyond the validator result.'],
+    scopeIn: [
+      'Validate trimmed HTTP and HTTPS URLs.',
+      'Return a clear valid or invalid result.',
+    ],
+    scopeOut: [
+      'No network call.',
+      'No UI rendering beyond the validator result.',
+    ],
     checklist: [
       'Trim whitespace.',
       'Reject empty strings and unsupported protocols.',
@@ -180,9 +201,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D06'],
-    problem: 'Users should not be able to commit an invalid endpoint into app state.',
-    context: 'The selector is gaining a custom field and validator but still needs an interaction guard.',
-    scopeIn: ['Block the apply action for invalid Custom input.', 'Render a disabled state.'],
+    problem:
+      'Users should not be able to commit an invalid endpoint into app state.',
+    context:
+      'The selector is gaining a custom field and validator but still needs an interaction guard.',
+    scopeIn: [
+      'Block the apply action for invalid Custom input.',
+      'Render a disabled state.',
+    ],
     scopeOut: ['No network call.', 'No retry logic.'],
     checklist: [
       'Wire the validator into the selector UI.',
@@ -207,9 +233,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: [],
-    problem: 'A lightweight connectivity check is needed before trusting a custom endpoint.',
+    problem:
+      'A lightweight connectivity check is needed before trusting a custom endpoint.',
     context: 'The app has no minimal RPC probe yet.',
-    scopeIn: ['Call the Soroban RPC getLatestLedger method.', 'Return a small success or error result.'],
+    scopeIn: [
+      'Call the Soroban RPC getLatestLedger method.',
+      'Return a small success or error result.',
+    ],
     scopeOut: ['No polling loop.', 'No contract data fetches.'],
     checklist: [
       'Build the JSON-RPC request payload.',
@@ -235,9 +265,16 @@ export const issues = [
     goodFirst: true,
     dependencies: ['SSL-D08'],
     problem: 'The UI needs explicit lifecycle state for endpoint diagnostics.',
-    context: 'There is no dedicated connection-status field in global state today.',
-    scopeIn: ['Add idle, loading, success, and error state.', 'Expose update and reset actions.'],
-    scopeOut: ['No selector layout changes.', 'No persistence of diagnostic history.'],
+    context:
+      'There is no dedicated connection-status field in global state today.',
+    scopeIn: [
+      'Add idle, loading, success, and error state.',
+      'Expose update and reset actions.',
+    ],
+    scopeOut: [
+      'No selector layout changes.',
+      'No persistence of diagnostic history.',
+    ],
     checklist: [
       'Add the status enum to state.',
       'Add actions to set and reset it.',
@@ -261,9 +298,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D08', 'SSL-D09'],
-    problem: 'Users need a deliberate way to verify a custom RPC before relying on it.',
-    context: 'Validation and connectivity helpers are landing separately, but the selector still lacks a trigger.',
-    scopeIn: ['Add one test-connection trigger.', 'Update and render the existing status state.'],
+    problem:
+      'Users need a deliberate way to verify a custom RPC before relying on it.',
+    context:
+      'Validation and connectivity helpers are landing separately, but the selector still lacks a trigger.',
+    scopeIn: [
+      'Add one test-connection trigger.',
+      'Update and render the existing status state.',
+    ],
     scopeOut: ['No automatic polling.', 'No save-on-success behavior.'],
     checklist: [
       'Add the trigger to the selector flow.',
@@ -289,9 +331,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: [],
-    problem: 'Contract lookup should reject malformed values before routing or network work begins.',
+    problem:
+      'Contract lookup should reject malformed values before routing or network work begins.',
     context: 'The lookup input currently accepts arbitrary text.',
-    scopeIn: ['Validate Soroban contract IDs.', 'Return a clear pass or fail result.'],
+    scopeIn: [
+      'Validate Soroban contract IDs.',
+      'Return a clear pass or fail result.',
+    ],
     scopeOut: ['No navigation.', 'No contract fetch.'],
     checklist: [
       'Trim input.',
@@ -318,7 +364,8 @@ export const issues = [
     goodFirst: true,
     dependencies: [],
     problem: 'The lookup still needs a visible primary action.',
-    context: 'The header input exists and supports the keyboard focus shortcut, but it has no dedicated submit control.',
+    context:
+      'The header input exists and supports the keyboard focus shortcut, but it has no dedicated submit control.',
     scopeIn: ['Add one submit button.', 'Use the same submit path as Enter.'],
     scopeOut: ['No validation messaging.', 'No routing behavior.'],
     checklist: [
@@ -347,7 +394,10 @@ export const issues = [
     dependencies: ['SSL-D11', 'SSL-D12'],
     problem: 'Invalid contract input should fail near the field.',
     context: 'Lookup has no field-level feedback today.',
-    scopeIn: ['Show one inline validation message near the input.', 'Clear the message when input becomes valid.'],
+    scopeIn: [
+      'Show one inline validation message near the input.',
+      'Clear the message when input becomes valid.',
+    ],
     scopeOut: ['No async fetch errors.', 'No route-level error boundary work.'],
     checklist: [
       'Run the contract validator on submit or blur.',
@@ -373,9 +423,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: [],
-    problem: 'Contract submit cannot land anywhere meaningful until the explorer route exists.',
+    problem:
+      'Contract submit cannot land anywhere meaningful until the explorer route exists.',
     context: 'The repo only has the root route and an SDS demo route today.',
-    scopeIn: ['Add /contracts/:contractId/explorer.', 'Render minimal contract-context placeholder content.'],
+    scopeIn: [
+      'Add /contracts/:contractId/explorer.',
+      'Render minimal contract-context placeholder content.',
+    ],
     scopeOut: ['No real fetch pipeline.', 'No tree rendering.'],
     checklist: [
       'Create the route.',
@@ -400,9 +454,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D11', 'SSL-D14'],
-    problem: 'Lookup is incomplete unless valid input moves the user into contract context.',
-    context: 'The app has a lookup shell and will have validation and an explorer route, but submit still needs routing behavior.',
-    scopeIn: ['On valid submit, route to the explorer page.', 'Keep invalid submit on the current page.'],
+    problem:
+      'Lookup is incomplete unless valid input moves the user into contract context.',
+    context:
+      'The app has a lookup shell and will have validation and an explorer route, but submit still needs routing behavior.',
+    scopeIn: [
+      'On valid submit, route to the explorer page.',
+      'Keep invalid submit on the current page.',
+    ],
     scopeOut: ['No fetch pipeline.', 'No recent contract history.'],
     checklist: [
       'Wire the submit handler to the router.',
@@ -427,9 +486,14 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: [],
-    problem: 'The decoder needs a stable typed output before more complex ScVal support can be added safely.',
-    context: 'Primitive normalization currently returns JSON-like values that are too lossy for tree rendering and diffs.',
-    scopeIn: ['Define primitive and container node shapes.', 'Keep stable path and raw fallback metadata.'],
+    problem:
+      'The decoder needs a stable typed output before more complex ScVal support can be added safely.',
+    context:
+      'Primitive normalization currently returns JSON-like values that are too lossy for tree rendering and diffs.',
+    scopeIn: [
+      'Define primitive and container node shapes.',
+      'Keep stable path and raw fallback metadata.',
+    ],
     scopeOut: ['No UI rendering.', 'No schema overlay.'],
     checklist: [
       'Define the union types.',
@@ -454,10 +518,18 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D16'],
-    problem: 'A ping smoke method does not move the product toward real decoding.',
-    context: 'The decoder worker is wired with Comlink but exposes no real decode entrypoint.',
-    scopeIn: ['Add one public decodeScVal method.', 'Return the normalized node contract.'],
-    scopeOut: ['No complex decode coverage beyond supported cases.', 'No caching.'],
+    problem:
+      'A ping smoke method does not move the product toward real decoding.',
+    context:
+      'The decoder worker is wired with Comlink but exposes no real decode entrypoint.',
+    scopeIn: [
+      'Add one public decodeScVal method.',
+      'Return the normalized node contract.',
+    ],
+    scopeOut: [
+      'No complex decode coverage beyond supported cases.',
+      'No caching.',
+    ],
     checklist: [
       'Extend the worker API interface.',
       'Expose the new method.',
@@ -481,9 +553,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D17'],
-    problem: 'UI code should not need to know low-level Comlink details every time it needs a decode call.',
-    context: 'The worker factory exists, but there is no single helper wrapping the main-thread decode path.',
-    scopeIn: ['Expose one typed helper for decodeScVal.', 'Keep return types aligned with the normalized node contract.'],
+    problem:
+      'UI code should not need to know low-level Comlink details every time it needs a decode call.',
+    context:
+      'The worker factory exists, but there is no single helper wrapping the main-thread decode path.',
+    scopeIn: [
+      'Expose one typed helper for decodeScVal.',
+      'Keep return types aligned with the normalized node contract.',
+    ],
     scopeOut: ['No multi-worker orchestration.', 'No caching.'],
     checklist: [
       'Call the worker method from one helper.',
@@ -508,8 +585,10 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D16'],
-    problem: 'Native JavaScript numbers cannot safely represent all 64-bit integer values.',
-    context: 'Large numeric ScVal variants still fall back as unsupported today.',
+    problem:
+      'Native JavaScript numbers cannot safely represent all 64-bit integer values.',
+    context:
+      'Large numeric ScVal variants still fall back as unsupported today.',
     scopeIn: ['Support i64 values.', 'Support u64 values.'],
     scopeOut: ['No pretty formatting.', 'No preference UI.'],
     checklist: [
@@ -534,7 +613,8 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D16'],
-    problem: '128-bit Soroban integers are common for balances and must not lose precision.',
+    problem:
+      '128-bit Soroban integers are common for balances and must not lose precision.',
     context: 'Large integer support is still missing beyond i32 and u32.',
     scopeIn: ['Support i128 values.', 'Support u128 values.'],
     scopeOut: ['No pretty formatting.', 'No diff UI.'],
@@ -560,8 +640,10 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D16'],
-    problem: 'Soroban also uses 256-bit numeric variants, and fallback-only behavior is not enough.',
-    context: '256-bit integer variants are still unsupported in the current normalization layer.',
+    problem:
+      'Soroban also uses 256-bit numeric variants, and fallback-only behavior is not enough.',
+    context:
+      '256-bit integer variants are still unsupported in the current normalization layer.',
     scopeIn: ['Support i256 values.', 'Support u256 values.'],
     scopeOut: ['No pretty formatting.', 'No UI toggles.'],
     checklist: [
@@ -573,9 +655,7 @@ export const issues = [
       'Supported 256-bit values decode as exact strings.',
       'These variants stop falling back to unsupported results.',
     ],
-    verification: [
-      'Add tests for zero and representative large values.',
-    ],
+    verification: ['Add tests for zero and representative large values.'],
   },
   {
     id: 'SSL-D22',
@@ -586,9 +666,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D16'],
-    problem: 'Raw byte values are unreadable without a deterministic display format.',
-    context: 'Byte variants are still unsupported, and later inspector work will need a reusable helper.',
-    scopeIn: ['Convert byte input into stable hex output.', 'Handle empty and non-empty values.'],
+    problem:
+      'Raw byte values are unreadable without a deterministic display format.',
+    context:
+      'Byte variants are still unsupported, and later inspector work will need a reusable helper.',
+    scopeIn: [
+      'Convert byte input into stable hex output.',
+      'Handle empty and non-empty values.',
+    ],
     scopeOut: ['No base64 work.', 'No UI component.'],
     checklist: [
       'Accept the byte input shape used by the decoder.',
@@ -614,9 +699,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D16'],
-    problem: 'Base64 is a familiar byte representation for Stellar developers and should be available alongside hex.',
-    context: 'Byte variants still need reusable format helpers before inspector UI can expose them cleanly.',
-    scopeIn: ['Convert byte input into deterministic base64 text.', 'Handle empty and non-empty values.'],
+    problem:
+      'Base64 is a familiar byte representation for Stellar developers and should be available alongside hex.',
+    context:
+      'Byte variants still need reusable format helpers before inspector UI can expose them cleanly.',
+    scopeIn: [
+      'Convert byte input into deterministic base64 text.',
+      'Handle empty and non-empty values.',
+    ],
     scopeOut: ['No hex work.', 'No UI toggle.'],
     checklist: [
       'Accept the byte input shape used by the decoder.',
@@ -642,9 +732,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D22', 'SSL-D23'],
-    problem: 'Many byte payloads contain readable text, but the app should only show text previews when decoding is safe.',
-    context: 'Hex and base64 helpers are landing, but a readable preview is still missing.',
-    scopeIn: ['Attempt UTF-8 decoding.', 'Return readable text only when decoding is safe.'],
+    problem:
+      'Many byte payloads contain readable text, but the app should only show text previews when decoding is safe.',
+    context:
+      'Hex and base64 helpers are landing, but a readable preview is still missing.',
+    scopeIn: [
+      'Attempt UTF-8 decoding.',
+      'Return readable text only when decoding is safe.',
+    ],
     scopeOut: ['No byte-format preference UI.', 'No copy actions.'],
     checklist: [
       'Decode valid UTF-8.',
@@ -670,9 +765,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D16'],
-    problem: 'A state explorer cannot render nested contract data meaningfully until vectors become recursive tree nodes.',
+    problem:
+      'A state explorer cannot render nested contract data meaningfully until vectors become recursive tree nodes.',
     context: 'Container types still fall back as unsupported.',
-    scopeIn: ['Normalize vector containers recursively.', 'Preserve order and child paths.'],
+    scopeIn: [
+      'Normalize vector containers recursively.',
+      'Preserve order and child paths.',
+    ],
     scopeOut: ['No flattening.', 'No virtualized rendering.'],
     checklist: [
       'Detect ScVec values.',
@@ -700,7 +799,10 @@ export const issues = [
     dependencies: ['SSL-D16'],
     problem: 'Soroban map keys are not guaranteed to be plain strings.',
     context: 'Complex map values still fall back as unsupported today.',
-    scopeIn: ['Normalize map entries as explicit key and value nodes.', 'Preserve stable entry order.'],
+    scopeIn: [
+      'Normalize map entries as explicit key and value nodes.',
+      'Preserve stable entry order.',
+    ],
     scopeOut: ['No explorer flattening.', 'No schema overlay.'],
     checklist: [
       'Detect ScMap values.',
@@ -726,10 +828,18 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D25', 'SSL-D26'],
-    problem: 'Deep or hostile nested values should not be able to force unbounded recursive work.',
-    context: 'Recursive container support is being added and now needs a simple depth budget.',
-    scopeIn: ['Add one normalization option for maximum recursion depth.', 'Thread it through recursive decode calls.'],
-    scopeOut: ['No UI for changing the depth budget.', 'No lazy load-more interaction.'],
+    problem:
+      'Deep or hostile nested values should not be able to force unbounded recursive work.',
+    context:
+      'Recursive container support is being added and now needs a simple depth budget.',
+    scopeIn: [
+      'Add one normalization option for maximum recursion depth.',
+      'Thread it through recursive decode calls.',
+    ],
+    scopeOut: [
+      'No UI for changing the depth budget.',
+      'No lazy load-more interaction.',
+    ],
     checklist: [
       'Introduce an optional maxDepth setting.',
       'Check it during recursive normalization.',
@@ -753,9 +863,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D27'],
-    problem: 'A depth limit is only useful if the user can see that deeper content was intentionally truncated.',
+    problem:
+      'A depth limit is only useful if the user can see that deeper content was intentionally truncated.',
     context: 'Over-depth values still need a deterministic output shape.',
-    scopeIn: ['Add one truncation placeholder node.', 'Return it when max depth is exceeded.'],
+    scopeIn: [
+      'Add one truncation placeholder node.',
+      'Return it when max depth is exceeded.',
+    ],
     scopeOut: ['No lazy load-more UI.', 'No custom truncation controls.'],
     checklist: [
       'Create a truncation node shape in the normalized union.',
@@ -780,8 +894,10 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D16'],
-    problem: 'Raw Soroban address payloads are not usable to humans in a debugger.',
-    context: 'Address values still fall back as unsupported even though readable account and contract strings are core product output.',
+    problem:
+      'Raw Soroban address payloads are not usable to humans in a debugger.',
+    context:
+      'Address values still fall back as unsupported even though readable account and contract strings are core product output.',
     scopeIn: ['Support account addresses.', 'Support contract addresses.'],
     scopeOut: ['No copy-address UI.', 'No "You" label enrichment.'],
     checklist: [
@@ -807,8 +923,10 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: [],
-    problem: 'Contract loading needs a focused RPC helper that can be aborted when the user changes routes or submits a new contract quickly.',
-    context: 'The app has no real network adapter yet for contract state reads.',
+    problem:
+      'Contract loading needs a focused RPC helper that can be aborted when the user changes routes or submits a new contract quickly.',
+    context:
+      'The app has no real network adapter yet for contract state reads.',
     scopeIn: ['Send getLedgerEntries requests.', 'Honor an AbortSignal.'],
     scopeOut: ['No polling loop.', 'No decode logic.'],
     checklist: [
@@ -835,8 +953,10 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: [],
-    problem: 'Contract-aware routes and actions need one canonical active contract value.',
-    context: 'Network, ledger data, and expanded nodes already exist in state, but active contract context does not.',
+    problem:
+      'Contract-aware routes and actions need one canonical active contract value.',
+    context:
+      'Network, ledger data, and expanded nodes already exist in state, but active contract context does not.',
     scopeIn: ['Add activeContractId.', 'Add set and clear actions.'],
     scopeOut: ['No fetch logic.', 'No recent-contract history.'],
     checklist: [
@@ -862,9 +982,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D31'],
-    problem: 'The UI needs an explicit fetch and decode lifecycle to render loading, empty, success, and error states.',
-    context: 'Explorer UI shells exist, but there is no contract-specific status field driving them.',
-    scopeIn: ['Add load status lifecycle state.', 'Expose set and reset actions.'],
+    problem:
+      'The UI needs an explicit fetch and decode lifecycle to render loading, empty, success, and error states.',
+    context:
+      'Explorer UI shells exist, but there is no contract-specific status field driving them.',
+    scopeIn: [
+      'Add load status lifecycle state.',
+      'Expose set and reset actions.',
+    ],
     scopeOut: ['No retry helper.', 'No route-level error boundary.'],
     checklist: [
       'Add the status enum.',
@@ -889,9 +1014,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D16'],
-    problem: 'Raw RPC payloads are too inconsistent to render directly across explorer, inspector, history, and watchlist flows.',
-    context: 'The store already has a ledger entry shape, but there is no mapper from fetched RPC data into that shape.',
-    scopeIn: ['Convert raw response data into the ledger entry record format.', 'Preserve raw XDR when present.'],
+    problem:
+      'Raw RPC payloads are too inconsistent to render directly across explorer, inspector, history, and watchlist flows.',
+    context:
+      'The store already has a ledger entry shape, but there is no mapper from fetched RPC data into that shape.',
+    scopeIn: [
+      'Convert raw response data into the ledger entry record format.',
+      'Preserve raw XDR when present.',
+    ],
     scopeOut: ['No worker decode call.', 'No schema overlay.'],
     checklist: [
       'Extract the stable fields needed by the store.',
@@ -910,17 +1040,26 @@ export const issues = [
   },
   {
     id: 'SSL-D34',
-    title: 'Add a contract load action that fetches, decodes, and aborts stale requests',
+    title:
+      'Add a contract load action that fetches, decodes, and aborts stale requests',
     phase: 3,
     area: 'state',
     size: 'm',
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D18', 'SSL-D30', 'SSL-D31', 'SSL-D32', 'SSL-D33'],
-    problem: 'The product needs one real pipeline from contract submit to store population.',
-    context: 'Route navigation, worker decode access, and raw RPC helpers are landing separately, but there is not yet a single action tying them together.',
-    scopeIn: ['Take a contract ID and mark loading state.', 'Fetch entries, decode them, and commit only the latest non-aborted result.'],
-    scopeOut: ['No polling refresh.', 'No schema overlay or history snapshots.'],
+    problem:
+      'The product needs one real pipeline from contract submit to store population.',
+    context:
+      'Route navigation, worker decode access, and raw RPC helpers are landing separately, but there is not yet a single action tying them together.',
+    scopeIn: [
+      'Take a contract ID and mark loading state.',
+      'Fetch entries, decode them, and commit only the latest non-aborted result.',
+    ],
+    scopeOut: [
+      'No polling refresh.',
+      'No schema overlay or history snapshots.',
+    ],
     checklist: [
       'Set active contract and loading state.',
       'Call the ledger helper.',
@@ -943,9 +1082,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D34'],
-    problem: 'Contract loads should show progress instead of a blank or stale explorer panel.',
-    context: 'Explorer shell exists, but there is no dedicated loading presentation yet.',
-    scopeIn: ['Render a simple loading skeleton pattern.', 'Show it only during contract loading.'],
+    problem:
+      'Contract loads should show progress instead of a blank or stale explorer panel.',
+    context:
+      'Explorer shell exists, but there is no dedicated loading presentation yet.',
+    scopeIn: [
+      'Render a simple loading skeleton pattern.',
+      'Show it only during contract loading.',
+    ],
     scopeOut: ['No shimmer redesign.', 'No perf instrumentation.'],
     checklist: [
       'Read the load status.',
@@ -970,9 +1114,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D34'],
-    problem: 'Contracts that return no visible entries should render a useful empty state instead of a blank pane.',
-    context: 'The explorer does not distinguish between not loaded and loaded but empty.',
-    scopeIn: ['Render one empty state card for the empty status.', 'Keep it distinct from error and loading states.'],
+    problem:
+      'Contracts that return no visible entries should render a useful empty state instead of a blank pane.',
+    context:
+      'The explorer does not distinguish between not loaded and loaded but empty.',
+    scopeIn: [
+      'Render one empty state card for the empty status.',
+      'Keep it distinct from error and loading states.',
+    ],
     scopeOut: ['No discovery CTA.', 'No watchlist integration.'],
     checklist: [
       'Render a short explanation.',
@@ -997,9 +1146,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D34'],
-    problem: 'Failed contract loads should render a focused error state and one immediate next step.',
+    problem:
+      'Failed contract loads should render a focused error state and one immediate next step.',
     context: 'Failures currently have no dedicated explorer UI.',
-    scopeIn: ['Add an explorer error card.', 'Add a retry action that re-runs the current contract load.'],
+    scopeIn: [
+      'Add an explorer error card.',
+      'Add a retry action that re-runs the current contract load.',
+    ],
     scopeOut: ['No bounded backoff helper.', 'No global error boundary.'],
     checklist: [
       'Render the error state only on load failure.',
@@ -1024,9 +1177,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D16', 'SSL-D31'],
-    problem: 'Virtualized rendering needs one flat visible-row contract separate from the nested normalized tree.',
+    problem:
+      'Virtualized rendering needs one flat visible-row contract separate from the nested normalized tree.',
     context: 'There is not yet a row model for the explorer viewport.',
-    scopeIn: ['Define one row shape for visible explorer items.', 'Include depth, key path, and child metadata.'],
+    scopeIn: [
+      'Define one row shape for visible explorer items.',
+      'Include depth, key path, and child metadata.',
+    ],
     scopeOut: ['No row rendering logic.', 'No virtualization component.'],
     checklist: [
       'Model the minimum fields a visible row needs.',
@@ -1037,9 +1194,7 @@ export const issues = [
       'The row type can represent primitives, containers, unsupported values, and truncation placeholders.',
       'The model is stable enough for flattening and row rendering.',
     ],
-    verification: [
-      'Add focused type or unit tests for representative rows.',
-    ],
+    verification: ['Add focused type or unit tests for representative rows.'],
   },
   {
     id: 'SSL-D39',
@@ -1050,9 +1205,14 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D25', 'SSL-D26', 'SSL-D38'],
-    problem: 'A tree explorer cannot be virtualized efficiently until nested nodes can project into a flat visible row list.',
-    context: 'Normalized containers and expanded-node state exist separately, but there is no projection function joining them.',
-    scopeIn: ['Walk normalized nodes in visible order.', 'Hide collapsed descendants and keep stable row identity.'],
+    problem:
+      'A tree explorer cannot be virtualized efficiently until nested nodes can project into a flat visible row list.',
+    context:
+      'Normalized containers and expanded-node state exist separately, but there is no projection function joining them.',
+    scopeIn: [
+      'Walk normalized nodes in visible order.',
+      'Hide collapsed descendants and keep stable row identity.',
+    ],
     scopeOut: ['No UI renderer.', 'No search or filter behavior.'],
     checklist: [
       'Visit visible nodes in order.',
@@ -1077,9 +1237,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D39'],
-    problem: 'Tree projection logic is easy to regress once selection, virtualization, and filters are added.',
+    problem:
+      'Tree projection logic is easy to regress once selection, virtualization, and filters are added.',
     context: 'FlattenTree is a core helper and needs dedicated coverage.',
-    scopeIn: ['Test collapsed root behavior.', 'Test nested expansion and deterministic ordering.'],
+    scopeIn: [
+      'Test collapsed root behavior.',
+      'Test nested expansion and deterministic ordering.',
+    ],
     scopeOut: ['No renderer snapshots.', 'No network mocks.'],
     checklist: [
       'Cover collapsed root and expanded root.',
@@ -1104,10 +1268,18 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D39'],
-    problem: 'Large contract state payloads will overwhelm the DOM if the explorer renders every row at once.',
-    context: 'The explorer still needs a viewport renderer designed for large lists.',
-    scopeIn: ['Add one virtualized list shell.', 'Render only the visible window of rows.'],
-    scopeOut: ['No search or filter behavior.', 'No synchronized diff scrolling.'],
+    problem:
+      'Large contract state payloads will overwhelm the DOM if the explorer renders every row at once.',
+    context:
+      'The explorer still needs a viewport renderer designed for large lists.',
+    scopeIn: [
+      'Add one virtualized list shell.',
+      'Render only the visible window of rows.',
+    ],
+    scopeOut: [
+      'No search or filter behavior.',
+      'No synchronized diff scrolling.',
+    ],
     checklist: [
       'Choose the planned virtualization pattern or library.',
       'Render a minimal row window.',
@@ -1131,9 +1303,13 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D41'],
-    problem: 'A virtualized shell is not useful until it consumes real explorer row data.',
+    problem:
+      'A virtualized shell is not useful until it consumes real explorer row data.',
     context: 'FlattenTree and the virtualized shell are landing separately.',
-    scopeIn: ['Feed flattened rows into the virtualized list.', 'Update the list when expansion changes.'],
+    scopeIn: [
+      'Feed flattened rows into the virtualized list.',
+      'Update the list when expansion changes.',
+    ],
     scopeOut: ['No search or filter behavior.', 'No diff highlighting.'],
     checklist: [
       'Read normalized tree data and expanded-node state.',
@@ -1159,9 +1335,14 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D42'],
-    problem: 'Virtualized rows still need a readable tree presentation with clear parent and child affordances.',
-    context: 'The explorer can reach a flat row list, but it still needs one reusable row renderer.',
-    scopeIn: ['Render depth indentation.', 'Render an expander only for rows with children.'],
+    problem:
+      'Virtualized rows still need a readable tree presentation with clear parent and child affordances.',
+    context:
+      'The explorer can reach a flat row list, but it still needs one reusable row renderer.',
+    scopeIn: [
+      'Render depth indentation.',
+      'Render an expander only for rows with children.',
+    ],
     scopeOut: ['No schema labels.', 'No diff badges.'],
     checklist: [
       'Indent by depth.',
@@ -1186,9 +1367,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D43'],
-    problem: 'A tree of keys alone is not enough; each row needs a short preview of its value and type.',
-    context: 'The row renderer is landing, but row content is still too sparse to help debugging.',
-    scopeIn: ['Add short value preview formatting.', 'Add type badge rendering for each row.'],
+    problem:
+      'A tree of keys alone is not enough; each row needs a short preview of its value and type.',
+    context:
+      'The row renderer is landing, but row content is still too sparse to help debugging.',
+    scopeIn: [
+      'Add short value preview formatting.',
+      'Add type badge rendering for each row.',
+    ],
     scopeOut: ['No schema-aware labels.', 'No diff status.'],
     checklist: [
       'Render primitive previews compactly.',
@@ -1212,7 +1398,8 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D31'],
-    problem: 'Explorer and inspector behavior need one stable notion of which key path is currently selected.',
+    problem:
+      'Explorer and inspector behavior need one stable notion of which key path is currently selected.',
     context: 'There is no dedicated selection state for a focused row today.',
     scopeIn: ['Add one selected key-path field.', 'Add set and clear actions.'],
     scopeOut: ['No navigation.', 'No watchlist behavior.'],
@@ -1238,9 +1425,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D14'],
-    problem: 'Explorer row activation needs a real destination for key-level inspection.',
-    context: 'There is still no dedicated route for a single contract key path.',
-    scopeIn: ['Add /contracts/:contractId/inspect/:keyPath.', 'Render minimal context content.'],
+    problem:
+      'Explorer row activation needs a real destination for key-level inspection.',
+    context:
+      'There is still no dedicated route for a single contract key path.',
+    scopeIn: [
+      'Add /contracts/:contractId/inspect/:keyPath.',
+      'Render minimal context content.',
+    ],
     scopeOut: ['No schema overlay.', 'No diff compare mode.'],
     checklist: [
       'Create the route.',
@@ -1265,9 +1457,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D43', 'SSL-D45', 'SSL-D46'],
-    problem: 'Explorer rows need to open the key inspector with one deterministic interaction.',
-    context: 'Row rendering, selected key-path state, and the inspect route are landing separately.',
-    scopeIn: ['Select the row key path on activation.', 'Route to the inspect page for that path.'],
+    problem:
+      'Explorer rows need to open the key inspector with one deterministic interaction.',
+    context:
+      'Row rendering, selected key-path state, and the inspect route are landing separately.',
+    scopeIn: [
+      'Select the row key path on activation.',
+      'Route to the inspect page for that path.',
+    ],
     scopeOut: ['No keyboard arrow navigation.', 'No watchlist pinning.'],
     checklist: [
       'Wire row activation to the selection action.',
@@ -1292,9 +1489,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D46'],
-    problem: 'Inspect pages need obvious context and a quick way to understand where the current node lives.',
+    problem:
+      'Inspect pages need obvious context and a quick way to understand where the current node lives.',
     context: 'The inspect route still lacks breadcrumb context.',
-    scopeIn: ['Build breadcrumb text from route params.', 'Render it in the inspect header.'],
+    scopeIn: [
+      'Build breadcrumb text from route params.',
+      'Render it in the inspect header.',
+    ],
     scopeOut: ['No clickable ancestor navigation.', 'No search integration.'],
     checklist: [
       'Parse the key path into segments.',
@@ -1319,9 +1520,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D46', 'SSL-D33'],
-    problem: 'Developers need the non-value context of a ledger entry, not just the decoded body.',
-    context: 'Stored ledger records already carry metadata such as durability and ledger fields, but the inspect view does not show them.',
-    scopeIn: ['Render one metadata card.', 'Show durability and ledger fields when available.'],
+    problem:
+      'Developers need the non-value context of a ledger entry, not just the decoded body.',
+    context:
+      'Stored ledger records already carry metadata such as durability and ledger fields, but the inspect view does not show them.',
+    scopeIn: [
+      'Render one metadata card.',
+      'Show durability and ledger fields when available.',
+    ],
     scopeOut: ['No diff metadata.', 'No schema mismatch warning.'],
     checklist: [
       'Read the current entry record.',
@@ -1346,9 +1552,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D46', 'SSL-D33'],
-    problem: 'A debugger should always preserve access to the raw payload when higher-level decoding is incomplete or suspect.',
-    context: 'Stored ledger records can carry raw XDR, but the inspect view does not expose it yet.',
-    scopeIn: ['Render one raw XDR card.', 'Add one copy action when raw payload is present.'],
+    problem:
+      'A debugger should always preserve access to the raw payload when higher-level decoding is incomplete or suspect.',
+    context:
+      'Stored ledger records can carry raw XDR, but the inspect view does not expose it yet.',
+    scopeIn: [
+      'Render one raw XDR card.',
+      'Add one copy action when raw payload is present.',
+    ],
     scopeOut: ['No pretty-print decoder.', 'No binary diff UI.'],
     checklist: [
       'Read raw XDR from the current entry.',
@@ -1374,9 +1585,14 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D30'],
-    problem: 'Schema-aware overlays cannot start until the app can fetch the contract code bytes.',
-    context: 'Contract state fetching is landing, but the separate code-fetch path required for schema extraction is still missing.',
-    scopeIn: ['Retrieve contract WASM bytes for a contract ID.', 'Return them in a stable shape.'],
+    problem:
+      'Schema-aware overlays cannot start until the app can fetch the contract code bytes.',
+    context:
+      'Contract state fetching is landing, but the separate code-fetch path required for schema extraction is still missing.',
+    scopeIn: [
+      'Retrieve contract WASM bytes for a contract ID.',
+      'Return them in a stable shape.',
+    ],
     scopeOut: ['No parsing of the spec section.', 'No schema UI.'],
     checklist: [
       'Build the required code request.',
@@ -1401,9 +1617,14 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D51'],
-    problem: 'Fetching WASM is not enough; the app specifically needs the contract spec section.',
-    context: 'The relevant custom section is not yet isolated from fetched WASM bytes.',
-    scopeIn: ['Read the WASM module safely.', 'Extract the contractspecv0 custom section payload when present.'],
+    problem:
+      'Fetching WASM is not enough; the app specifically needs the contract spec section.',
+    context:
+      'The relevant custom section is not yet isolated from fetched WASM bytes.',
+    scopeIn: [
+      'Read the WASM module safely.',
+      'Extract the contractspecv0 custom section payload when present.',
+    ],
     scopeOut: ['No SCSpec parsing.', 'No schema labeling UI.'],
     checklist: [
       'Load the WASM module safely.',
@@ -1428,10 +1649,18 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D52'],
-    problem: 'Parsed schema data should be reusable across explorer and inspect views.',
-    context: 'There is no shared cache or state surface for contract specs today.',
-    scopeIn: ['Add one store slice keyed by contract ID.', 'Store parsed or lookup-ready schema data.'],
-    scopeOut: ['No UI rendering.', 'No invalidation policy beyond simple replace behavior.'],
+    problem:
+      'Parsed schema data should be reusable across explorer and inspect views.',
+    context:
+      'There is no shared cache or state surface for contract specs today.',
+    scopeIn: [
+      'Add one store slice keyed by contract ID.',
+      'Store parsed or lookup-ready schema data.',
+    ],
+    scopeOut: [
+      'No UI rendering.',
+      'No invalidation policy beyond simple replace behavior.',
+    ],
     checklist: [
       'Add set and get actions.',
       'Store schema data by contract ID.',
@@ -1455,9 +1684,14 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D53'],
-    problem: 'Numeric enum values are far more useful when shown with their semantic labels.',
-    context: 'There is not yet any lookup logic that maps stored values to enum names.',
-    scopeIn: ['Build an enum lookup map from parsed specs.', 'Return labels for matching enum values.'],
+    problem:
+      'Numeric enum values are far more useful when shown with their semantic labels.',
+    context:
+      'There is not yet any lookup logic that maps stored values to enum names.',
+    scopeIn: [
+      'Build an enum lookup map from parsed specs.',
+      'Return labels for matching enum values.',
+    ],
     scopeOut: ['No struct field labeling.', 'No mismatch logic.'],
     checklist: [
       'Build a lookup map from parsed spec entries.',
@@ -1482,9 +1716,14 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D53'],
-    problem: 'Stored tuples and map-like field layouts are hard to read without semantic field names.',
-    context: 'Explorer rows and inspect view still show raw tuple indices and key symbols only.',
-    scopeIn: ['Map tuple indices to field labels when possible.', 'Map matching symbol keys to field labels when possible.'],
+    problem:
+      'Stored tuples and map-like field layouts are hard to read without semantic field names.',
+    context:
+      'Explorer rows and inspect view still show raw tuple indices and key symbols only.',
+    scopeIn: [
+      'Map tuple indices to field labels when possible.',
+      'Map matching symbol keys to field labels when possible.',
+    ],
     scopeOut: ['No version-mismatch warning.', 'No full schema editor.'],
     checklist: [
       'Build field label lookup logic from parsed struct definitions.',
@@ -1510,9 +1749,14 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D54', 'SSL-D55'],
-    problem: 'The debugger must warn when stored data no longer matches the current contract schema.',
-    context: 'Enum and field-label lookups are landing, but there is still no graceful mismatch fallback path.',
-    scopeIn: ['Detect obvious schema mismatches.', 'Show a warning banner while preserving raw data visibility.'],
+    problem:
+      'The debugger must warn when stored data no longer matches the current contract schema.',
+    context:
+      'Enum and field-label lookups are landing, but there is still no graceful mismatch fallback path.',
+    scopeIn: [
+      'Detect obvious schema mismatches.',
+      'Show a warning banner while preserving raw data visibility.',
+    ],
     scopeOut: ['No migration hints.', 'No contract-version history viewer.'],
     checklist: [
       'Add mismatch detection rules for obvious shape conflicts.',
@@ -1537,9 +1781,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D14'],
-    problem: 'Simulation-based key discovery needs its own route instead of being buried inside the main explorer shell.',
+    problem:
+      'Simulation-based key discovery needs its own route instead of being buried inside the main explorer shell.',
     context: 'There is still no route dedicated to discovery workflows.',
-    scopeIn: ['Add /contracts/:contractId/discovery.', 'Render minimal contract-aware shell content.'],
+    scopeIn: [
+      'Add /contracts/:contractId/discovery.',
+      'Render minimal contract-aware shell content.',
+    ],
     scopeOut: ['No simulation calls.', 'No footprint parsing.'],
     checklist: [
       'Create the route.',
@@ -1564,10 +1812,18 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D57'],
-    problem: 'Discovery needs a controlled input model before it can validate or submit simulation requests.',
-    context: 'The discovery route shell lacks state for the function call users want to simulate.',
-    scopeIn: ['Add controlled state for function name.', 'Add controlled state for args JSON text and a simple submit lifecycle.'],
-    scopeOut: ['No actual simulation request.', 'No schema-aware argument typing.'],
+    problem:
+      'Discovery needs a controlled input model before it can validate or submit simulation requests.',
+    context:
+      'The discovery route shell lacks state for the function call users want to simulate.',
+    scopeIn: [
+      'Add controlled state for function name.',
+      'Add controlled state for args JSON text and a simple submit lifecycle.',
+    ],
+    scopeOut: [
+      'No actual simulation request.',
+      'No schema-aware argument typing.',
+    ],
     checklist: [
       'Add fields for function name and args text.',
       'Track idle, loading, success, and error state or equivalent.',
@@ -1591,9 +1847,14 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D58'],
-    problem: 'Discovery should block obviously malformed function names before hitting RPC simulation.',
-    context: 'The discovery form state exists, but there is no focused validator for the function name field.',
-    scopeIn: ['Validate the function name string.', 'Return a clear valid or invalid result.'],
+    problem:
+      'Discovery should block obviously malformed function names before hitting RPC simulation.',
+    context:
+      'The discovery form state exists, but there is no focused validator for the function name field.',
+    scopeIn: [
+      'Validate the function name string.',
+      'Return a clear valid or invalid result.',
+    ],
     scopeOut: ['No JSON args validation.', 'No RPC work.'],
     checklist: [
       'Trim the input.',
@@ -1619,10 +1880,17 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D58'],
-    problem: 'Invalid JSON arguments should fail in the form before RPC simulation is attempted.',
+    problem:
+      'Invalid JSON arguments should fail in the form before RPC simulation is attempted.',
     context: 'The args field currently has no structured validation.',
-    scopeIn: ['Validate args text as JSON.', 'Return a clear pass or fail result.'],
-    scopeOut: ['No semantic argument typing against the contract spec.', 'No RPC work.'],
+    scopeIn: [
+      'Validate args text as JSON.',
+      'Return a clear pass or fail result.',
+    ],
+    scopeOut: [
+      'No semantic argument typing against the contract spec.',
+      'No RPC work.',
+    ],
     checklist: [
       'Parse the text safely.',
       'Surface invalid JSON cleanly.',
@@ -1647,9 +1915,14 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D30'],
-    problem: 'Discovery cannot harvest unknown keys until the app can call Soroban simulation directly.',
-    context: 'The discovery route and input validation are landing, but there is still no RPC helper for simulation.',
-    scopeIn: ['Send a simulation request.', 'Return the parsed response in a stable shape.'],
+    problem:
+      'Discovery cannot harvest unknown keys until the app can call Soroban simulation directly.',
+    context:
+      'The discovery route and input validation are landing, but there is still no RPC helper for simulation.',
+    scopeIn: [
+      'Send a simulation request.',
+      'Return the parsed response in a stable shape.',
+    ],
     scopeOut: ['No UI rendering.', 'No footprint extraction in this issue.'],
     checklist: [
       'Build the JSON-RPC request payload.',
@@ -1674,10 +1947,17 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D61'],
-    problem: 'Simulation is only useful for discovery once the app can turn the response footprint into a list of candidate keys.',
+    problem:
+      'Simulation is only useful for discovery once the app can turn the response footprint into a list of candidate keys.',
     context: 'The returned payload still needs focused key extraction logic.',
-    scopeIn: ['Extract read footprint keys.', 'Extract write footprint keys and dedupe them.'],
-    scopeOut: ['No watchlist integration.', 'No automatic fetch of every discovered key.'],
+    scopeIn: [
+      'Extract read footprint keys.',
+      'Extract write footprint keys and dedupe them.',
+    ],
+    scopeOut: [
+      'No watchlist integration.',
+      'No automatic fetch of every discovered key.',
+    ],
     checklist: [
       'Parse the relevant footprint sections.',
       'Normalize keys into one stable identity shape.',
@@ -1695,17 +1975,26 @@ export const issues = [
   },
   {
     id: 'SSL-D63',
-    title: 'Add a discovery result list with loading/error states and open-in-explorer action',
+    title:
+      'Add a discovery result list with loading/error states and open-in-explorer action',
     phase: 5,
     area: 'ui',
     size: 's',
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D57', 'SSL-D62'],
-    problem: 'Extracted keys need a visible workflow so users can move from discovery into actual state inspection.',
-    context: 'There is still no result UI for successful or failed discovery attempts.',
-    scopeIn: ['Render loading, error, and success states.', 'List discovered keys with an action to open a selected key in contract browsing flow.'],
-    scopeOut: ['No watchlist pinning.', 'No automatic fetch of every discovered key.'],
+    problem:
+      'Extracted keys need a visible workflow so users can move from discovery into actual state inspection.',
+    context:
+      'There is still no result UI for successful or failed discovery attempts.',
+    scopeIn: [
+      'Render loading, error, and success states.',
+      'List discovered keys with an action to open a selected key in contract browsing flow.',
+    ],
+    scopeOut: [
+      'No watchlist pinning.',
+      'No automatic fetch of every discovered key.',
+    ],
     checklist: [
       'Show loading and error states.',
       'Render deduped discovered keys on success.',
@@ -1729,9 +2018,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D14'],
-    problem: 'Snapshot and diff work needs a dedicated route instead of being hidden inside unrelated pages.',
+    problem:
+      'Snapshot and diff work needs a dedicated route instead of being hidden inside unrelated pages.',
     context: 'There is still no contract history route.',
-    scopeIn: ['Add /contracts/:contractId/history.', 'Render minimal contract-aware shell content.'],
+    scopeIn: [
+      'Add /contracts/:contractId/history.',
+      'Render minimal contract-aware shell content.',
+    ],
     scopeOut: ['No diff engine.', 'No snapshot capture action yet.'],
     checklist: [
       'Create the route.',
@@ -1756,9 +2049,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D31'],
-    problem: 'History features need a dedicated state surface for captured contract snapshots.',
+    problem:
+      'History features need a dedicated state surface for captured contract snapshots.',
     context: 'There is no snapshot slice in the store yet.',
-    scopeIn: ['Add a slice keyed by contract ID.', 'Hold a list of immutable snapshots.'],
+    scopeIn: [
+      'Add a slice keyed by contract ID.',
+      'Hold a list of immutable snapshots.',
+    ],
     scopeOut: ['No diff computation.', 'No persistence across reloads.'],
     checklist: [
       'Define a snapshot record shape.',
@@ -1783,9 +2080,14 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D34', 'SSL-D65'],
-    problem: 'History is not useful until users can freeze the current state at a moment in time.',
-    context: 'Live contract state is already held in the store, but there is no capture action yet.',
-    scopeIn: ['Clone the current contract state into a new snapshot.', 'Attach timestamped snapshot metadata.'],
+    problem:
+      'History is not useful until users can freeze the current state at a moment in time.',
+    context:
+      'Live contract state is already held in the store, but there is no capture action yet.',
+    scopeIn: [
+      'Clone the current contract state into a new snapshot.',
+      'Attach timestamped snapshot metadata.',
+    ],
     scopeOut: ['No compare UI.', 'No named snapshot editing.'],
     checklist: [
       'Read the active contract and current loaded entries.',
@@ -1813,7 +2115,10 @@ export const issues = [
     dependencies: ['SSL-D16', 'SSL-D65'],
     problem: 'Snapshot compare requires more than raw string comparison.',
     context: 'There is still no diff engine over snapshot contents.',
-    scopeIn: ['Compare two snapshot entry sets.', 'Classify created, deleted, modified, and unchanged cases using normalized data.'],
+    scopeIn: [
+      'Compare two snapshot entry sets.',
+      'Classify created, deleted, modified, and unchanged cases using normalized data.',
+    ],
     scopeOut: ['No visual diff tree.', 'No synchronized compare panes.'],
     checklist: [
       'Compare keys present in each snapshot.',
@@ -1837,9 +2142,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D64', 'SSL-D65', 'SSL-D67'],
-    problem: 'Users need clear feedback both when there is nothing to compare and when a compare result is available.',
+    problem:
+      'Users need clear feedback both when there is nothing to compare and when a compare result is available.',
     context: 'There is no user-facing state for history and diff yet.',
-    scopeIn: ['Render an empty state when fewer than two snapshots exist.', 'Render a compact summary card when diff data is available.'],
+    scopeIn: [
+      'Render an empty state when fewer than two snapshots exist.',
+      'Render a compact summary card when diff data is available.',
+    ],
     scopeOut: ['No full changed-node browser.', 'No split-pane diff viewer.'],
     checklist: [
       'Detect insufficient snapshots.',
@@ -1864,9 +2173,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D31'],
-    problem: 'Developers need a small set of pinned keys they can return to quickly across routes.',
+    problem:
+      'Developers need a small set of pinned keys they can return to quickly across routes.',
     context: 'There is no shared watchlist state yet.',
-    scopeIn: ['Add a watchlist slice keyed by contract ID.', 'Support add and remove actions with duplicate protection.'],
+    scopeIn: [
+      'Add a watchlist slice keyed by contract ID.',
+      'Support add and remove actions with duplicate protection.',
+    ],
     scopeOut: ['No route UI.', 'No persistence across reloads.'],
     checklist: [
       'Define a watchlist item shape.',
@@ -1890,9 +2203,13 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D14', 'SSL-D69'],
-    problem: 'Pinned keys need a dedicated destination instead of living only as hidden store state.',
+    problem:
+      'Pinned keys need a dedicated destination instead of living only as hidden store state.',
     context: 'There is still no watchlist page.',
-    scopeIn: ['Add /contracts/:contractId/watchlist.', 'Render either an empty state or a simple list with an inspect action.'],
+    scopeIn: [
+      'Add /contracts/:contractId/watchlist.',
+      'Render either an empty state or a simple list with an inspect action.',
+    ],
     scopeOut: ['No sorting rules.', 'No change-status badges.'],
     checklist: [
       'Create the route.',
@@ -1917,10 +2234,18 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D50', 'SSL-D63', 'SSL-D69'],
-    problem: 'Watchlists are only useful if users can pin keys from the workflows where they discover or inspect them.',
-    context: 'Discovery results, inspector view, and watchlist state are landing separately.',
-    scopeIn: ['Add one pin action in discovery results.', 'Add one pin action in inspect view backed by the watchlist slice.'],
-    scopeOut: ['No remove action outside the watchlist route.', 'No persistence across reloads.'],
+    problem:
+      'Watchlists are only useful if users can pin keys from the workflows where they discover or inspect them.',
+    context:
+      'Discovery results, inspector view, and watchlist state are landing separately.',
+    scopeIn: [
+      'Add one pin action in discovery results.',
+      'Add one pin action in inspect view backed by the watchlist slice.',
+    ],
+    scopeOut: [
+      'No remove action outside the watchlist route.',
+      'No persistence across reloads.',
+    ],
     checklist: [
       'Add the pin action to both surfaces.',
       'Pass contract ID and key path into the watchlist slice.',
@@ -1944,10 +2269,18 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: ['SSL-D03'],
-    problem: 'Network configuration should have a dedicated settings surface instead of living only in the header selector.',
-    context: 'There is still no route for reviewing saved network configuration.',
-    scopeIn: ['Add /settings/network.', 'Render a summary of the currently saved preset and custom RPC configuration.'],
-    scopeOut: ['No provider API key support.', 'No advanced diagnostics history.'],
+    problem:
+      'Network configuration should have a dedicated settings surface instead of living only in the header selector.',
+    context:
+      'There is still no route for reviewing saved network configuration.',
+    scopeIn: [
+      'Add /settings/network.',
+      'Render a summary of the currently saved preset and custom RPC configuration.',
+    ],
+    scopeOut: [
+      'No provider API key support.',
+      'No advanced diagnostics history.',
+    ],
     checklist: [
       'Create the route.',
       'Read saved network state.',
@@ -1972,10 +2305,18 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: [],
-    problem: 'Byte-view and big-integer formatting choices need a home in app state before later display preferences can be respected consistently.',
-    context: 'There is still no preferences state or route for bytes and bigint display modes.',
-    scopeIn: ['Add preference state for byte and bigint display modes.', 'Create /settings/preferences to edit those values.'],
-    scopeOut: ['No full application of those preferences across every viewer in this issue.', 'No theme settings.'],
+    problem:
+      'Byte-view and big-integer formatting choices need a home in app state before later display preferences can be respected consistently.',
+    context:
+      'There is still no preferences state or route for bytes and bigint display modes.',
+    scopeIn: [
+      'Add preference state for byte and bigint display modes.',
+      'Create /settings/preferences to edit those values.',
+    ],
+    scopeOut: [
+      'No full application of those preferences across every viewer in this issue.',
+      'No theme settings.',
+    ],
     checklist: [
       'Define default preference values.',
       'Add set and reset actions.',
@@ -2000,9 +2341,14 @@ export const issues = [
     difficulty: 'intermediate',
     goodFirst: false,
     dependencies: ['SSL-D30'],
-    problem: 'Public Soroban RPC endpoints can rate-limit or fail transiently, and the app needs one reusable retry rule instead of ad hoc error handling.',
-    context: 'Network helpers are landing, but there is still no shared backoff policy for retryable failures.',
-    scopeIn: ['Retry only retryable HTTP or JSON-RPC failures.', 'Cap attempts with a small bounded backoff policy.'],
+    problem:
+      'Public Soroban RPC endpoints can rate-limit or fail transiently, and the app needs one reusable retry rule instead of ad hoc error handling.',
+    context:
+      'Network helpers are landing, but there is still no shared backoff policy for retryable failures.',
+    scopeIn: [
+      'Retry only retryable HTTP or JSON-RPC failures.',
+      'Cap attempts with a small bounded backoff policy.',
+    ],
     scopeOut: ['No automatic polling loop.', 'No user-facing countdown UI.'],
     checklist: [
       'Retry only 429 and retryable 5xx failures.',
@@ -2028,10 +2374,18 @@ export const issues = [
     difficulty: 'beginner',
     goodFirst: true,
     dependencies: [],
-    problem: 'The mobile explorer drawer is currently only partially accessible for keyboard users.',
-    context: 'The app already has a mobile sidebar overlay, but it still needs keyboard-safe focus handling.',
-    scopeIn: ['Keep focus inside the open mobile sidebar.', 'Close it on Escape and return focus to the opener.'],
-    scopeOut: ['No redesign of sidebar content.', 'No desktop navigation changes.'],
+    problem:
+      'The mobile explorer drawer is currently only partially accessible for keyboard users.',
+    context:
+      'The app already has a mobile sidebar overlay, but it still needs keyboard-safe focus handling.',
+    scopeIn: [
+      'Keep focus inside the open mobile sidebar.',
+      'Close it on Escape and return focus to the opener.',
+    ],
+    scopeOut: [
+      'No redesign of sidebar content.',
+      'No desktop navigation changes.',
+    ],
     checklist: [
       'Capture the opener element.',
       'Trap focus while the drawer is open.',

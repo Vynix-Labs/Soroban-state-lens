@@ -26,7 +26,8 @@ describe('connectionStatus', () => {
   })
 
   it('resetConnectionStatus returns status to idle', () => {
-    const { setConnectionStatus, resetConnectionStatus } = useLensStore.getState()
+    const { setConnectionStatus, resetConnectionStatus } =
+      useLensStore.getState()
 
     setConnectionStatus(ConnectionStatus.SUCCESS)
     resetConnectionStatus()
@@ -42,16 +43,18 @@ describe('connectionStatus', () => {
     expect(updatedNetworkConfig.networkId).toBe('testnet')
 
     setConnectionStatus(ConnectionStatus.LOADING)
-    
+
     const stateAfterStatusChange = getStoreState()
-    expect(stateAfterStatusChange.connectionStatus).toBe(ConnectionStatus.LOADING)
+    expect(stateAfterStatusChange.connectionStatus).toBe(
+      ConnectionStatus.LOADING,
+    )
     expect(stateAfterStatusChange.networkConfig).toEqual(updatedNetworkConfig)
     expect(stateAfterStatusChange.networkConfig.networkId).toBe('testnet')
   })
 
   it('network field updates do not affect connection status', () => {
     const { setConnectionStatus, setNetworkConfig } = useLensStore.getState()
-    
+
     setConnectionStatus(ConnectionStatus.SUCCESS)
     setNetworkConfig({ networkId: 'mainnet' })
 
@@ -59,33 +62,33 @@ describe('connectionStatus', () => {
     expect(state.connectionStatus).toBe(ConnectionStatus.SUCCESS)
     expect(state.networkConfig.networkId).toBe('mainnet')
   })
-  
+
   it('resetStore resets status to idle', () => {
     const { setConnectionStatus } = useLensStore.getState()
-    
+
     setConnectionStatus(ConnectionStatus.SUCCESS)
     resetStore()
-    
+
     expect(getStoreState().connectionStatus).toBe(ConnectionStatus.IDLE)
   })
 
   it('connectionStatus is not persisted', () => {
     // This test relies on the partialize configuration in lensStore.ts
-    // We can verify it by checking the store's persist API if available, 
-    // or by mocking storage, but a simple way is to check the partialize 
-    // function directly if we could, but here we'll just trust the implementation 
+    // We can verify it by checking the store's persist API if available,
+    // or by mocking storage, but a simple way is to check the partialize
+    // function directly if we could, but here we'll just trust the implementation
     // and maybe add a more complex test if needed.
-    // For now, let's verify that after a "rehydration" (simulated by resetStore which we updated), 
+    // For now, let's verify that after a "rehydration" (simulated by resetStore which we updated),
     // it's back to idle.
-    
+
     const { setConnectionStatus } = useLensStore.getState()
     setConnectionStatus(ConnectionStatus.SUCCESS)
-    
+
     // Simulate what happens when app reloads and hydrates from storage
-    // Since we excluded connectionStatus from partialize, it should remain at its 
+    // Since we excluded connectionStatus from partialize, it should remain at its
     // default value (idle) during hydration of a new store instance.
-    
-    // We can't easily swap the storage here without more setup, 
+
+    // We can't easily swap the storage here without more setup,
     // but we've already verified resetStore works.
   })
 })
