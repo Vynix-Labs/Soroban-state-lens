@@ -162,6 +162,9 @@ function createUnsupportedNode(
 // Main normalization function
 // ---------------------------------------------------------------------------
 
+/** Sensible default for maximum recursion depth in node normalization. */
+export const MAX_DEPTH_DEFAULT = 32
+
 /**
  * Normalizes an ScVal to a fully-typed Node with path and raw metadata.
  *
@@ -180,8 +183,9 @@ export function normalizeNode(
   depth?: number,
 ): Node {
   const currentDepth = depth ?? 0
+  const maxDepth = options?.maxDepth ?? MAX_DEPTH_DEFAULT
 
-  if (options?.maxDepth !== undefined && currentDepth >= options.maxDepth) {
+  if (currentDepth >= maxDepth) {
     return createTruncatedNode(path, currentDepth)
   }
 

@@ -20,7 +20,7 @@ const decoderWorkerApi: DecoderWorkerApi = {
 
   normalize(request: NormalizeRequest): Promise<NormalizeResult> {
     try {
-      const { scVal, asAddress = false } = request
+      const { scVal, asAddress = false, maxDepth } = request
 
       // Normalize as address if requested and applicable
       if (asAddress) {
@@ -32,7 +32,7 @@ const decoderWorkerApi: DecoderWorkerApi = {
       }
 
       // Default: normalize as value
-      const normalizedValue = normalizeScVal(scVal)
+      const normalizedValue = normalizeScVal(scVal, undefined, { maxDepth })
       return Promise.resolve({
         type: 'value',
         value: normalizedValue,
