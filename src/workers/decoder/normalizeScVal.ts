@@ -5,8 +5,8 @@ import type {
   NormalizedAddress,
   NormalizedError,
   NormalizedMapEntry,
-  NormalizedUnsupported,
   NormalizedTruncated,
+  NormalizedUnsupported,
   UnsupportedFallback,
 } from '../../types/normalized'
 
