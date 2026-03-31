@@ -73,9 +73,16 @@ export interface ExpandedNodesSlice {
   collapseAll: () => void
 }
 
+// Contract slice
+export interface ContractSlice {
+  activeContractId: string | null
+  setActiveContractId: (id: string) => void
+  clearActiveContractId: () => void
+}
+
 // Combined store type
 export interface LensStore
-  extends NetworkConfigSlice, LedgerDataSlice, ExpandedNodesSlice {}
+  extends NetworkConfigSlice, LedgerDataSlice, ExpandedNodesSlice, ContractSlice {}
 
 // Default network configurations
 export const DEFAULT_NETWORKS: Record<string, NetworkConfig> = {
