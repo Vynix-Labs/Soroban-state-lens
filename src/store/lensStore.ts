@@ -9,6 +9,7 @@ import {
   mergeNetworkConfig,
   serializeNetworkConfigForStorage,
 } from './persistence'
+import { createContractSlice } from './contractSlice'
 
 import type { PersistedState } from './persistence'
 import type {
@@ -20,7 +21,6 @@ import type {
   NetworkConfig,
   NetworkConfigSlice,
 } from './types'
-import { createContractSlice } from './contractSlice'
 
 export type { LedgerEntry, LedgerKey } from './types'
 
