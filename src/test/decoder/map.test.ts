@@ -53,7 +53,7 @@ describe('normalizeScVal - Map Handling', () => {
       })
       expect(result).toHaveProperty('kind', 'map')
       expect(result).toHaveProperty('entries')
-      expect(Array.isArray((result as any).entries)).toBe(true)
+      expect(Array.isArray(result.entries)).toBe(true)
     })
 
     it('each entry has exactly { key, value } shape', () => {
