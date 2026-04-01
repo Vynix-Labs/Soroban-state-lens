@@ -182,6 +182,9 @@ function createTruncatedMarker(depth: number): TruncatedMarker {
   return { __truncated: true, depth }
 }
 
+/** Sensible default for maximum recursion depth in normalization. */
+export const MAX_DEPTH_DEFAULT = 32
+
 /**
  * Normalizes an ScVal to a JSON-serializable format
  * Supports i32, u32, and provides fallback for unsupported variants
@@ -199,8 +202,9 @@ export function normalizeScVal(
   currentDepth?: number,
 ): any {
   const depth = currentDepth ?? 0
+  const maxDepth = options?.maxDepth ?? MAX_DEPTH_DEFAULT
 
-  if (options?.maxDepth !== undefined && depth >= options.maxDepth) {
+  if (depth >= maxDepth) {
     return createTruncatedMarker(depth)
   }
 
@@ -397,8 +401,8 @@ export function normalizeScVal(
       if (Array.isArray(scVal.value)) {
         return scVal.value.map(
           (entry: { key: ScVal; val: ScVal }): MapEntry => ({
-            key: normalizeScVal(entry.key, visited),
-            value: normalizeScVal(entry.val, visited),
+            key: normalizeScVal(entry.key, visited, options, depth + 1),
+            value: normalizeScVal(entry.val, visited, options, depth + 1),
           }),
         )
       }

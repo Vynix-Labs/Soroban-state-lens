@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { ScValType, normalizeScVal } from '../../workers/decoder/normalizeScVal'
+import { normalizeNode } from '../../workers/decoder/normalizeNode'
 import type { TruncatedMarker } from '../../types/normalized'
+import type { TruncatedNode } from '../../types/node'
 
 function isTruncatedMarker(value: unknown): value is TruncatedMarker {
   return (
@@ -191,5 +193,85 @@ describe('Depth Guard - maxDepth', () => {
       expect(parsed.__truncated).toBe(true)
       expect(parsed.depth).toBe(1)
     })
+  })
+
+  describe('SCV_MAP recursion', () => {
+    it('truncates map entries when limit is reached', () => {
+      const scVal = {
+        switch: ScValType.SCV_MAP,
+        value: [
+          {
+            key: { switch: ScValType.SCV_SYMBOL, value: 'k1' },
+            val: {
+              switch: ScValType.SCV_VEC,
+              value: [{ switch: ScValType.SCV_I32, value: 1 }],
+            },
+          },
+        ],
+      }
+      // Inner vec is at depth 1, its children at depth 2
+      const result: any = normalizeScVal(scVal, undefined, { maxDepth: 2 })
+      expect(result[0].key.value).toBe('k1')
+      expect(result[0].value.kind).toBe('vec')
+      expect(isTruncatedMarker(result[0].value.items[0])).toBe(true)
+      expect(result[0].value.items[0].depth).toBe(2)
+    })
+  })
+
+  describe('Sensible Defaults', () => {
+    it('uses default maxDepth when not provided in normalizeScVal', () => {
+      // Create a very deep structure (> 32)
+      let deep: any = { switch: ScValType.SCV_I32, value: 0 }
+      for (let i = 0; i < 40; i++) {
+        deep = { switch: ScValType.SCV_VEC, value: [deep] }
+      }
+
+      const result: any = normalizeScVal(deep)
+      // Should be truncated at depth 32
+      let current = result
+      let d = 0
+      while (current && current.kind === 'vec') {
+        current = current.items[0]
+        d++
+      }
+      expect(isTruncatedMarker(current)).toBe(true)
+      expect(current.depth).toBe(32)
+      expect(d).toBe(32)
+    })
+  })
+})
+
+
+function isTruncatedNode(node: any): node is TruncatedNode {
+  return node && node.kind === 'truncated'
+}
+
+describe('normalizeNode - maxDepth', () => {
+  it('respects default maxDepth in normalizeNode', () => {
+    let deep: any = { switch: ScValType.SCV_I32, value: 0 }
+    for (let i = 0; i < 40; i++) {
+      deep = { switch: ScValType.SCV_VEC, value: [deep] }
+    }
+
+    const result: any = normalizeNode(deep)
+    let current = result
+    let d = 0
+    while (current && current.kind === 'vec') {
+      current = current.items[0]
+      d++
+    }
+    expect(isTruncatedNode(current)).toBe(true)
+    expect((current as TruncatedNode).depth).toBe(32)
+    expect(d).toBe(32)
+  })
+
+  it('respects provided maxDepth in normalizeNode', () => {
+    const scVal = {
+      switch: ScValType.SCV_VEC,
+      value: [{ switch: ScValType.SCV_I32, value: 1 }],
+    }
+    const result = normalizeNode(scVal, [], undefined, { maxDepth: 0 })
+    expect(isTruncatedNode(result)).toBe(true)
+    expect((result as TruncatedNode).depth).toBe(0)
   })
 })
