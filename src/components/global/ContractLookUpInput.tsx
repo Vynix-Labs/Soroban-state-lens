@@ -52,9 +52,9 @@ function ContractLookUpInput() {
         return
       }
 
-      const contractId = normalizeContractIdInput(inputValue) as string
+      const contractId = normalizeContractIdInput(inputValue)
       navigate({
-        to: '/contracts/$contractId/',
+        to: '/contracts/$contractId',
         params: { contractId },
       })
     } catch (error) {

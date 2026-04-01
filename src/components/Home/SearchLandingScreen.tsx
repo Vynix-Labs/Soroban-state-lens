@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { validateContractRouteParam } from '../../routes/contracts/$contractId/validateContractRouteParam'
+import { validateContractRouteParam } from '../../routes/contracts/$contractId/-validateContractRouteParam'
 import WatermarkBg from './WatermarkBg'
 
 const SearchLandingScreen = () => {
@@ -16,7 +16,7 @@ const SearchLandingScreen = () => {
       return
     }
     navigate({
-      to: '/contracts/$contractId/',
+      to: '/contracts/$contractId',
       params: { contractId: result.contractId },
     })
   }
