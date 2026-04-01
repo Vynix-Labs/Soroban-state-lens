@@ -73,6 +73,24 @@ export interface ExpandedNodesSlice {
   collapseAll: () => void
 }
 
+// Contract snapshot record
+export interface ContractSnapshot {
+  id: string
+  contractId: string
+  timestamp: number
+  ledgerData: Record<string, LedgerEntry>
+  label?: string
+}
+
+// Snapshot slice
+export interface SnapshotSlice {
+  snapshots: Record<string, Array<ContractSnapshot>>
+  addSnapshot: (contractId: string, entries: Record<string, LedgerEntry>, label?: string) => void
+  getSnapshots: (contractId: string) => Array<ContractSnapshot>
+  removeSnapshot: (contractId: string, snapshotId: string) => void
+  clearSnapshots: (contractId: string) => void
+}
+
 // Contract slice
 export interface ContractSlice {
   activeContractId: string | null
@@ -82,7 +100,11 @@ export interface ContractSlice {
 
 // Combined store type
 export interface LensStore
-  extends NetworkConfigSlice, LedgerDataSlice, ExpandedNodesSlice, ContractSlice {}
+  extends NetworkConfigSlice,
+    LedgerDataSlice,
+    ExpandedNodesSlice,
+    SnapshotSlice,
+    ContractSlice {}
 
 // Default network configurations
 export const DEFAULT_NETWORKS: Record<string, NetworkConfig> = {

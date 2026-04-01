@@ -20,6 +20,7 @@ import type {
   LensStore,
   NetworkConfig,
   NetworkConfigSlice,
+  SnapshotSlice,
 } from './types'
 
 export type { LedgerEntry, LedgerKey } from './types'
@@ -161,6 +162,53 @@ const createExpandedNodesSlice = (
 })
 
 /**
+ * Snapshot slice creator
+ */
+const createSnapshotSlice = (
+  set: (fn: (state: LensStore) => Partial<LensStore>) => void,
+  get: () => LensStore,
+): SnapshotSlice => ({
+  snapshots: {},
+
+  addSnapshot: (contractId: string, entries: Record<string, LedgerEntry>, label?: string) =>
+    set((state) => ({
+      snapshots: {
+        ...state.snapshots,
+        [contractId]: [
+          ...(state.snapshots[contractId] ?? []),
+          {
+            id: crypto.randomUUID(),
+            contractId,
+            timestamp: Date.now(),
+            ledgerData: { ...entries },
+            label,
+          },
+        ],
+      },
+    })),
+
+  getSnapshots: (contractId: string) => {
+    return get().snapshots[contractId] ?? []
+  },
+
+  removeSnapshot: (contractId: string, snapshotId: string) =>
+    set((state) => ({
+      snapshots: {
+        ...state.snapshots,
+        [contractId]: (state.snapshots[contractId] ?? []).filter(
+          (s) => s.id !== snapshotId,
+        ),
+      },
+    })),
+
+  clearSnapshots: (contractId: string) =>
+    set((state) => {
+      const { [contractId]: _, ...rest } = state.snapshots
+      return { snapshots: rest }
+    }),
+})
+
+/**
  * Combined Lens Store with persistence for networkConfig only
  *
  * Centralized state management for Soroban State Lens.
@@ -171,11 +219,11 @@ const createExpandedNodesSlice = (
  */
 export const useLensStore = create<LensStore>()(
   persist<LensStore, [], [], PersistedState>(
-    (set) => ({
+    (set, get) => ({
       ...createNetworkConfigSlice(set),
       ...createLedgerDataSlice(set),
       ...createExpandedNodesSlice(set),
-
+      ...createSnapshotSlice(set, get),
       ...createContractSlice(set),
     }),
     {
@@ -202,6 +250,8 @@ export const useNetworkConfig = () =>
 export const useLedgerData = () => useLensStore((state) => state.ledgerData)
 export const useExpandedNodes = () =>
   useLensStore((state) => state.expandedNodes)
+export const useSnapshots = (contractId: string) =>
+  useLensStore((state) => state.snapshots[contractId] ?? [])
 
 /**
  * Get store state outside of React components (for testing)
@@ -217,6 +267,7 @@ export const resetStore = () => {
     connectionStatus: ConnectionStatus.IDLE,
     ledgerData: {},
     expandedNodes: [],
+    snapshots: {},
     activeContractId: null,
   })
 }
