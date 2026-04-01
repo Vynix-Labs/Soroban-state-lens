@@ -5,7 +5,7 @@ import { toRpcRequestId } from '../rpc/toRpcRequestId'
 
 export interface GetLedgerEntriesParams {
   rpcUrl: string
-  keys: string[]
+  keys: Array<string>
   signal?: AbortSignal
 }
 
@@ -17,7 +17,7 @@ export interface LedgerEntry {
 }
 
 export interface GetLedgerEntriesResult {
-  entries: LedgerEntry[]
+  entries: Array<LedgerEntry>
   latestLedger: number
 }
 
@@ -87,7 +87,7 @@ export async function getLedgerEntries(
         xdr: string
         lastModifiedLedgerSeq?: number
         liveUntilLedgerSeq?: number
-      }>
+      }> | null
       latestLedger: number
     }
 
@@ -111,4 +111,3 @@ export async function getLedgerEntries(
     throw error
   }
 }
-
