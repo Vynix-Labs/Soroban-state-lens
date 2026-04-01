@@ -168,7 +168,6 @@ export type NormalizedValue =
   | NormalizedVec
   | NormalizedMap
   | NormalizedAddress
-  | TruncatedMarker
   | NormalizedTruncated
   | NormalizedError
   | NormalizedUnsupported

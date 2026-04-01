@@ -255,6 +255,7 @@ describe('normalizeNode – Truncation', () => {
 
     expect(result.kind).toBe('truncated')
     expect((result as TruncatedNode).depth).toBe(0)
+    expect(result.path).toEqual(EMPTY_PATH)
   })
 
   it('items at depth boundary are truncated', () => {
@@ -270,6 +271,8 @@ describe('normalizeNode – Truncation', () => {
     expect(result.kind).toBe('vec')
     expect(result.items[0].kind).toBe('truncated')
     expect(result.items[1].kind).toBe('truncated')
+    expect(result.items[0].path).toEqual([{ type: 'index', index: 0 }])
+    expect(result.items[1].path).toEqual([{ type: 'index', index: 1 }])
   })
 
   it('children at depth 2 allowed when maxDepth is 3', () => {

@@ -8,9 +8,9 @@ import type {
   NormalizedMap,
   NormalizedMapEntry,
   NormalizedPrimitive,
+  NormalizedTruncated,
   NormalizedUnsupported,
   NormalizedVec,
-  TruncatedMarker,
   UnsupportedFallback,
 } from '../../types/normalized'
 
@@ -21,7 +21,7 @@ export { VisitedTracker, createVisitedTracker }
 export type {
   NormalizedError,
   NormalizedMapEntry,
-  TruncatedMarker,
+  NormalizedTruncated,
   UnsupportedFallback,
 }
 
@@ -78,7 +78,7 @@ export type NormalizedValue =
   | string
   | null
   | CycleMarker
-  | TruncatedMarker
+  | NormalizedTruncated
   | NormalizedError
   | NormalizedUnsupported
   | NormalizedPrimitive
@@ -186,8 +186,8 @@ export interface NormalizeScValOptions {
   maxDepth?: number
 }
 
-function createTruncatedMarker(depth: number): TruncatedMarker {
-  return { __truncated: true, depth }
+function createTruncatedMarker(depth: number): NormalizedTruncated {
+  return { kind: 'truncated', depth }
 }
 
 /** Sensible default for maximum recursion depth in normalization. */
