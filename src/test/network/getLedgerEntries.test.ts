@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   AbortError,
@@ -6,64 +6,48 @@ import {
 } from '../../lib/network/getLedgerEntries'
 
 import type { GetLedgerEntriesParams } from '../../lib/network/getLedgerEntries'
-import type * as StellarSDK from '@stellar/stellar-sdk'
-
-vi.mock('@stellar/stellar-sdk', async (importOriginal) => {
-  const actual = await importOriginal<typeof StellarSDK>()
-  return {
-    ...actual,
-    xdr: {
-      LedgerKey: {
-        fromXDR: vi.fn((key: string) => ({
-          toXDR: () => key,
-        })),
-      },
-    },
-    rpc: {
-      Server: vi.fn(),
-    },
-  }
-})
 
 describe('getLedgerEntries', () => {
   const mockRpcUrl = 'https://test.rpc.url'
   const mockKeys = ['key1', 'key2']
-  let mockGetLedgerEntries: ReturnType<typeof vi.fn>
-  let rpc: typeof StellarSDK.rpc
 
-  beforeEach(async () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
     vi.clearAllMocks()
-    mockGetLedgerEntries = vi.fn()
-
-    const sdk = await import('@stellar/stellar-sdk')
-    rpc = sdk.rpc
-    vi.mocked(rpc.Server).mockImplementation(function (this: any) {
-      this.getLedgerEntries = mockGetLedgerEntries
-      return this
-    })
   })
 
   describe('success scenarios', () => {
     it('fetches ledger entries successfully', async () => {
-      const mockResponse = {
-        entries: [
-          {
-            key: { toXDR: () => 'key1' },
-            val: { toXDR: () => 'xdr1' },
-            lastModifiedLedgerSeq: 100,
-            liveUntilLedgerSeq: 200,
-          },
-          {
-            key: { toXDR: () => 'key2' },
-            val: { toXDR: () => 'xdr2' },
-            lastModifiedLedgerSeq: 101,
-            liveUntilLedgerSeq: 201,
-          },
-        ],
-        latestLedger: 150,
+      const mockRpcResponse = {
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          entries: [
+            {
+              key: 'key1',
+              xdr: 'xdr1',
+              lastModifiedLedgerSeq: 100,
+              liveUntilLedgerSeq: 200,
+            },
+            {
+              key: 'key2',
+              xdr: 'xdr2',
+              lastModifiedLedgerSeq: 101,
+              liveUntilLedgerSeq: 201,
+            },
+          ],
+          latestLedger: 150,
+        },
       }
 
-      mockGetLedgerEntries.mockResolvedValue(mockResponse)
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => mockRpcResponse,
+      } as Response)
 
       const params: GetLedgerEntriesParams = {
         rpcUrl: mockRpcUrl,
@@ -72,8 +56,15 @@ describe('getLedgerEntries', () => {
 
       const result = await getLedgerEntries(params)
 
-      expect(rpc.Server).toHaveBeenCalledWith(mockRpcUrl)
-      expect(mockGetLedgerEntries).toHaveBeenCalled()
+      expect(fetch).toHaveBeenCalledWith(
+        mockRpcUrl,
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: expect.stringContaining('"method":"getLedgerEntries"'),
+        }),
+      )
+
       expect(result).toEqual({
         entries: [
           {
@@ -93,13 +84,20 @@ describe('getLedgerEntries', () => {
       })
     })
 
-    it('handles empty key list', async () => {
-      const mockResponse = {
-        entries: [],
-        latestLedger: 100,
+    it('handles empty entries array from RPC', async () => {
+      const mockRpcResponse = {
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          entries: null,
+          latestLedger: 100,
+        },
       }
 
-      mockGetLedgerEntries.mockResolvedValue(mockResponse)
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => mockRpcResponse,
+      } as Response)
 
       const result = await getLedgerEntries({
         rpcUrl: mockRpcUrl,
@@ -112,9 +110,8 @@ describe('getLedgerEntries', () => {
   })
 
   describe('failure scenarios', () => {
-    it('throws network error on RPC failure', async () => {
-      const networkError = new Error('Network failure')
-      mockGetLedgerEntries.mockRejectedValue(networkError)
+    it('throws error on network failure', async () => {
+      vi.mocked(fetch).mockRejectedValue(new Error('Network failure'))
 
       await expect(
         getLedgerEntries({
@@ -124,15 +121,55 @@ describe('getLedgerEntries', () => {
       ).rejects.toThrow('Network failure')
     })
 
-    it('throws error on invalid RPC response', async () => {
-      mockGetLedgerEntries.mockRejectedValue(new Error('Invalid response'))
+    it('throws error on non-OK HTTP status', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: false,
+        status: 500,
+      } as Response)
 
       await expect(
         getLedgerEntries({
           rpcUrl: mockRpcUrl,
           keys: mockKeys,
         }),
-      ).rejects.toThrow('Invalid response')
+      ).rejects.toThrow('HTTP error! status: 500')
+    })
+
+    it('throws error on RPC error response', async () => {
+      const errorResponse = {
+        jsonrpc: '2.0',
+        id: 1,
+        error: {
+          code: -32600,
+          message: 'Invalid Request',
+        },
+      }
+
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => errorResponse,
+      } as Response)
+
+      await expect(
+        getLedgerEntries({
+          rpcUrl: mockRpcUrl,
+          keys: mockKeys,
+        }),
+      ).rejects.toThrow('RPC Error (-32600): Invalid Request')
+    })
+
+    it('throws error on invalid JSON-RPC format', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({ invalid: 'response' }),
+      } as Response)
+
+      await expect(
+        getLedgerEntries({
+          rpcUrl: mockRpcUrl,
+          keys: mockKeys,
+        }),
+      ).rejects.toThrow('Invalid JSON-RPC response format')
     })
   })
 
@@ -149,61 +186,15 @@ describe('getLedgerEntries', () => {
         }),
       ).rejects.toThrow(AbortError)
 
-      expect(mockGetLedgerEntries).not.toHaveBeenCalled()
+      expect(fetch).not.toHaveBeenCalled()
     })
 
-    it('throws AbortError when aborted during request', async () => {
+    it('throws AbortError when aborted during fetch', async () => {
       const controller = new AbortController()
-
-      mockGetLedgerEntries.mockImplementation(() => {
-        controller.abort()
-        return Promise.resolve({
-          entries: [],
-          latestLedger: 100,
-        })
-      })
-
-      await expect(
-        getLedgerEntries({
-          rpcUrl: mockRpcUrl,
-          keys: mockKeys,
-          signal: controller.signal,
-        }),
-      ).rejects.toThrow(AbortError)
-    })
-
-    it('does not emit stale results after abort', async () => {
-      const controller = new AbortController()
-      let resolveRequest: (value: unknown) => void
-
-      const requestPromise = new Promise((resolve) => {
-        resolveRequest = resolve
-      })
-
-      mockGetLedgerEntries.mockReturnValue(requestPromise)
-
-      const fetchPromise = getLedgerEntries({
-        rpcUrl: mockRpcUrl,
-        keys: mockKeys,
-        signal: controller.signal,
-      })
-
-      controller.abort()
-
-      resolveRequest!({
-        entries: [{ key: 'stale', xdr: 'stale' }],
-        latestLedger: 100,
-      })
-
-      await expect(fetchPromise).rejects.toThrow(AbortError)
-    })
-
-    it('normalizes abort errors from underlying layer', async () => {
-      const controller = new AbortController()
-      const abortError = new Error('Aborted')
+      const abortError = new Error('The operation was aborted')
       abortError.name = 'AbortError'
 
-      mockGetLedgerEntries.mockRejectedValue(abortError)
+      vi.mocked(fetch).mockRejectedValue(abortError)
 
       await expect(
         getLedgerEntries({
@@ -214,25 +205,29 @@ describe('getLedgerEntries', () => {
       ).rejects.toThrow(AbortError)
     })
 
-    it('allows successful completion without signal', async () => {
-      const mockResponse = {
-        entries: [
-          {
-            key: { toXDR: () => 'key1' },
-            val: { toXDR: () => 'xdr1' },
-          },
-        ],
-        latestLedger: 100,
-      }
-
-      mockGetLedgerEntries.mockResolvedValue(mockResponse)
-
-      const result = await getLedgerEntries({
-        rpcUrl: mockRpcUrl,
-        keys: mockKeys,
+    it('throws AbortError if signal is aborted after fetch completes but before result return', async () => {
+      const controller = new AbortController()
+      
+      vi.mocked(fetch).mockImplementation(async () => {
+        controller.abort()
+        return {
+          ok: true,
+          json: async () => ({
+            jsonrpc: '2.0',
+            id: 1,
+            result: { entries: [], latestLedger: 100 },
+          }),
+        } as Response
       })
 
-      expect(result.entries).toHaveLength(1)
+      await expect(
+        getLedgerEntries({
+          rpcUrl: mockRpcUrl,
+          keys: mockKeys,
+          signal: controller.signal,
+        }),
+      ).rejects.toThrow(AbortError)
     })
   })
 })
+
