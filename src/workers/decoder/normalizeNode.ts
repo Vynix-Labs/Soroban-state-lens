@@ -1,5 +1,6 @@
 import { EMPTY_PATH, appendPath } from '../../types/node'
 import { VisitedTracker, createVisitedTracker } from './guards'
+
 import type {
   AddressNode,
   CycleNode,
@@ -15,8 +16,8 @@ import type {
   VecNode,
 } from '../../types/node'
 
-export { appendPath, EMPTY_PATH }
-export type { Path, PathSegment, RawScVal, Node }
+export { EMPTY_PATH, appendPath }
+export type { Node, Path, PathSegment, RawScVal }
 
 // Re-export guards for external use
 export { VisitedTracker, createVisitedTracker }
@@ -162,6 +163,9 @@ function createUnsupportedNode(
 // Main normalization function
 // ---------------------------------------------------------------------------
 
+/** Sensible default for maximum recursion depth in node normalization. */
+export const MAX_DEPTH_DEFAULT = 32
+
 /**
  * Normalizes an ScVal to a fully-typed Node with path and raw metadata.
  *
@@ -180,8 +184,9 @@ export function normalizeNode(
   depth?: number,
 ): Node {
   const currentDepth = depth ?? 0
+  const maxDepth = options?.maxDepth ?? MAX_DEPTH_DEFAULT
 
-  if (options?.maxDepth !== undefined && currentDepth >= options.maxDepth) {
+  if (currentDepth >= maxDepth) {
     return createTruncatedNode(path, currentDepth)
   }
 
@@ -375,21 +380,49 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_VEC: {
-      const items: Array<Node> = []
-      if (Array.isArray(scVal.value)) {
-        for (let i = 0; i < scVal.value.length; i++) {
+      // Early return for null/undefined values - optimization for empty vectors
+      if (scVal.value == null) {
+        return {
+          kind: 'vec',
+          path,
+          items: [],
+          raw: toRaw(scVal),
+        } satisfies VecNode
+      }
+
+      if (!Array.isArray(scVal.value)) {
+        return {
+          kind: 'vec',
+          path,
+          items: [],
+          raw: toRaw(scVal),
+        } satisfies VecNode
+      }
+
+      // Pre-allocate array with known size for better performance
+      const items: Array<Node> = new Array(scVal.value.length)
+
+      // Use for loop with better error handling for large arrays
+      for (let i = 0; i < scVal.value.length; i++) {
+        try {
           const childPath = appendPath(path, { type: 'index', index: i })
-          items.push(
-            normalizeNode(
-              scVal.value[i],
-              childPath,
-              visited,
-              options,
-              currentDepth + 1,
-            ),
+          items[i] = normalizeNode(
+            scVal.value[i],
+            childPath,
+            visited,
+            options,
+            currentDepth + 1,
+          )
+        } catch (error) {
+          // Handle individual item errors gracefully
+          items[i] = createUnsupportedNode(
+            appendPath(path, { type: 'index', index: i }),
+            'VectorItemError',
+            scVal.value[i],
           )
         }
       }
+
       return {
         kind: 'vec',
         path,

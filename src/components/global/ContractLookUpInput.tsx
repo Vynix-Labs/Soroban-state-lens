@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { validateContractId } from '../../lib/validation/contractId'
+import { normalizeContractIdInput } from '../../lib/validation/normalizeContractIdInput'
 
 function ContractLookUpInput() {
+  const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
   const [inputValue, setInputValue] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -49,9 +52,11 @@ function ContractLookUpInput() {
         return
       }
 
-      // If validation passes, you can proceed with the lookup logic here
-      console.log('Valid contract ID:', inputValue.trim())
-      // TODO: Implement actual contract lookup logic
+      const contractId = normalizeContractIdInput(inputValue)
+      navigate({
+        to: '/contracts/$contractId',
+        params: { contractId },
+      })
     } catch (error) {
       setValidationError('Validation failed. Please try again.')
     } finally {

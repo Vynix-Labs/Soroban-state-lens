@@ -43,6 +43,8 @@ export interface NormalizeRequest {
   scVal: ScVal
   /** Optional flag to normalize as address type if applicable */
   asAddress?: boolean
+  /** Optional maximum recursion depth for normalization. Defaults to a sensible limit. */
+  maxDepth?: number
 }
 
 /**

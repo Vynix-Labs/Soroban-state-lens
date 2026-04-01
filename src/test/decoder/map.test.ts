@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { ScValType, normalizeScVal } from '../../workers/decoder/normalizeScVal'
-import type { MapEntry } from '../../workers/decoder/normalizeScVal'
 import type { NormalizedMap, NormalizedVec } from '../../types/normalized'
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 import { Address, xdr } from '@stellar/stellar-sdk'
+import { bytesToHex, isUint8Array } from '../../lib/format/bytesToHex'
 import { VisitedTracker, createVisitedTracker } from './guards'
 import type {
   CycleMarker,
@@ -189,6 +190,9 @@ function createTruncatedMarker(depth: number): TruncatedMarker {
   return { __truncated: true, depth }
 }
 
+/** Sensible default for maximum recursion depth in normalization. */
+export const MAX_DEPTH_DEFAULT = 32
+
 /**
  * Normalizes an ScVal to a JSON-serializable format
  * Supports i32, u32, and provides fallback for unsupported variants
@@ -206,8 +210,9 @@ export function normalizeScVal(
   currentDepth?: number,
 ): any {
   const depth = currentDepth ?? 0
+  const maxDepth = options?.maxDepth ?? MAX_DEPTH_DEFAULT
 
-  if (options?.maxDepth !== undefined && depth >= options.maxDepth) {
+  if (depth >= maxDepth) {
     return createTruncatedMarker(depth)
   }
 
@@ -223,11 +228,38 @@ export function normalizeScVal(
     visited.markVisited(scVal)
   }
 
-  if (!scVal || typeof scVal.switch !== 'string') {
+  // Handle null/undefined first
+  if (!scVal) {
     return createUnsupportedFallback('Invalid', scVal)
   }
 
-  switch (scVal.switch) {
+  // Handle XDR ScVal objects where switch is an enum
+  let switchValue: string
+  if (typeof scVal.switch === 'string') {
+    switchValue = scVal.switch
+  } else if (typeof scVal.switch === 'function') {
+    // XDR objects have switch() method that returns an enum
+    try {
+      const switchEnum = (scVal.switch as () => any)()
+      if (
+        switchEnum &&
+        typeof switchEnum === 'object' &&
+        'name' in switchEnum
+      ) {
+        // Convert XDR enum name (e.g., "scvAddress") to enum value (e.g., "ScvAddress")
+        const xdrName = switchEnum.name
+        switchValue = xdrName.charAt(0).toUpperCase() + xdrName.slice(1)
+      } else {
+        return createUnsupportedFallback('Invalid', scVal)
+      }
+    } catch {
+      return createUnsupportedFallback('Invalid', scVal)
+    }
+  } else {
+    return createUnsupportedFallback('Invalid', scVal)
+  }
+
+  switch (switchValue) {
     case ScValType.SCV_BOOL:
       return {
         kind: 'primitive',
@@ -324,6 +356,13 @@ export function normalizeScVal(
         value: typeof scVal.value === 'string' ? scVal.value : '',
       }
 
+    case ScValType.SCV_BYTES:
+      return {
+        kind: 'primitive',
+        primitive: 'bytes',
+        value: isUint8Array(scVal.value) ? bytesToHex(scVal.value) : '0x',
+      }
+
     case ScValType.SCV_ERROR: {
       // ScvError carries { type: string, code: number } in the simple model
       const raw = scVal.value
@@ -385,6 +424,9 @@ export function normalizeScVal(
         }
       }
       return createUnsupportedFallback(ScValType.SCV_MAP, scVal.value)
+
+    case ScValType.SCV_ADDRESS:
+      return normalizeScAddress(scVal)
 
     // All other variants return unsupported fallback
     default:
