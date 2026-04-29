@@ -126,6 +126,7 @@ export interface NormalizedPrimitive {
   kind: 'primitive'
   primitive: PrimitiveKind
   value: boolean | number | string | null
+  preview?: string | null
 }
 
 export interface NormalizedVec {
