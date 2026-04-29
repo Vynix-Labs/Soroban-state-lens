@@ -21,6 +21,7 @@ import type {
   NetworkConfig,
   NetworkConfigSlice,
   SnapshotSlice,
+  WatchlistSlice,
 } from './types'
 
 export type { LedgerEntry, LedgerKey } from './types'
@@ -209,6 +210,62 @@ const createSnapshotSlice = (
 })
 
 /**
+ * Watchlist slice creator
+ * Manages pinned keys for quick access across routes
+ */
+const createWatchlistSlice = (
+  set: (fn: (state: LensStore) => Partial<LensStore>) => void,
+  get: () => LensStore,
+): WatchlistSlice => ({
+  watchlist: {},
+
+  addToWatchlist: (contractId: string, keyPath: string) =>
+    set((state) => {
+      const currentItems = state.watchlist[contractId] ?? []
+      
+      // Check if item already exists (duplicate protection)
+      const isDuplicate = currentItems.some((item) => item.keyPath === keyPath)
+      if (isDuplicate) {
+        return state
+      }
+
+      return {
+        watchlist: {
+          ...state.watchlist,
+          [contractId]: [
+            ...currentItems,
+            {
+              contractId,
+              keyPath,
+              timestamp: Date.now(),
+            },
+          ],
+        },
+      }
+    }),
+
+  removeFromWatchlist: (contractId: string, keyPath: string) =>
+    set((state) => ({
+      watchlist: {
+        ...state.watchlist,
+        [contractId]: (state.watchlist[contractId] ?? []).filter(
+          (item) => item.keyPath !== keyPath,
+        ),
+      },
+    })),
+
+  getWatchlistForContract: (contractId: string) => {
+    return get().watchlist[contractId] ?? []
+  },
+
+  clearWatchlist: (contractId: string) =>
+    set((state) => {
+      const { [contractId]: _, ...rest } = state.watchlist
+      return { watchlist: rest }
+    }),
+})
+
+/**
  * Combined Lens Store with persistence for networkConfig only
  *
  * Centralized state management for Soroban State Lens.
@@ -216,6 +273,7 @@ const createSnapshotSlice = (
  * - networkConfig: Current network configuration (PERSISTED)
  * - ledgerData: Cached ledger entries (NOT persisted)
  * - expandedNodes: Tree view expansion state (NOT persisted)
+ * - watchlist: Pinned keys for quick access (NOT persisted)
  */
 export const useLensStore = create<LensStore>()(
   persist<LensStore, [], [], PersistedState>(
@@ -224,6 +282,7 @@ export const useLensStore = create<LensStore>()(
       ...createLedgerDataSlice(set),
       ...createExpandedNodesSlice(set),
       ...createSnapshotSlice(set, get),
+      ...createWatchlistSlice(set, get),
       ...createContractSlice(set),
     }),
     {
@@ -252,6 +311,8 @@ export const useExpandedNodes = () =>
   useLensStore((state) => state.expandedNodes)
 export const useSnapshots = (contractId: string) =>
   useLensStore((state) => state.snapshots[contractId] ?? [])
+export const useWatchlist = (contractId: string) =>
+  useLensStore((state) => state.watchlist[contractId] ?? [])
 
 /**
  * Get store state outside of React components (for testing)
@@ -268,6 +329,7 @@ export const resetStore = () => {
     ledgerData: {},
     expandedNodes: [],
     snapshots: {},
+    watchlist: {},
     activeContractId: null,
   })
 }
@@ -291,4 +353,12 @@ export const lensActions = {
     upserts: Array<LedgerEntry>,
     removals: Array<LedgerKey>,
   ) => useLensStore.getState().batchLedgerUpdate(upserts, removals),
+  addToWatchlist: (contractId: string, keyPath: string) =>
+    useLensStore.getState().addToWatchlist(contractId, keyPath),
+  removeFromWatchlist: (contractId: string, keyPath: string) =>
+    useLensStore.getState().removeFromWatchlist(contractId, keyPath),
+  getWatchlistForContract: (contractId: string) =>
+    useLensStore.getState().getWatchlistForContract(contractId),
+  clearWatchlist: (contractId: string) =>
+    useLensStore.getState().clearWatchlist(contractId),
 }

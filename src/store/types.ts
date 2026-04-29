@@ -98,13 +98,30 @@ export interface ContractSlice {
   clearActiveContractId: () => void
 }
 
+// Watchlist item (pinned key for quick access)
+export interface WatchlistItem {
+  contractId: string
+  keyPath: string
+  timestamp: number
+}
+
+// Watchlist slice
+export interface WatchlistSlice {
+  watchlist: Record<string, Array<WatchlistItem>>
+  addToWatchlist: (contractId: string, keyPath: string) => void
+  removeFromWatchlist: (contractId: string, keyPath: string) => void
+  getWatchlistForContract: (contractId: string) => Array<WatchlistItem>
+  clearWatchlist: (contractId: string) => void
+}
+
 // Combined store type
 export interface LensStore
   extends NetworkConfigSlice,
     LedgerDataSlice,
     ExpandedNodesSlice,
     SnapshotSlice,
-    ContractSlice {}
+    ContractSlice,
+    WatchlistSlice {}
 
 // Default network configurations
 export const DEFAULT_NETWORKS: Record<string, NetworkConfig> = {
