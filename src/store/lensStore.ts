@@ -170,7 +170,11 @@ const createSnapshotSlice = (
 ): SnapshotSlice => ({
   snapshots: {},
 
-  addSnapshot: (contractId: string, entries: Record<string, LedgerEntry>, label?: string) =>
+  addSnapshot: (
+    contractId: string,
+    entries: Record<string, LedgerEntry>,
+    label?: string,
+  ) =>
     set((state) => ({
       snapshots: {
         ...state.snapshots,
