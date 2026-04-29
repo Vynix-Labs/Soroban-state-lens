@@ -12,7 +12,7 @@ export const createContractSlice = (
 ): ContractSlice => ({
   activeContractId: null,
 
-  setActiveContractId: (id:string) =>
+  setActiveContractId: (id: string) =>
     set(() => ({
       activeContractId: id,
     })),

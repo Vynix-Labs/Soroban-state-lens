@@ -5,7 +5,7 @@
 
 /**
  * Converts a byte array to a hexadecimal string.
- * 
+ *
  * @param bytes - The byte array to convert. Can be empty or null/undefined.
  * @returns A deterministic hex string representation of the bytes.
  *          Returns "0x" for empty/null/undefined inputs.
@@ -17,7 +17,7 @@ export function bytesToHex(bytes: Uint8Array | null | undefined): string {
 
   // Convert each byte to a 2-digit hex string and join them
   const hexBytes = Array.from(bytes)
-    .map(byte => byte.toString(16).padStart(2, '0'))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('')
 
   return `0x${hexBytes}`

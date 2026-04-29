@@ -85,7 +85,11 @@ export interface ContractSnapshot {
 // Snapshot slice
 export interface SnapshotSlice {
   snapshots: Record<string, Array<ContractSnapshot>>
-  addSnapshot: (contractId: string, entries: Record<string, LedgerEntry>, label?: string) => void
+  addSnapshot: (
+    contractId: string,
+    entries: Record<string, LedgerEntry>,
+    label?: string,
+  ) => void
   getSnapshots: (contractId: string) => Array<ContractSnapshot>
   removeSnapshot: (contractId: string, snapshotId: string) => void
   clearSnapshots: (contractId: string) => void
@@ -100,7 +104,8 @@ export interface ContractSlice {
 
 // Combined store type
 export interface LensStore
-  extends NetworkConfigSlice,
+  extends
+    NetworkConfigSlice,
     LedgerDataSlice,
     ExpandedNodesSlice,
     SnapshotSlice,
