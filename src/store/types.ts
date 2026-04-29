@@ -10,6 +10,17 @@ export enum ConnectionStatus {
   ERROR = 'error',
 }
 
+// Display preferences
+export enum ByteDisplayMode {
+  HEX = 'hex',
+  BASE64 = 'base64',
+}
+
+export enum BigIntDisplayMode {
+  RAW = 'raw',
+  FORMATTED = 'formatted',
+}
+
 // Network configuration
 export interface NetworkConfig {
   networkId: string
@@ -85,7 +96,11 @@ export interface ContractSnapshot {
 // Snapshot slice
 export interface SnapshotSlice {
   snapshots: Record<string, Array<ContractSnapshot>>
-  addSnapshot: (contractId: string, entries: Record<string, LedgerEntry>, label?: string) => void
+  addSnapshot: (
+    contractId: string,
+    entries: Record<string, LedgerEntry>,
+    label?: string,
+  ) => void
   getSnapshots: (contractId: string) => Array<ContractSnapshot>
   removeSnapshot: (contractId: string, snapshotId: string) => void
   clearSnapshots: (contractId: string) => void
@@ -98,13 +113,24 @@ export interface ContractSlice {
   clearActiveContractId: () => void
 }
 
+// Preferences slice
+export interface PreferencesSlice {
+  byteDisplayMode: ByteDisplayMode
+  bigIntDisplayMode: BigIntDisplayMode
+  setByteDisplayMode: (mode: ByteDisplayMode) => void
+  setBigIntDisplayMode: (mode: BigIntDisplayMode) => void
+  resetPreferences: () => void
+}
+
 // Combined store type
 export interface LensStore
-  extends NetworkConfigSlice,
+  extends
+    NetworkConfigSlice,
     LedgerDataSlice,
     ExpandedNodesSlice,
     SnapshotSlice,
-    ContractSlice {}
+    ContractSlice,
+    PreferencesSlice {}
 
 // Default network configurations
 export const DEFAULT_NETWORKS: Record<string, NetworkConfig> = {

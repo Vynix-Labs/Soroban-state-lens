@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-import { ConnectionStatus, DEFAULT_NETWORKS } from './types'
+import { BigIntDisplayMode, ByteDisplayMode, ConnectionStatus, DEFAULT_NETWORKS  } from './types'
 import {
   DEFAULT_NETWORK_CONFIG,
   NETWORK_CONFIG_STORAGE_KEY,
@@ -10,6 +10,7 @@ import {
   serializeNetworkConfigForStorage,
 } from './persistence'
 import { createContractSlice } from './contractSlice'
+import { createPreferencesSlice } from './preferencesSlice'
 
 import type { PersistedState } from './persistence'
 import type {
@@ -170,7 +171,11 @@ const createSnapshotSlice = (
 ): SnapshotSlice => ({
   snapshots: {},
 
-  addSnapshot: (contractId: string, entries: Record<string, LedgerEntry>, label?: string) =>
+  addSnapshot: (
+    contractId: string,
+    entries: Record<string, LedgerEntry>,
+    label?: string,
+  ) =>
     set((state) => ({
       snapshots: {
         ...state.snapshots,
@@ -225,13 +230,18 @@ export const useLensStore = create<LensStore>()(
       ...createExpandedNodesSlice(set),
       ...createSnapshotSlice(set, get),
       ...createContractSlice(set),
+      ...createPreferencesSlice(set),
     }),
     {
       name: NETWORK_CONFIG_STORAGE_KEY,
       storage: createSafeStorage<PersistedState>(),
-      // Only persist networkConfig slice (excluding connectionStatus)
+      // Persist networkConfig and preferences
       partialize: (state): PersistedState => ({
         networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
+        preferences: {
+          byteDisplayMode: state.byteDisplayMode,
+          bigIntDisplayMode: state.bigIntDisplayMode,
+        },
       }),
       // Validate and merge persisted data safely
       merge: (persistedState, currentState) => ({
@@ -269,6 +279,8 @@ export const resetStore = () => {
     expandedNodes: [],
     snapshots: {},
     activeContractId: null,
+    byteDisplayMode: ByteDisplayMode.HEX,
+    bigIntDisplayMode: BigIntDisplayMode.RAW,
   })
 }
 

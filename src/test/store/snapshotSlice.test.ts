@@ -87,7 +87,8 @@ describe('snapshotSlice', () => {
   })
 
   it('removeSnapshot removes only the targeted snapshot', () => {
-    const { addSnapshot, getSnapshots, removeSnapshot } = useLensStore.getState()
+    const { addSnapshot, getSnapshots, removeSnapshot } =
+      useLensStore.getState()
 
     addSnapshot('c1', { a: makeEntry('a', 'c1') })
     addSnapshot('c1', { b: makeEntry('b', 'c1') })
@@ -100,7 +101,8 @@ describe('snapshotSlice', () => {
   })
 
   it('removeSnapshot is a no-op for unknown snapshot', () => {
-    const { addSnapshot, getSnapshots, removeSnapshot } = useLensStore.getState()
+    const { addSnapshot, getSnapshots, removeSnapshot } =
+      useLensStore.getState()
 
     addSnapshot('c1', {})
     removeSnapshot('c1', 'nonexistent-id')
@@ -109,7 +111,8 @@ describe('snapshotSlice', () => {
   })
 
   it('clearSnapshots removes all snapshots for a contract', () => {
-    const { addSnapshot, getSnapshots, clearSnapshots } = useLensStore.getState()
+    const { addSnapshot, getSnapshots, clearSnapshots } =
+      useLensStore.getState()
 
     addSnapshot('c1', {})
     addSnapshot('c1', {})
@@ -122,7 +125,8 @@ describe('snapshotSlice', () => {
   })
 
   it('clearSnapshots is a no-op for unknown contract', () => {
-    const { addSnapshot, getSnapshots, clearSnapshots } = useLensStore.getState()
+    const { addSnapshot, getSnapshots, clearSnapshots } =
+      useLensStore.getState()
 
     addSnapshot('c1', {})
     clearSnapshots('nonexistent')
