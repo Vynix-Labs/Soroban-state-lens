@@ -15,7 +15,7 @@
  * - Returns "0x" as fallback for any invalid input
  */
 export function formatScBytesHex(
-  input: Uint8Array | number[] | string
+  input: Uint8Array | Array<number> | string
 ): string {
   try {
     let bytes: Uint8Array

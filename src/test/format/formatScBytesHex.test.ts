@@ -93,7 +93,7 @@ describe('formatScBytesHex', () => {
     })
 
     it('returns "0x" for number array with non-numeric value', () => {
-      expect(formatScBytesHex([1, 'invalid', 3] as unknown as number[])).toBe('0x')
+      expect(formatScBytesHex([1, 'invalid', 3] as unknown as Array<number>)).toBe('0x')
     })
   })
 
