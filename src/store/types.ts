@@ -113,6 +113,22 @@ export interface ContractSlice {
   clearActiveContractId: () => void
 }
 
+// Watchlist item (pinned key for quick access)
+export interface WatchlistItem {
+  contractId: string
+  keyPath: string
+  timestamp: number
+}
+
+// Watchlist slice
+export interface WatchlistSlice {
+  watchlist: Record<string, Array<WatchlistItem>>
+  addToWatchlist: (contractId: string, keyPath: string) => void
+  removeFromWatchlist: (contractId: string, keyPath: string) => void
+  getWatchlistForContract: (contractId: string) => Array<WatchlistItem>
+  clearWatchlist: (contractId: string) => void
+}
+
 // Preferences slice
 export interface PreferencesSlice {
   byteDisplayMode: ByteDisplayMode
@@ -130,7 +146,8 @@ export interface LensStore
     ExpandedNodesSlice,
     SnapshotSlice,
     ContractSlice,
-    PreferencesSlice {}
+    PreferencesSlice,
+    WatchlistSlice {}
 
 // Default network configurations
 export const DEFAULT_NETWORKS: Record<string, NetworkConfig> = {
