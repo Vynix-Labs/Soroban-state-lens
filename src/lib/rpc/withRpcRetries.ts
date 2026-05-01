@@ -86,7 +86,7 @@ export async function withRpcRetries<T>(
 
   let attempt = 1
 
-  while (true) {
+  for (;;) {
     let result: T | undefined
     let errorObj: unknown = null
     let didThrow = false
