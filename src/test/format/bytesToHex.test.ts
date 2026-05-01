@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'vitest'
-import { bytesToHex, isUint8Array } from '../../lib/format/bytesToHex'
+import {
+  bytesToHex,
+  bytesToUtf8Preview,
+  isUint8Array,
+} from '../../lib/format/bytesToHex'
 
 describe('bytesToHex', () => {
   test('should return "0x" for null input', () => {
@@ -44,6 +48,23 @@ describe('bytesToHex', () => {
   test('should handle mixed values', () => {
     const mixedBytes = new Uint8Array([0, 1, 15, 16, 255, 128])
     expect(bytesToHex(mixedBytes)).toBe('0x00010f10ff80')
+  })
+})
+
+describe('bytesToUtf8Preview', () => {
+  test('should return empty string for empty byte array', () => {
+    const emptyBytes = new Uint8Array([])
+    expect(bytesToUtf8Preview(emptyBytes)).toBe('')
+  })
+
+  test('should decode valid UTF-8 text', () => {
+    const textBytes = new TextEncoder().encode('Hello, Soroban!')
+    expect(bytesToUtf8Preview(textBytes)).toBe('Hello, Soroban!')
+  })
+
+  test('should return null for invalid UTF-8 byte sequences', () => {
+    const invalidBytes = new Uint8Array([0xc3, 0x28])
+    expect(bytesToUtf8Preview(invalidBytes)).toBe(null)
   })
 })
 

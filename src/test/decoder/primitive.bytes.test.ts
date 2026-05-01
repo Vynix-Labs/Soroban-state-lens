@@ -14,6 +14,7 @@ describe('ScVal Bytes Normalization', () => {
       kind: 'primitive',
       primitive: 'bytes',
       value: '0x',
+      preview: '',
     })
   })
 
@@ -28,6 +29,7 @@ describe('ScVal Bytes Normalization', () => {
       kind: 'primitive',
       primitive: 'bytes',
       value: '0x0102030405',
+      preview: null,
     })
   })
 
@@ -46,6 +48,7 @@ describe('ScVal Bytes Normalization', () => {
       kind: 'primitive',
       primitive: 'bytes',
       value: '0x0123456789abcdeffedcba9876543210',
+      preview: null,
     })
   })
 
@@ -60,6 +63,40 @@ describe('ScVal Bytes Normalization', () => {
       kind: 'primitive',
       primitive: 'bytes',
       value: '0x0000ff80',
+      preview: null,
+    })
+  })
+
+  test('should include readable UTF-8 preview when bytes decode safely', () => {
+    const scVal: ScVal = {
+      switch: ScValType.SCV_BYTES,
+      value: new Uint8Array([
+        72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33,
+      ]),
+    }
+    const result = normalizeScVal(scVal)
+
+    expect(result).toEqual({
+      kind: 'primitive',
+      primitive: 'bytes',
+      value: '0x48656c6c6f2c20776f726c6421',
+      preview: 'Hello, world!',
+    })
+  })
+
+  test('should return null preview for invalid utf-8 byte sequences', () => {
+    const scVal: ScVal = {
+      switch: ScValType.SCV_BYTES,
+      value: new Uint8Array([0xc3, 0x28]),
+    }
+
+    const result = normalizeScVal(scVal)
+
+    expect(result).toEqual({
+      kind: 'primitive',
+      primitive: 'bytes',
+      value: '0xc328',
+      preview: null,
     })
   })
 
@@ -76,6 +113,7 @@ describe('ScVal Bytes Normalization', () => {
       kind: 'primitive',
       primitive: 'bytes',
       value: '0x',
+      preview: null,
     })
   })
 })

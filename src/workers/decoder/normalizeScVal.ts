@@ -1,5 +1,9 @@
 import { Address, xdr } from '@stellar/stellar-sdk'
-import { bytesToHex, isUint8Array } from '../../lib/format/bytesToHex'
+import {
+  bytesToHex,
+  bytesToUtf8Preview,
+  isUint8Array,
+} from '../../lib/format/bytesToHex'
 import { VisitedTracker, createVisitedTracker } from './guards'
 import type {
   CycleMarker,
@@ -361,6 +365,9 @@ export function normalizeScVal(
         kind: 'primitive',
         primitive: 'bytes',
         value: isUint8Array(scVal.value) ? bytesToHex(scVal.value) : '0x',
+        preview: isUint8Array(scVal.value)
+          ? bytesToUtf8Preview(scVal.value)
+          : null,
       }
 
     case ScValType.SCV_ERROR: {

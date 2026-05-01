@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SdsDemoRouteImport } from './routes/sds-demo'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsPreferencesRouteImport } from './routes/settings/preferences'
+import { Route as SettingsNetworkRouteImport } from './routes/settings/network'
 import { Route as ContractsContractIdIndexRouteImport } from './routes/contracts/$contractId/index'
 import { Route as ContractsContractIdExplorerRouteImport } from './routes/contracts/$contractId/explorer'
 
@@ -30,6 +31,11 @@ const SettingsPreferencesRoute = SettingsPreferencesRouteImport.update({
   path: '/settings/preferences',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsNetworkRoute = SettingsNetworkRouteImport.update({
+  id: '/settings/network',
+  path: '/settings/network',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContractsContractIdIndexRoute =
   ContractsContractIdIndexRouteImport.update({
     id: '/contracts/$contractId/',
@@ -46,6 +52,7 @@ const ContractsContractIdExplorerRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
+  '/settings/network': typeof SettingsNetworkRoute
   '/settings/preferences': typeof SettingsPreferencesRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
   '/contracts/$contractId/': typeof ContractsContractIdIndexRoute
@@ -53,6 +60,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
+  '/settings/network': typeof SettingsNetworkRoute
   '/settings/preferences': typeof SettingsPreferencesRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
   '/contracts/$contractId': typeof ContractsContractIdIndexRoute
@@ -61,6 +69,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
+  '/settings/network': typeof SettingsNetworkRoute
   '/settings/preferences': typeof SettingsPreferencesRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
   '/contracts/$contractId/': typeof ContractsContractIdIndexRoute
@@ -70,6 +79,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/sds-demo'
+    | '/settings/network'
     | '/settings/preferences'
     | '/contracts/$contractId/explorer'
     | '/contracts/$contractId/'
@@ -77,6 +87,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/sds-demo'
+    | '/settings/network'
     | '/settings/preferences'
     | '/contracts/$contractId/explorer'
     | '/contracts/$contractId'
@@ -84,6 +95,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/sds-demo'
+    | '/settings/network'
     | '/settings/preferences'
     | '/contracts/$contractId/explorer'
     | '/contracts/$contractId/'
@@ -92,6 +104,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SdsDemoRoute: typeof SdsDemoRoute
+  SettingsNetworkRoute: typeof SettingsNetworkRoute
   SettingsPreferencesRoute: typeof SettingsPreferencesRoute
   ContractsContractIdExplorerRoute: typeof ContractsContractIdExplorerRoute
   ContractsContractIdIndexRoute: typeof ContractsContractIdIndexRoute
@@ -120,6 +133,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsPreferencesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/network': {
+      id: '/settings/network'
+      path: '/settings/network'
+      fullPath: '/settings/network'
+      preLoaderRoute: typeof SettingsNetworkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contracts/$contractId/': {
       id: '/contracts/$contractId/'
       path: '/contracts/$contractId'
@@ -140,6 +160,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SdsDemoRoute: SdsDemoRoute,
+  SettingsNetworkRoute: SettingsNetworkRoute,
   SettingsPreferencesRoute: SettingsPreferencesRoute,
   ContractsContractIdExplorerRoute: ContractsContractIdExplorerRoute,
   ContractsContractIdIndexRoute: ContractsContractIdIndexRoute,
