@@ -1,7 +1,17 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-import { BigIntDisplayMode, ByteDisplayMode, ConnectionStatus, DEFAULT_NETWORKS  } from './types'
+import { getLedgerEntries } from '../lib/network/getLedgerEntries'
+import { mapLedgerEntriesToStoreEntries } from '../lib/network/mapLedgerEntriesToStoreEntries'
+import { isDecoderWorkerError } from '../types/decoder-worker'
+import { createDecoderWorkerSafe } from '../workers/createDecoderWorkerSafe'
+import {
+  BigIntDisplayMode,
+  ByteDisplayMode,
+  ConnectionStatus,
+  ContractLoadStatus,
+  DEFAULT_NETWORKS,
+} from './types'
 import {
   DEFAULT_NETWORK_CONFIG,
   NETWORK_CONFIG_STORAGE_KEY,
@@ -14,6 +24,7 @@ import { createPreferencesSlice } from './preferencesSlice'
 
 import type { PersistedState } from './persistence'
 import type {
+  ContractLoadSlice,
   ExpandedNodesSlice,
   LedgerDataSlice,
   LedgerEntry,
@@ -215,6 +226,108 @@ const createSnapshotSlice = (
 })
 
 /**
+ * Contract-load slice creator
+ * Manages load lifecycle and guards against stale in-flight requests.
+ */
+const createContractLoadSlice = (
+  set: (fn: (state: LensStore) => Partial<LensStore>) => void,
+  get: () => LensStore,
+): ContractLoadSlice => {
+  let requestId = 0
+  let activeController: AbortController | null = null
+
+  return {
+    contractLoadStatus: ContractLoadStatus.IDLE,
+    contractLoadError: null,
+
+    setContractLoadStatus: (status: ContractLoadStatus) =>
+      set(() => ({ contractLoadStatus: status })),
+
+    setContractLoadError: (message: string | null) =>
+      set(() => ({ contractLoadError: message })),
+
+    resetContractLoadState: () =>
+      set(() => ({
+        contractLoadStatus: ContractLoadStatus.IDLE,
+        contractLoadError: null,
+      })),
+
+    loadContract: async (contractId: string, keys: Array<string>) => {
+      requestId += 1
+      const currentRequestId = requestId
+
+      if (activeController) {
+        activeController.abort()
+      }
+
+      activeController = new AbortController()
+      const signal = activeController.signal
+
+      set((state) => ({
+        activeContractId: contractId,
+        contractLoadStatus: ContractLoadStatus.LOADING,
+        contractLoadError: null,
+        ledgerData:
+          state.activeContractId === contractId ? state.ledgerData : {},
+      }))
+
+      try {
+        const { entries } = await getLedgerEntries({
+          rpcUrl: get().networkConfig.rpcUrl,
+          keys,
+          signal,
+        })
+
+        if (currentRequestId !== requestId || signal.aborted) {
+          return
+        }
+
+        const worker = await createDecoderWorkerSafe()
+        const decodedValuesByKey: Record<string, unknown> = {}
+
+        for (const entry of entries) {
+          const result = await worker.decodeScVal({ xdr: entry.xdr })
+          decodedValuesByKey[entry.key] = isDecoderWorkerError(result)
+            ? entry.xdr
+            : result
+        }
+
+        const mappedEntries = mapLedgerEntriesToStoreEntries({
+          contractId,
+          entries,
+          decodedValuesByKey,
+        })
+
+        set(() => ({
+          ledgerData: Object.fromEntries(
+            mappedEntries.map((entry) => [entry.key, entry]),
+          ),
+          contractLoadStatus:
+            mappedEntries.length === 0
+              ? ContractLoadStatus.EMPTY
+              : ContractLoadStatus.SUCCESS,
+          contractLoadError: null,
+        }))
+      } catch (error) {
+        if (currentRequestId !== requestId || signal.aborted) {
+          return
+        }
+
+        set(() => ({
+          contractLoadStatus: ContractLoadStatus.ERROR,
+          contractLoadError:
+            error instanceof Error ? error.message : 'Failed to load contract',
+        }))
+      } finally {
+        if (activeController.signal === signal) {
+          activeController = null
+        }
+      }
+    },
+  }
+}
+
+/**
  * Watchlist slice creator
  * Manages pinned keys for quick access across routes
  */
@@ -278,6 +391,7 @@ const createWatchlistSlice = (
  * - networkConfig: Current network configuration (PERSISTED)
  * - ledgerData: Cached ledger entries (NOT persisted)
  * - expandedNodes: Tree view expansion state (NOT persisted)
+ * - contractLoadStatus: Contract fetch lifecycle (NOT persisted)
  * - watchlist: Pinned keys for quick access (NOT persisted)
  */
 export const useLensStore = create<LensStore>()(
@@ -289,6 +403,7 @@ export const useLensStore = create<LensStore>()(
       ...createSnapshotSlice(set, get),
       ...createWatchlistSlice(set, get),
       ...createContractSlice(set),
+      ...createContractLoadSlice(set, get),
       ...createPreferencesSlice(set),
     }),
     {
@@ -319,6 +434,12 @@ export const useNetworkConfig = () =>
 export const useLedgerData = () => useLensStore((state) => state.ledgerData)
 export const useExpandedNodes = () =>
   useLensStore((state) => state.expandedNodes)
+export const useActiveContractId = () =>
+  useLensStore((state) => state.activeContractId)
+export const useContractLoadStatus = () =>
+  useLensStore((state) => state.contractLoadStatus)
+export const useContractLoadError = () =>
+  useLensStore((state) => state.contractLoadError)
 export const useSnapshots = (contractId: string) =>
   useLensStore((state) => state.snapshots[contractId] ?? [])
 export const useWatchlist = (contractId: string) =>
@@ -341,6 +462,8 @@ export const resetStore = () => {
     snapshots: {},
     watchlist: {},
     activeContractId: null,
+    contractLoadStatus: ContractLoadStatus.IDLE,
+    contractLoadError: null,
     byteDisplayMode: ByteDisplayMode.HEX,
     bigIntDisplayMode: BigIntDisplayMode.RAW,
   })
@@ -373,4 +496,14 @@ export const lensActions = {
     useLensStore.getState().getWatchlistForContract(contractId),
   clearWatchlist: (contractId: string) =>
     useLensStore.getState().clearWatchlist(contractId),
+  setActiveContractId: (contractId: string) =>
+    useLensStore.getState().setActiveContractId(contractId),
+  clearActiveContractId: () => useLensStore.getState().clearActiveContractId(),
+  setContractLoadStatus: (status: ContractLoadStatus) =>
+    useLensStore.getState().setContractLoadStatus(status),
+  setContractLoadError: (message: string | null) =>
+    useLensStore.getState().setContractLoadError(message),
+  resetContractLoadState: () => useLensStore.getState().resetContractLoadState(),
+  loadContract: (contractId: string, keys: Array<string>) =>
+    useLensStore.getState().loadContract(contractId, keys),
 }

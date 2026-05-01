@@ -113,6 +113,23 @@ export interface ContractSlice {
   clearActiveContractId: () => void
 }
 
+export enum ContractLoadStatus {
+  IDLE = 'idle',
+  LOADING = 'loading',
+  SUCCESS = 'success',
+  EMPTY = 'empty',
+  ERROR = 'error',
+}
+
+export interface ContractLoadSlice {
+  contractLoadStatus: ContractLoadStatus
+  contractLoadError: string | null
+  setContractLoadStatus: (status: ContractLoadStatus) => void
+  setContractLoadError: (message: string | null) => void
+  resetContractLoadState: () => void
+  loadContract: (contractId: string, keys: Array<string>) => Promise<void>
+}
+
 // Watchlist item (pinned key for quick access)
 export interface WatchlistItem {
   contractId: string
@@ -146,6 +163,7 @@ export interface LensStore
     ExpandedNodesSlice,
     SnapshotSlice,
     ContractSlice,
+    ContractLoadSlice,
     PreferencesSlice,
     WatchlistSlice {}
 
