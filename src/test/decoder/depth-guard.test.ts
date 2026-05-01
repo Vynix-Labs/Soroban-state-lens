@@ -264,7 +264,6 @@ describe('Depth Guard - maxDepth', () => {
   })
 })
 
-
 function isTruncatedNode(node: any): node is TruncatedNode {
   return node && node.kind === 'truncated'
 }
