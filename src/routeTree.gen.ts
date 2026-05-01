@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SdsDemoRouteImport } from './routes/sds-demo'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SettingsPreferencesRouteImport } from './routes/settings/preferences'
 import { Route as SettingsNetworkRouteImport } from './routes/settings/network'
 import { Route as ContractsContractIdIndexRouteImport } from './routes/contracts/$contractId/index'
 import { Route as ContractsContractIdExplorerRouteImport } from './routes/contracts/$contractId/explorer'
@@ -23,6 +24,11 @@ const SdsDemoRoute = SdsDemoRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsPreferencesRoute = SettingsPreferencesRouteImport.update({
+  id: '/settings/preferences',
+  path: '/settings/preferences',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsNetworkRoute = SettingsNetworkRouteImport.update({
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
   '/settings/network': typeof SettingsNetworkRoute
+  '/settings/preferences': typeof SettingsPreferencesRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
   '/contracts/$contractId/': typeof ContractsContractIdIndexRoute
 }
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
   '/settings/network': typeof SettingsNetworkRoute
+  '/settings/preferences': typeof SettingsPreferencesRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
   '/contracts/$contractId': typeof ContractsContractIdIndexRoute
 }
@@ -62,6 +70,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
   '/settings/network': typeof SettingsNetworkRoute
+  '/settings/preferences': typeof SettingsPreferencesRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
   '/contracts/$contractId/': typeof ContractsContractIdIndexRoute
 }
@@ -71,6 +80,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sds-demo'
     | '/settings/network'
+    | '/settings/preferences'
     | '/contracts/$contractId/explorer'
     | '/contracts/$contractId/'
   fileRoutesByTo: FileRoutesByTo
@@ -78,6 +88,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sds-demo'
     | '/settings/network'
+    | '/settings/preferences'
     | '/contracts/$contractId/explorer'
     | '/contracts/$contractId'
   id:
@@ -85,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sds-demo'
     | '/settings/network'
+    | '/settings/preferences'
     | '/contracts/$contractId/explorer'
     | '/contracts/$contractId/'
   fileRoutesById: FileRoutesById
@@ -93,6 +105,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SdsDemoRoute: typeof SdsDemoRoute
   SettingsNetworkRoute: typeof SettingsNetworkRoute
+  SettingsPreferencesRoute: typeof SettingsPreferencesRoute
   ContractsContractIdExplorerRoute: typeof ContractsContractIdExplorerRoute
   ContractsContractIdIndexRoute: typeof ContractsContractIdIndexRoute
 }
@@ -111,6 +124,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/preferences': {
+      id: '/settings/preferences'
+      path: '/settings/preferences'
+      fullPath: '/settings/preferences'
+      preLoaderRoute: typeof SettingsPreferencesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/network': {
@@ -141,6 +161,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SdsDemoRoute: SdsDemoRoute,
   SettingsNetworkRoute: SettingsNetworkRoute,
+  SettingsPreferencesRoute: SettingsPreferencesRoute,
   ContractsContractIdExplorerRoute: ContractsContractIdExplorerRoute,
   ContractsContractIdIndexRoute: ContractsContractIdIndexRoute,
 }

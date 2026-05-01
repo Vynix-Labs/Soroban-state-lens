@@ -10,6 +10,17 @@ export enum ConnectionStatus {
   ERROR = 'error',
 }
 
+// Display preferences
+export enum ByteDisplayMode {
+  HEX = 'hex',
+  BASE64 = 'base64',
+}
+
+export enum BigIntDisplayMode {
+  RAW = 'raw',
+  FORMATTED = 'formatted',
+}
+
 // Network configuration
 export interface NetworkConfig {
   networkId: string
@@ -102,6 +113,15 @@ export interface ContractSlice {
   clearActiveContractId: () => void
 }
 
+// Preferences slice
+export interface PreferencesSlice {
+  byteDisplayMode: ByteDisplayMode
+  bigIntDisplayMode: BigIntDisplayMode
+  setByteDisplayMode: (mode: ByteDisplayMode) => void
+  setBigIntDisplayMode: (mode: BigIntDisplayMode) => void
+  resetPreferences: () => void
+}
+
 // Combined store type
 export interface LensStore
   extends
@@ -109,7 +129,8 @@ export interface LensStore
     LedgerDataSlice,
     ExpandedNodesSlice,
     SnapshotSlice,
-    ContractSlice {}
+    ContractSlice,
+    PreferencesSlice {}
 
 // Default network configurations
 export const DEFAULT_NETWORKS: Record<string, NetworkConfig> = {
