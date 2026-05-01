@@ -260,8 +260,9 @@ const createContractLoadSlice = (
         activeController.abort()
       }
 
-      activeController = new AbortController()
-      const signal = activeController.signal
+      const controller = new AbortController()
+      activeController = controller
+      const { signal } = controller
 
       set((state) => ({
         activeContractId: contractId,
@@ -319,7 +320,7 @@ const createContractLoadSlice = (
             error instanceof Error ? error.message : 'Failed to load contract',
         }))
       } finally {
-        if (activeController.signal === signal) {
+        if (activeController === controller) {
           activeController = null
         }
       }

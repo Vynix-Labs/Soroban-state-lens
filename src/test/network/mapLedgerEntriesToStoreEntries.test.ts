@@ -20,7 +20,7 @@ describe('mapLedgerEntriesToStoreEntries', () => {
 
     expect(result).toEqual([
       {
-        key: 'CONTRACT_1:Other:ledger-key-1',
+        key: 'CONTRACT_1::Other::ledger-key-1',
         contractId: 'CONTRACT_1',
         type: 'Other',
         value: { kind: 'primitive', scType: 'string', value: 'hello' },
@@ -39,7 +39,7 @@ describe('mapLedgerEntriesToStoreEntries', () => {
 
     expect(result).toEqual([
       {
-        key: 'CONTRACT_2:Other:ledger-key-2',
+        key: 'CONTRACT_2::Other::ledger-key-2',
         contractId: 'CONTRACT_2',
         type: 'Other',
         value: 'xdr-2',
@@ -60,7 +60,7 @@ describe('mapLedgerEntriesToStoreEntries', () => {
     })
 
     expect(result).toHaveLength(2)
-    expect(result[0]?.key).toBe('CONTRACT_3:Other:a')
-    expect(result[1]?.key).toBe('CONTRACT_3:Other:b')
+    expect(result[0]?.key).toBe('CONTRACT_3::Other::a')
+    expect(result[1]?.key).toBe('CONTRACT_3::Other::b')
   })
 })

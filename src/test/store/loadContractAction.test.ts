@@ -56,7 +56,7 @@ describe('loadContract action', () => {
     expect(state.activeContractId).toBe('C1')
     expect(state.contractLoadStatus).toBe(ContractLoadStatus.SUCCESS)
     expect(Object.keys(state.ledgerData)).toHaveLength(1)
-    expect(state.ledgerData['C1:Other:key-1'].rawXdr).toBe('xdr-1')
+    expect(state.ledgerData['C1::Other::key-1'].rawXdr).toBe('xdr-1')
   })
 
   it('sets EMPTY when the load succeeds with no entries', async () => {
@@ -156,7 +156,7 @@ describe('loadContract action', () => {
 
     const state = getStoreState()
     expect(state.contractLoadStatus).toBe(ContractLoadStatus.SUCCESS)
-    expect(state.ledgerData['C_STALE:Other:new-key'].rawXdr).toBe('new-xdr')
-    expect(state.ledgerData['C_STALE:Other:old-key']).toBeUndefined()
+    expect(state.ledgerData['C_STALE::Other::new-key'].rawXdr).toBe('new-xdr')
+    expect(state.ledgerData['C_STALE::Other::old-key']).toBeUndefined()
   })
 })
