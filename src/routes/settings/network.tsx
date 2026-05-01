@@ -1,7 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useNetworkConfig, useLensStore } from '../../store/lensStore'
+import {
+  DEFAULT_NETWORKS,
+  useLensStore,
+  useNetworkConfig,
+} from '../../store/lensStore'
 import { ConnectionStatus } from '../../store/types'
-import { DEFAULT_NETWORKS } from '../../store/lensStore'
 
 export const Route = createFileRoute('/settings/network')({
   component: SettingsNetwork,
