@@ -1,10 +1,23 @@
 import { useEffect, useMemo } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Button, Card, Heading } from '@stellar/design-system'
+import { VirtualizedTreeList } from '../../../components/explorer/VirtualizedTreeList'
 import { selectLedgerEntriesByContractId } from '../../../lib/selectors/selectLedgerEntriesByContractId'
+import { flattenTree } from '../../../lib/tree/flattenTree'
 import { ContractLoadStatus } from '../../../store/types'
 import { useLensStore } from '../../../store/lensStore'
 import { validateContractRouteParam } from './-validateContractRouteParam'
+import type { FlattenTreeRoot } from '../../../lib/tree/flatTreeRow'
+import type { Node } from '../../../types/node'
+
+function isNodeLike(value: unknown): value is Node {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'kind' in value &&
+    typeof (value as { kind: unknown }).kind === 'string'
+  )
+}
 
 export const Route = createFileRoute('/contracts/$contractId/explorer')({
   component: ContractExplorer,
@@ -35,6 +48,8 @@ function ContractExplorer() {
   const loadContract = useLensStore((state) => state.loadContract)
   const contractLoadStatus = useLensStore((state) => state.contractLoadStatus)
   const contractLoadError = useLensStore((state) => state.contractLoadError)
+  const expandedNodes = useLensStore((state) => state.expandedNodes)
+  const toggleExpanded = useLensStore((state) => state.toggleExpanded)
 
   const ledgerEntries = useLensStore((state) =>
     selectLedgerEntriesByContractId(state, contractId),
@@ -47,6 +62,29 @@ function ContractExplorer() {
         .map((key) => key.trim())
         .filter((key) => key.length > 0),
     [search.keys],
+  )
+
+  const treeRoots = useMemo<Array<FlattenTreeRoot>>(
+    () =>
+      ledgerEntries.flatMap((entry) => {
+        if (!isNodeLike(entry.value)) {
+          return []
+        }
+
+        return [
+          {
+            id: entry.key,
+            label: entry.key,
+            node: entry.value,
+          },
+        ]
+      }),
+    [ledgerEntries],
+  )
+
+  const flatRows = useMemo(
+    () => flattenTree(treeRoots, expandedNodes),
+    [expandedNodes, treeRoots],
   )
 
   useEffect(() => {
@@ -167,21 +205,20 @@ function ContractExplorer() {
               as="h3"
               className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
             >
-              Loaded Entries ({ledgerEntries.length})
+              Explorer Rows ({flatRows.length})
             </Heading>
 
-            <div className="space-y-2">
-              {ledgerEntries.map((entry) => (
-                <div
-                  key={entry.key}
-                  className="rounded border border-border-dark bg-surface-dark/30 p-3"
-                >
-                  <div className="font-mono text-xs text-white break-all">
-                    {entry.key}
-                  </div>
-                </div>
-              ))}
-            </div>
+            {flatRows.length === 0 ? (
+              <p className="text-text-muted text-sm">
+                No decodable tree rows are available for this contract response.
+              </p>
+            ) : (
+              <VirtualizedTreeList
+                rows={flatRows}
+                expandedNodeIds={expandedNodes}
+                onToggleExpand={toggleExpanded}
+              />
+            )}
           </div>
         </Card>
       )}
