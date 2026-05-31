@@ -183,6 +183,71 @@ function parts128ToString(value: unknown, signed: boolean): string | null {
 }
 
 /**
+ * Converts a 256-bit value with hiHi/hiLo/loHi/loLo parts to a decimal string.
+ * For unsigned, all parts are treated as unsigned 64-bit integers.
+ * For signed, hiHi is treated as signed 64-bit; the rest as unsigned.
+ * Returns null if the value cannot be parsed.
+ */
+function parts256ToString(value: unknown, signed: boolean): string | null {
+  if (value === null || value === undefined || typeof value !== 'object') {
+    return null
+  }
+
+  // Support both method-style (SDK objects) and property-style (plain objects)
+  const v = value as any
+  const hiHiRaw = typeof v.hiHi === 'function' ? v.hiHi() : v.hiHi
+  const hiLoRaw = typeof v.hiLo === 'function' ? v.hiLo() : v.hiLo
+  const loHiRaw = typeof v.loHi === 'function' ? v.loHi() : v.loHi
+  const loLoRaw = typeof v.loLo === 'function' ? v.loLo() : v.loLo
+
+  const hiHiStr = bigIntLikeToString(hiHiRaw)
+  const hiLoStr = bigIntLikeToString(hiLoRaw)
+  const loHiStr = bigIntLikeToString(loHiRaw)
+  const loLoStr = bigIntLikeToString(loLoRaw)
+
+  if (
+    hiHiStr === null ||
+    hiLoStr === null ||
+    loHiStr === null ||
+    loLoStr === null
+  ) {
+    return null
+  }
+
+  const hiHi = BigInt(hiHiStr)
+  const hiLo = BigInt(hiLoStr)
+  const loHi = BigInt(loHiStr)
+  const loLo = BigInt(loLoStr)
+
+  // loLo, loHi, hiLo are always treated as unsigned 64-bit
+  const uLoLo = loLo < 0n ? loLo + (1n << 64n) : loLo
+  const uLoHi = loHi < 0n ? loHi + (1n << 64n) : loHi
+  const uHiLo = hiLo < 0n ? hiLo + (1n << 64n) : hiLo
+
+  if (signed) {
+    // hiHi is signed 64-bit
+    const combined =
+      hiHi * (1n << 192n) + uHiLo * (1n << 128n) + uLoHi * (1n << 64n) + uLoLo
+    const min = -(1n << 255n)
+    const max = (1n << 255n) - 1n
+    if (combined < min || combined > max) {
+      return null
+    }
+    return combined.toString()
+  } else {
+    // All parts treated as unsigned
+    const uHiHi = hiHi < 0n ? hiHi + (1n << 64n) : hiHi
+    const combined =
+      uHiHi * (1n << 192n) + uHiLo * (1n << 128n) + uLoHi * (1n << 64n) + uLoLo
+    const max = (1n << 256n) - 1n
+    if (combined < 0n || combined > max) {
+      return null
+    }
+    return combined.toString()
+  }
+}
+
+/**
  * Options for normalizeScVal recursion limits.
  */
 export interface NormalizeScValOptions {
@@ -344,6 +409,22 @@ export function normalizeScVal(
         return { kind: 'primitive', primitive: 'i128', value: str }
       }
       return createUnsupportedFallback(ScValType.SCV_I128, scVal.value)
+    }
+
+    case ScValType.SCV_U256: {
+      const str = parts256ToString(scVal.value, false)
+      if (str !== null) {
+        return { kind: 'primitive', primitive: 'u256', value: str }
+      }
+      return createUnsupportedFallback(ScValType.SCV_U256, scVal.value)
+    }
+
+    case ScValType.SCV_I256: {
+      const str = parts256ToString(scVal.value, true)
+      if (str !== null) {
+        return { kind: 'primitive', primitive: 'i256', value: str }
+      }
+      return createUnsupportedFallback(ScValType.SCV_I256, scVal.value)
     }
 
     case ScValType.SCV_STRING:

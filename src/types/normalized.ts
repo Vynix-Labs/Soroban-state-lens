@@ -118,6 +118,8 @@ export type PrimitiveKind =
   | 'i64'
   | 'u128'
   | 'i128'
+  | 'u256'
+  | 'i256'
   | 'string'
   | 'symbol'
   | 'void'

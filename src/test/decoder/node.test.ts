@@ -330,20 +330,32 @@ describe('normalizeNode – Unsupported Node', () => {
     expect(result.variant).toBe(ScValType.SCV_U64)
   })
 
-  it('returns unsupported for u256 (out of scope)', () => {
-    const scVal = makeScVal(ScValType.SCV_U256, { hi: 0n, lo: 0n })
-    const result = normalizeNode(scVal) as UnsupportedNode
+  it('normalizes u256 primitive values', () => {
+    const scVal = makeScVal(ScValType.SCV_U256, {
+      hiHi: BigInt('0'),
+      hiLo: BigInt('0'),
+      loHi: BigInt('0'),
+      loLo: BigInt('0'),
+    })
+    const result = normalizeNode(scVal) as PrimitiveNode
 
-    expect(result.kind).toBe('unsupported')
-    expect(result.variant).toBe(ScValType.SCV_U256)
+    expect(result.kind).toBe('primitive')
+    expect(result.scType).toBe('u256')
+    expect(result.value).toBe('0')
   })
 
-  it('returns unsupported for i256 (out of scope)', () => {
-    const scVal = makeScVal(ScValType.SCV_I256, { hi: 0n, lo: 0n })
-    const result = normalizeNode(scVal) as UnsupportedNode
+  it('normalizes i256 primitive values', () => {
+    const scVal = makeScVal(ScValType.SCV_I256, {
+      hiHi: BigInt('0'),
+      hiLo: BigInt('0'),
+      loHi: BigInt('0'),
+      loLo: BigInt('0'),
+    })
+    const result = normalizeNode(scVal) as PrimitiveNode
 
-    expect(result.kind).toBe('unsupported')
-    expect(result.variant).toBe(ScValType.SCV_I256)
+    expect(result.kind).toBe('primitive')
+    expect(result.scType).toBe('i256')
+    expect(result.value).toBe('0')
   })
 })
 
