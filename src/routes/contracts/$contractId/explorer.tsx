@@ -39,6 +39,7 @@ function ContractExplorer() {
   const { contractId } = Route.useParams()
   const { normalizedContractId } = Route.useRouteContext()
   const search = Route.useSearch()
+  const navigate = Route.useNavigate()
 
   const setActiveContractId = useLensStore((state) => state.setActiveContractId)
   const setContractLoadStatus = useLensStore(
@@ -50,6 +51,8 @@ function ContractExplorer() {
   const contractLoadError = useLensStore((state) => state.contractLoadError)
   const expandedNodes = useLensStore((state) => state.expandedNodes)
   const toggleExpanded = useLensStore((state) => state.toggleExpanded)
+  const selectedKeyPath = useLensStore((state) => state.selectedKeyPath)
+  const setSelectedKeyPath = useLensStore((state) => state.setSelectedKeyPath)
 
   const ledgerEntries = useLensStore((state) =>
     selectLedgerEntriesByContractId(state, contractId),
@@ -114,6 +117,14 @@ function ContractExplorer() {
     }
 
     void loadContract(contractId, keys)
+  }
+
+  const handleActivateRow = (keyPath: string) => {
+    setSelectedKeyPath(keyPath)
+    void navigate({
+      to: '/contracts/$contractId/inspect/$keyPath',
+      params: { contractId, keyPath },
+    })
   }
 
   return (
@@ -217,6 +228,8 @@ function ContractExplorer() {
                 rows={flatRows}
                 expandedNodeIds={expandedNodes}
                 onToggleExpand={toggleExpanded}
+                selectedRowId={selectedKeyPath}
+                onActivateRow={(row) => handleActivateRow(row.keyPath)}
               />
             )}
           </div>

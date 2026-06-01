@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { VirtualizedTreeList } from '../../components/explorer/VirtualizedTreeList'
 import type { FlatTreeRow } from '../../lib/tree/flatTreeRow'
 import type { Node } from '../../types/node'
@@ -42,5 +42,21 @@ describe('VirtualizedTreeList', () => {
     fireEvent.scroll(viewport, { target: { scrollTop: 1200 } })
 
     expect(screen.getByText('row-39')).toBeTruthy()
+  })
+
+  it('invokes row activation callback', () => {
+    const onActivateRow = vi.fn()
+
+    render(
+      <VirtualizedTreeList
+        rows={rows(10)}
+        height={200}
+        rowHeight={40}
+        onActivateRow={onActivateRow}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open row-0' }))
+    expect(onActivateRow).toHaveBeenCalled()
   })
 })

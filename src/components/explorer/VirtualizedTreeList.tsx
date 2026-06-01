@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { TreeRow } from './TreeRow'
 import type { UIEvent } from 'react'
 import type { FlatTreeRow } from '../../lib/tree/flatTreeRow'
 
@@ -9,6 +10,8 @@ interface VirtualizedTreeListProps {
   overscan?: number
   onToggleExpand?: (rowId: string) => void
   expandedNodeIds?: ReadonlySet<string> | ReadonlyArray<string>
+  selectedRowId?: string | null
+  onActivateRow?: (row: FlatTreeRow) => void
 }
 
 export function VirtualizedTreeList({
@@ -18,6 +21,8 @@ export function VirtualizedTreeList({
   overscan = 4,
   onToggleExpand,
   expandedNodeIds = [],
+  selectedRowId,
+  onActivateRow,
 }: VirtualizedTreeListProps) {
   const [scrollTop, setScrollTop] = useState(0)
 
@@ -63,26 +68,16 @@ export function VirtualizedTreeList({
                 left: 0,
                 right: 0,
               }}
-              className="flex items-center gap-2 px-3 border-b border-white/5"
+              className="left-0 right-0"
             >
-              <div style={{ marginLeft: row.depth * 16 }} className="flex items-center gap-2">
-                {row.hasChildren ? (
-                  <button
-                    type="button"
-                    className="text-xs text-text-muted hover:text-white"
-                    onClick={() => onToggleExpand?.(row.id)}
-                    aria-label={`Toggle ${row.label}`}
-                  >
-                    {isExpanded ? '▼' : '▶'}
-                  </button>
-                ) : (
-                  <span className="w-4" />
-                )}
-                <span className="font-mono text-xs text-white">{row.label}</span>
-                <span className="font-mono text-[10px] uppercase text-text-muted">
-                  {row.kind}
-                </span>
-              </div>
+              <TreeRow
+                row={row}
+                rowHeight={rowHeight}
+                isExpanded={isExpanded}
+                isSelected={selectedRowId === row.id}
+                onToggleExpand={onToggleExpand}
+                onActivate={onActivateRow}
+              />
             </div>
           )
         })}

@@ -437,6 +437,8 @@ export const useExpandedNodes = () =>
   useLensStore((state) => state.expandedNodes)
 export const useActiveContractId = () =>
   useLensStore((state) => state.activeContractId)
+export const useSelectedKeyPath = () =>
+  useLensStore((state) => state.selectedKeyPath)
 export const useContractLoadStatus = () =>
   useLensStore((state) => state.contractLoadStatus)
 export const useContractLoadError = () =>
@@ -463,6 +465,7 @@ export const resetStore = () => {
     snapshots: {},
     watchlist: {},
     activeContractId: null,
+    selectedKeyPath: null,
     contractLoadStatus: ContractLoadStatus.IDLE,
     contractLoadError: null,
     byteDisplayMode: ByteDisplayMode.HEX,
@@ -500,6 +503,9 @@ export const lensActions = {
   setActiveContractId: (contractId: string) =>
     useLensStore.getState().setActiveContractId(contractId),
   clearActiveContractId: () => useLensStore.getState().clearActiveContractId(),
+  setSelectedKeyPath: (keyPath: string) =>
+    useLensStore.getState().setSelectedKeyPath(keyPath),
+  clearSelectedKeyPath: () => useLensStore.getState().clearSelectedKeyPath(),
   setContractLoadStatus: (status: ContractLoadStatus) =>
     useLensStore.getState().setContractLoadStatus(status),
   setContractLoadError: (message: string | null) =>

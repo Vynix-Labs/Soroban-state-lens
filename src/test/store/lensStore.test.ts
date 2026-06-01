@@ -26,6 +26,11 @@ describe('lensStore', () => {
       const state = getStoreState()
       expect(state.expandedNodes).toEqual([])
     })
+
+    it('initializes with no selected key path', () => {
+      const state = getStoreState()
+      expect(state.selectedKeyPath).toBeNull()
+    })
   })
 
   describe('networkConfig slice', () => {
@@ -231,6 +236,31 @@ describe('lensStore', () => {
       const state = getStoreState()
       expect(state.ledgerData['test-key']).toBeDefined()
       expect(state.networkConfig.networkId).toBe('futurenet')
+    })
+  })
+
+  describe('selectedKeyPath slice', () => {
+    it('setSelectedKeyPath sets selected path', () => {
+      const { setSelectedKeyPath } = useLensStore.getState()
+
+      setSelectedKeyPath('contract.entry-0-value')
+      expect(getStoreState().selectedKeyPath).toBe('contract.entry-0-value')
+    })
+
+    it('setSelectedKeyPath replaces existing selected path', () => {
+      const { setSelectedKeyPath } = useLensStore.getState()
+
+      setSelectedKeyPath('first.path')
+      setSelectedKeyPath('second.path')
+      expect(getStoreState().selectedKeyPath).toBe('second.path')
+    })
+
+    it('clearSelectedKeyPath clears selected path', () => {
+      const { setSelectedKeyPath, clearSelectedKeyPath } = useLensStore.getState()
+
+      setSelectedKeyPath('first.path')
+      clearSelectedKeyPath()
+      expect(getStoreState().selectedKeyPath).toBeNull()
     })
   })
 })

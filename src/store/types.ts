@@ -109,8 +109,11 @@ export interface SnapshotSlice {
 // Contract slice
 export interface ContractSlice {
   activeContractId: string | null
+  selectedKeyPath: string | null
   setActiveContractId: (id: string) => void
   clearActiveContractId: () => void
+  setSelectedKeyPath: (keyPath: string) => void
+  clearSelectedKeyPath: () => void
 }
 
 export enum ContractLoadStatus {
