@@ -1,9 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { InspectShell } from '../../../components/explorer/InspectShell'
+import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { validateContractRouteParam } from './-validateContractRouteParam'
 
 export const Route = createFileRoute('/contracts/$contractId/inspect')({
-  component: InspectRoute,
+  component: InspectLayoutRoute,
   beforeLoad: ({ params }) => {
     const result = validateContractRouteParam(params.contractId)
     if (!result.ok) {
@@ -15,15 +14,6 @@ export const Route = createFileRoute('/contracts/$contractId/inspect')({
   },
 })
 
-function InspectRoute() {
-  const { contractId } = Route.useParams()
-  const { normalizedContractId } = Route.useRouteContext()
-
-  return (
-    <InspectShell
-      contractId={contractId}
-      normalizedContractId={normalizedContractId}
-      keyPath=""
-    />
-  )
+function InspectLayoutRoute() {
+  return <Outlet />
 }
