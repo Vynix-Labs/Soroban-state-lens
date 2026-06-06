@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { validateContractRouteParam } from './-validateContractRouteParam'
-import { useLensStore } from '../../../store/lensStore'
 import { Button, Card, Heading } from '@stellar/design-system'
+import { useLensStore } from '../../../store/lensStore'
+import { validateContractRouteParam } from './-validateContractRouteParam'
 
 export const Route = createFileRoute('/contracts/$contractId/watchlist')({
   component: RouteComponent,
@@ -12,7 +12,7 @@ export const Route = createFileRoute('/contracts/$contractId/watchlist')({
       throw redirect({ to: '/' })
     }
     return {
-      normalizedContractId: result.ok ? result.contractId : params.contractId,
+      normalizedContractId:  result.contractId,
     }
   },
 })
