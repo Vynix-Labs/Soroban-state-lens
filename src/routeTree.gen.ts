@@ -13,6 +13,7 @@ import { Route as SdsDemoRouteImport } from './routes/sds-demo'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ContractsContractIdIndexRouteImport } from './routes/contracts/$contractId/index'
 import { Route as ContractsContractIdExplorerRouteImport } from './routes/contracts/$contractId/explorer'
+import { Route as ContractsContractIdDiscoveryRouteImport } from './routes/contracts/$contractId/discovery'
 
 const SdsDemoRoute = SdsDemoRouteImport.update({
   id: '/sds-demo',
@@ -36,16 +37,24 @@ const ContractsContractIdExplorerRoute =
     path: '/contracts/$contractId/explorer',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ContractsContractIdDiscoveryRoute =
+  ContractsContractIdDiscoveryRouteImport.update({
+    id: '/contracts/$contractId/discovery',
+    path: '/contracts/$contractId/discovery',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
+  '/contracts/$contractId/discovery': typeof ContractsContractIdDiscoveryRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
   '/contracts/$contractId/': typeof ContractsContractIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
+  '/contracts/$contractId/discovery': typeof ContractsContractIdDiscoveryRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
   '/contracts/$contractId': typeof ContractsContractIdIndexRoute
 }
@@ -53,6 +62,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
+  '/contracts/$contractId/discovery': typeof ContractsContractIdDiscoveryRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
   '/contracts/$contractId/': typeof ContractsContractIdIndexRoute
 }
@@ -61,18 +71,21 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/sds-demo'
+    | '/contracts/$contractId/discovery'
     | '/contracts/$contractId/explorer'
     | '/contracts/$contractId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/sds-demo'
+    | '/contracts/$contractId/discovery'
     | '/contracts/$contractId/explorer'
     | '/contracts/$contractId'
   id:
     | '__root__'
     | '/'
     | '/sds-demo'
+    | '/contracts/$contractId/discovery'
     | '/contracts/$contractId/explorer'
     | '/contracts/$contractId/'
   fileRoutesById: FileRoutesById
@@ -80,6 +93,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SdsDemoRoute: typeof SdsDemoRoute
+  ContractsContractIdDiscoveryRoute: typeof ContractsContractIdDiscoveryRoute
   ContractsContractIdExplorerRoute: typeof ContractsContractIdExplorerRoute
   ContractsContractIdIndexRoute: typeof ContractsContractIdIndexRoute
 }
@@ -114,12 +128,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContractsContractIdExplorerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contracts/$contractId/discovery': {
+      id: '/contracts/$contractId/discovery'
+      path: '/contracts/$contractId/discovery'
+      fullPath: '/contracts/$contractId/discovery'
+      preLoaderRoute: typeof ContractsContractIdDiscoveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SdsDemoRoute: SdsDemoRoute,
+  ContractsContractIdDiscoveryRoute: ContractsContractIdDiscoveryRoute,
   ContractsContractIdExplorerRoute: ContractsContractIdExplorerRoute,
   ContractsContractIdIndexRoute: ContractsContractIdIndexRoute,
 }

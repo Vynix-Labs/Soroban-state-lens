@@ -1,54 +1,70 @@
 import { describe, expect, it, vi } from 'vitest'
+import * as Comlink from 'comlink'
 import { decodeScVal } from '../../lib/decoder'
-import { createDecoderWorker } from '../../workers/createDecoderWorker'
 
-// Mock the worker factory
-vi.mock('../../workers/createDecoderWorker', () => ({
-  createDecoderWorker: vi.fn(),
+vi.mock('comlink', () => ({
+  wrap: vi.fn(),
 }))
 
 describe('decodeScVal helper', () => {
+  beforeEach(() => {
+    vi.stubGlobal('Worker', vi.fn())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
   it('should return normalized node when worker succeeds', async () => {
-    // Arrange
     const mockNode: any = { kind: 'primitive', scType: 'bool', value: true }
     const mockWorker = {
       decodeScVal: vi.fn().mockResolvedValue(mockNode),
+      terminate: vi.fn(),
     }
-    vi.mocked(createDecoderWorker).mockReturnValue(mockWorker as any)
+    vi.mocked(Comlink.wrap).mockReturnValue(mockWorker as any)
+    vi.mocked(globalThis.Worker).mockImplementation(function () {
+      return mockWorker as any
+    })
 
-    // Act
     const result = await decodeScVal('encoded-xdr')
 
-    // Assert
     expect(result).toEqual(mockNode)
     expect(mockWorker.decodeScVal).toHaveBeenCalledWith({ xdr: 'encoded-xdr' })
+    expect(mockWorker.terminate).toHaveBeenCalledOnce()
   })
 
   it('should throw error when worker returns DecoderWorkerError', async () => {
-    // Arrange
     const mockError: any = {
       code: 'DECODE_FAILED',
       message: 'Something went wrong',
     }
     const mockWorker = {
       decodeScVal: vi.fn().mockResolvedValue(mockError),
+      terminate: vi.fn(),
     }
-    vi.mocked(createDecoderWorker).mockReturnValue(mockWorker as any)
+    vi.mocked(Comlink.wrap).mockReturnValue(mockWorker as any)
+    vi.mocked(globalThis.Worker).mockImplementation(function () {
+      return mockWorker as any
+    })
 
-    // Act & Assert
     await expect(decodeScVal('encoded-xdr')).rejects.toThrow(
       'Something went wrong',
     )
+    expect(mockWorker.terminate).toHaveBeenCalledOnce()
   })
 
   it('should throw unexpected error when worker communication fails', async () => {
-    // Arrange
     const mockWorker = {
       decodeScVal: vi.fn().mockRejectedValue(new Error('Network failure')),
+      terminate: vi.fn(),
     }
-    vi.mocked(createDecoderWorker).mockReturnValue(mockWorker as any)
+    vi.mocked(Comlink.wrap).mockReturnValue(mockWorker as any)
+    vi.mocked(globalThis.Worker).mockImplementation(function () {
+      return mockWorker as any
+    })
 
-    // Act & Assert
     await expect(decodeScVal('encoded-xdr')).rejects.toThrow('Network failure')
+    expect(mockWorker.terminate).toHaveBeenCalledOnce()
   })
 })
