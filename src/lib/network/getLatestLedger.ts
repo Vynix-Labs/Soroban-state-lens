@@ -46,12 +46,13 @@ function parseLatestLedgerResult(value: unknown): LatestLedgerResult | null {
 
 export async function getLatestLedgerConnectionCheck(
   url: string,
+  timeoutMs?: number,
 ): Promise<GetLatestLedgerConnectionResult> {
   try {
     const response = await callRpc(
       {
         url,
-        timeout: 5000,
+        timeout: timeoutMs ?? 5000,
       },
       buildJsonRpcRequest('getLatestLedger', {}, toRpcRequestId()),
     )
