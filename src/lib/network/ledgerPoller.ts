@@ -34,6 +34,9 @@ export function startLedgerHeadPoll(
 
   const tick = async (): Promise<void> => {
     if (stoppedRef.current) return
+    // Skip RPC call while the tab is hidden; lastSequence is preserved so the
+    // next visible tick can detect a sequence change correctly.
+    if (document.visibilityState === 'hidden') return
 
     const body = buildJsonRpcRequest('getLatestLedger', {}, toRpcRequestId())
     const response = await callRpc<{ result?: LatestLedgerResult }>(
@@ -61,6 +64,16 @@ export function startLedgerHeadPoll(
     }
   }
 
+  // Resume immediately when the tab becomes visible again so the UI catches up
+  // without waiting for the next interval tick.
+  const onVisibilityChange = (): void => {
+    if (document.visibilityState === 'visible') {
+      void tick()
+    }
+  }
+
+  document.addEventListener('visibilitychange', onVisibilityChange)
+
   const intervalId = setInterval(tick, intervalMs)
   tick()
 
@@ -68,5 +81,6 @@ export function startLedgerHeadPoll(
     if (stoppedRef.current) return
     stoppedRef.current = true
     clearInterval(intervalId)
+    document.removeEventListener('visibilitychange', onVisibilityChange)
   }
 }

@@ -8,6 +8,16 @@ vi.mock('../../lib/network/rpcClient', () => ({
 
 const mockCallRpc = vi.mocked(callRpc)
 
+/** Helper: override document.visibilityState and fire the visibilitychange event. */
+function setVisibility(state: 'visible' | 'hidden'): void {
+  Object.defineProperty(document, 'visibilityState', {
+    value: state,
+    writable: true,
+    configurable: true,
+  })
+  document.dispatchEvent(new Event('visibilitychange'))
+}
+
 describe('startLedgerHeadPoll', () => {
   const defaultRpcConfig = {
     url: 'https://rpc.example.com',
@@ -17,10 +27,22 @@ describe('startLedgerHeadPoll', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
+    // Ensure each test starts with the tab visible
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      writable: true,
+      configurable: true,
+    })
   })
 
   afterEach(() => {
     vi.useRealTimers()
+    // Restore visible state after each test
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      writable: true,
+      configurable: true,
+    })
   })
 
   describe('emits changes only on sequence increment', () => {
@@ -230,6 +252,113 @@ describe('startLedgerHeadPoll', () => {
         }),
       )
       stop()
+    })
+  })
+
+  describe('visibility-aware pausing', () => {
+    it('does not fire an RPC call during interval ticks while the tab is hidden', async () => {
+      const onLedgerChange = vi.fn()
+      mockCallRpc.mockResolvedValue({ result: { sequence: 100 } })
+
+      const stop = startLedgerHeadPoll({
+        rpcConfig: defaultRpcConfig,
+        intervalMs: 1000,
+        onLedgerChange,
+      })
+
+      // Initial tick fires (tab is visible)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mockCallRpc).toHaveBeenCalledTimes(1)
+
+      // Hide the tab
+      setVisibility('hidden')
+
+      // Advance through several interval periods — no additional RPC calls
+      await vi.advanceTimersByTimeAsync(3000)
+      expect(mockCallRpc).toHaveBeenCalledTimes(1)
+      expect(onLedgerChange).toHaveBeenCalledTimes(1)
+
+      stop()
+    })
+
+    it('fires an immediate tick when the tab becomes visible again', async () => {
+      const onLedgerChange = vi.fn()
+      mockCallRpc
+        .mockResolvedValueOnce({ result: { sequence: 100 } }) // initial tick
+        .mockResolvedValueOnce({ result: { sequence: 105 } }) // resume tick
+
+      const stop = startLedgerHeadPoll({
+        rpcConfig: defaultRpcConfig,
+        intervalMs: 1000,
+        onLedgerChange,
+      })
+
+      // Initial tick
+      await vi.advanceTimersByTimeAsync(0)
+      expect(onLedgerChange).toHaveBeenCalledWith(100)
+
+      // Hide, advance time (no ticks), then show again
+      setVisibility('hidden')
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(mockCallRpc).toHaveBeenCalledTimes(1)
+
+      setVisibility('visible')
+      await vi.advanceTimersByTimeAsync(0)
+
+      // Resume tick should have fired with the updated sequence
+      expect(mockCallRpc).toHaveBeenCalledTimes(2)
+      expect(onLedgerChange).toHaveBeenCalledWith(105)
+      expect(onLedgerChange).toHaveBeenCalledTimes(2)
+
+      stop()
+    })
+
+    it('preserves lastSequence across hidden periods so a stale sequence does not re-notify', async () => {
+      const onLedgerChange = vi.fn()
+      mockCallRpc
+        .mockResolvedValueOnce({ result: { sequence: 100 } }) // initial tick
+        .mockResolvedValueOnce({ result: { sequence: 100 } }) // resume tick — same sequence
+
+      const stop = startLedgerHeadPoll({
+        rpcConfig: defaultRpcConfig,
+        intervalMs: 1000,
+        onLedgerChange,
+      })
+
+      await vi.advanceTimersByTimeAsync(0)
+      expect(onLedgerChange).toHaveBeenCalledTimes(1)
+
+      setVisibility('hidden')
+      await vi.advanceTimersByTimeAsync(2000)
+
+      setVisibility('visible')
+      await vi.advanceTimersByTimeAsync(0)
+
+      // Sequence unchanged — callback must NOT fire again
+      expect(onLedgerChange).toHaveBeenCalledTimes(1)
+
+      stop()
+    })
+
+    it('stop removes the visibilitychange listener so no tick fires after stop', async () => {
+      const onLedgerChange = vi.fn()
+      mockCallRpc.mockResolvedValue({ result: { sequence: 100 } })
+
+      const stop = startLedgerHeadPoll({
+        rpcConfig: defaultRpcConfig,
+        intervalMs: 1000,
+        onLedgerChange,
+      })
+
+      await vi.advanceTimersByTimeAsync(0)
+      stop()
+
+      setVisibility('hidden')
+      setVisibility('visible')
+      await vi.advanceTimersByTimeAsync(0)
+
+      // Only the initial tick should have run
+      expect(mockCallRpc).toHaveBeenCalledTimes(1)
     })
   })
 })
