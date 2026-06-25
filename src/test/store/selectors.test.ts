@@ -20,6 +20,7 @@ import {
   selectNetworkConfig,
   selectNetworkId,
   selectRpcUrl,
+  selectSelectedKeyPath,
 } from '../../store/selectors'
 
 import type { LedgerEntry } from '../../store/types'
@@ -142,6 +143,17 @@ describe('selectors', () => {
     it('selectExpandedCount returns correct count', () => {
       useLensStore.getState().expandAll(['a', 'b', 'c'])
       expect(selectExpandedCount(getStoreState())).toBe(3)
+    })
+  })
+
+  describe('selected key-path selectors', () => {
+    it('selectSelectedKeyPath returns null initially', () => {
+      expect(selectSelectedKeyPath(getStoreState())).toBeNull()
+    })
+
+    it('selectSelectedKeyPath returns selected value', () => {
+      useLensStore.getState().setSelectedKeyPath('root.entry-0-value')
+      expect(selectSelectedKeyPath(getStoreState())).toBe('root.entry-0-value')
     })
   })
 })

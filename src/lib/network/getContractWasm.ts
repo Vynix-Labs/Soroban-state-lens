@@ -1,5 +1,4 @@
 import { buildJsonRpcRequest } from '../rpc/buildJsonRpcRequest'
-import { isJsonRpcErrorResponse } from '../rpc/isJsonRpcErrorResponse'
 import { isJsonRpcSuccessResponse } from '../rpc/isJsonRpcSuccessResponse'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
 import { callRpc } from './rpcClient'

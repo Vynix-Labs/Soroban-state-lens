@@ -26,6 +26,7 @@ export const selectIsExpanded = (nodeId: string) => (state: LensStore) =>
   state.expandedNodes.includes(nodeId)
 export const selectExpandedCount = (state: LensStore) =>
   state.expandedNodes.length
+export const selectSelectedKeyPath = (state: LensStore) => state.selectedKeyPath
 
 // Action selectors (for grabbing actions without re-rendering on state changes)
 export const selectSetNetworkConfig = (state: LensStore) =>
@@ -36,3 +37,7 @@ export const selectToggleExpanded = (state: LensStore) => state.toggleExpanded
 export const selectSetExpanded = (state: LensStore) => state.setExpanded
 export const selectExpandAll = (state: LensStore) => state.expandAll
 export const selectCollapseAll = (state: LensStore) => state.collapseAll
+export const selectSetSelectedKeyPath = (state: LensStore) =>
+  state.setSelectedKeyPath
+export const selectClearSelectedKeyPath = (state: LensStore) =>
+  state.clearSelectedKeyPath

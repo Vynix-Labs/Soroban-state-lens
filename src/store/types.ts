@@ -10,6 +10,17 @@ export enum ConnectionStatus {
   ERROR = 'error',
 }
 
+// Display preferences
+export enum ByteDisplayMode {
+  HEX = 'hex',
+  BASE64 = 'base64',
+}
+
+export enum BigIntDisplayMode {
+  RAW = 'raw',
+  FORMATTED = 'formatted',
+}
+
 // Network configuration
 export interface NetworkConfig {
   networkId: string
@@ -98,8 +109,53 @@ export interface SnapshotSlice {
 // Contract slice
 export interface ContractSlice {
   activeContractId: string | null
+  selectedKeyPath: string | null
   setActiveContractId: (id: string) => void
   clearActiveContractId: () => void
+  setSelectedKeyPath: (keyPath: string) => void
+  clearSelectedKeyPath: () => void
+}
+
+export enum ContractLoadStatus {
+  IDLE = 'idle',
+  LOADING = 'loading',
+  SUCCESS = 'success',
+  EMPTY = 'empty',
+  ERROR = 'error',
+}
+
+export interface ContractLoadSlice {
+  contractLoadStatus: ContractLoadStatus
+  contractLoadError: string | null
+  setContractLoadStatus: (status: ContractLoadStatus) => void
+  setContractLoadError: (message: string | null) => void
+  resetContractLoadState: () => void
+  loadContract: (contractId: string, keys: Array<string>) => Promise<void>
+}
+
+// Watchlist item (pinned key for quick access)
+export interface WatchlistItem {
+  contractId: string
+  keyPath: string
+  timestamp: number
+}
+
+// Watchlist slice
+export interface WatchlistSlice {
+  watchlist: Record<string, Array<WatchlistItem>>
+  addToWatchlist: (contractId: string, keyPath: string) => void
+  removeFromWatchlist: (contractId: string, keyPath: string) => void
+  getWatchlistForContract: (contractId: string) => Array<WatchlistItem>
+  clearWatchlist: (contractId: string) => void
+}
+
+// Preferences slice
+export interface PreferencesSlice {
+  byteDisplayMode: ByteDisplayMode
+  bigIntDisplayMode: BigIntDisplayMode
+  setByteDisplayMode: (mode: ByteDisplayMode) => void
+  setBigIntDisplayMode: (mode: BigIntDisplayMode) => void
+  resetPreferences: () => void
 }
 
 // Combined store type
@@ -109,7 +165,10 @@ export interface LensStore
     LedgerDataSlice,
     ExpandedNodesSlice,
     SnapshotSlice,
-    ContractSlice {}
+    ContractSlice,
+    ContractLoadSlice,
+    PreferencesSlice,
+    WatchlistSlice {}
 
 // Default network configurations
 export const DEFAULT_NETWORKS: Record<string, NetworkConfig> = {

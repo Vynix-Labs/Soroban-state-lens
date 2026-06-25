@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as Comlink from 'comlink'
 import { decodeScVal } from '../../lib/decoder'
 

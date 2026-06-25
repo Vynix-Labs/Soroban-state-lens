@@ -11,9 +11,14 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SdsDemoRouteImport } from './routes/sds-demo'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SettingsPreferencesRouteImport } from './routes/settings/preferences'
+import { Route as SettingsNetworkRouteImport } from './routes/settings/network'
 import { Route as ContractsContractIdIndexRouteImport } from './routes/contracts/$contractId/index'
+import { Route as ContractsContractIdInspectRouteImport } from './routes/contracts/$contractId/inspect'
 import { Route as ContractsContractIdExplorerRouteImport } from './routes/contracts/$contractId/explorer'
 import { Route as ContractsContractIdDiscoveryRouteImport } from './routes/contracts/$contractId/discovery'
+import { Route as ContractsContractIdInspectIndexRouteImport } from './routes/contracts/$contractId/inspect.index'
+import { Route as ContractsContractIdInspectKeyPathRouteImport } from './routes/contracts/$contractId/inspect.$keyPath'
 
 const SdsDemoRoute = SdsDemoRouteImport.update({
   id: '/sds-demo',
@@ -25,10 +30,26 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsPreferencesRoute = SettingsPreferencesRouteImport.update({
+  id: '/settings/preferences',
+  path: '/settings/preferences',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsNetworkRoute = SettingsNetworkRouteImport.update({
+  id: '/settings/network',
+  path: '/settings/network',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContractsContractIdIndexRoute =
   ContractsContractIdIndexRouteImport.update({
     id: '/contracts/$contractId/',
     path: '/contracts/$contractId/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ContractsContractIdInspectRoute =
+  ContractsContractIdInspectRouteImport.update({
+    id: '/contracts/$contractId/inspect',
+    path: '/contracts/$contractId/inspect',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ContractsContractIdExplorerRoute =
@@ -43,58 +64,101 @@ const ContractsContractIdDiscoveryRoute =
     path: '/contracts/$contractId/discovery',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ContractsContractIdInspectIndexRoute =
+  ContractsContractIdInspectIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ContractsContractIdInspectRoute,
+  } as any)
+const ContractsContractIdInspectKeyPathRoute =
+  ContractsContractIdInspectKeyPathRouteImport.update({
+    id: '/$keyPath',
+    path: '/$keyPath',
+    getParentRoute: () => ContractsContractIdInspectRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
+  '/settings/network': typeof SettingsNetworkRoute
+  '/settings/preferences': typeof SettingsPreferencesRoute
   '/contracts/$contractId/discovery': typeof ContractsContractIdDiscoveryRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
+  '/contracts/$contractId/inspect': typeof ContractsContractIdInspectRouteWithChildren
   '/contracts/$contractId/': typeof ContractsContractIdIndexRoute
+  '/contracts/$contractId/inspect/$keyPath': typeof ContractsContractIdInspectKeyPathRoute
+  '/contracts/$contractId/inspect/': typeof ContractsContractIdInspectIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
+  '/settings/network': typeof SettingsNetworkRoute
+  '/settings/preferences': typeof SettingsPreferencesRoute
   '/contracts/$contractId/discovery': typeof ContractsContractIdDiscoveryRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
   '/contracts/$contractId': typeof ContractsContractIdIndexRoute
+  '/contracts/$contractId/inspect/$keyPath': typeof ContractsContractIdInspectKeyPathRoute
+  '/contracts/$contractId/inspect': typeof ContractsContractIdInspectIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/sds-demo': typeof SdsDemoRoute
+  '/settings/network': typeof SettingsNetworkRoute
+  '/settings/preferences': typeof SettingsPreferencesRoute
   '/contracts/$contractId/discovery': typeof ContractsContractIdDiscoveryRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
+  '/contracts/$contractId/inspect': typeof ContractsContractIdInspectRouteWithChildren
   '/contracts/$contractId/': typeof ContractsContractIdIndexRoute
+  '/contracts/$contractId/inspect/$keyPath': typeof ContractsContractIdInspectKeyPathRoute
+  '/contracts/$contractId/inspect/': typeof ContractsContractIdInspectIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/sds-demo'
+    | '/settings/network'
+    | '/settings/preferences'
     | '/contracts/$contractId/discovery'
     | '/contracts/$contractId/explorer'
+    | '/contracts/$contractId/inspect'
     | '/contracts/$contractId/'
+    | '/contracts/$contractId/inspect/$keyPath'
+    | '/contracts/$contractId/inspect/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/sds-demo'
+    | '/settings/network'
+    | '/settings/preferences'
     | '/contracts/$contractId/discovery'
     | '/contracts/$contractId/explorer'
     | '/contracts/$contractId'
+    | '/contracts/$contractId/inspect/$keyPath'
+    | '/contracts/$contractId/inspect'
   id:
     | '__root__'
     | '/'
     | '/sds-demo'
+    | '/settings/network'
+    | '/settings/preferences'
     | '/contracts/$contractId/discovery'
     | '/contracts/$contractId/explorer'
+    | '/contracts/$contractId/inspect'
     | '/contracts/$contractId/'
+    | '/contracts/$contractId/inspect/$keyPath'
+    | '/contracts/$contractId/inspect/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SdsDemoRoute: typeof SdsDemoRoute
+  SettingsNetworkRoute: typeof SettingsNetworkRoute
+  SettingsPreferencesRoute: typeof SettingsPreferencesRoute
   ContractsContractIdDiscoveryRoute: typeof ContractsContractIdDiscoveryRoute
   ContractsContractIdExplorerRoute: typeof ContractsContractIdExplorerRoute
+  ContractsContractIdInspectRoute: typeof ContractsContractIdInspectRouteWithChildren
   ContractsContractIdIndexRoute: typeof ContractsContractIdIndexRoute
 }
 
@@ -114,11 +178,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/preferences': {
+      id: '/settings/preferences'
+      path: '/settings/preferences'
+      fullPath: '/settings/preferences'
+      preLoaderRoute: typeof SettingsPreferencesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/network': {
+      id: '/settings/network'
+      path: '/settings/network'
+      fullPath: '/settings/network'
+      preLoaderRoute: typeof SettingsNetworkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contracts/$contractId/': {
       id: '/contracts/$contractId/'
       path: '/contracts/$contractId'
       fullPath: '/contracts/$contractId/'
       preLoaderRoute: typeof ContractsContractIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contracts/$contractId/inspect': {
+      id: '/contracts/$contractId/inspect'
+      path: '/contracts/$contractId/inspect'
+      fullPath: '/contracts/$contractId/inspect'
+      preLoaderRoute: typeof ContractsContractIdInspectRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contracts/$contractId/explorer': {
@@ -135,14 +220,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContractsContractIdDiscoveryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contracts/$contractId/inspect/': {
+      id: '/contracts/$contractId/inspect/'
+      path: '/'
+      fullPath: '/contracts/$contractId/inspect/'
+      preLoaderRoute: typeof ContractsContractIdInspectIndexRouteImport
+      parentRoute: typeof ContractsContractIdInspectRoute
+    }
+    '/contracts/$contractId/inspect/$keyPath': {
+      id: '/contracts/$contractId/inspect/$keyPath'
+      path: '/$keyPath'
+      fullPath: '/contracts/$contractId/inspect/$keyPath'
+      preLoaderRoute: typeof ContractsContractIdInspectKeyPathRouteImport
+      parentRoute: typeof ContractsContractIdInspectRoute
+    }
   }
 }
+
+interface ContractsContractIdInspectRouteChildren {
+  ContractsContractIdInspectKeyPathRoute: typeof ContractsContractIdInspectKeyPathRoute
+  ContractsContractIdInspectIndexRoute: typeof ContractsContractIdInspectIndexRoute
+}
+
+const ContractsContractIdInspectRouteChildren: ContractsContractIdInspectRouteChildren =
+  {
+    ContractsContractIdInspectKeyPathRoute:
+      ContractsContractIdInspectKeyPathRoute,
+    ContractsContractIdInspectIndexRoute: ContractsContractIdInspectIndexRoute,
+  }
+
+const ContractsContractIdInspectRouteWithChildren =
+  ContractsContractIdInspectRoute._addFileChildren(
+    ContractsContractIdInspectRouteChildren,
+  )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SdsDemoRoute: SdsDemoRoute,
+  SettingsNetworkRoute: SettingsNetworkRoute,
+  SettingsPreferencesRoute: SettingsPreferencesRoute,
   ContractsContractIdDiscoveryRoute: ContractsContractIdDiscoveryRoute,
   ContractsContractIdExplorerRoute: ContractsContractIdExplorerRoute,
+  ContractsContractIdInspectRoute: ContractsContractIdInspectRouteWithChildren,
   ContractsContractIdIndexRoute: ContractsContractIdIndexRoute,
 }
 export const routeTree = rootRouteImport

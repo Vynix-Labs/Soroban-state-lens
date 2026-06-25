@@ -24,6 +24,10 @@ export const DEFAULT_NETWORK_CONFIG: NetworkConfig = DEFAULT_NETWORKS.futurenet
  */
 export interface PersistedState {
   networkConfig: PersistedNetworkConfig
+  preferences?: {
+    byteDisplayMode: string
+    bigIntDisplayMode: string
+  }
 }
 
 /**
@@ -101,19 +105,34 @@ export const createSafeStorage = <T>(): PersistStorage<T> | undefined =>
 export function mergeNetworkConfig(
   persistedState: unknown,
   currentState: { networkConfig: NetworkConfig },
-): { networkConfig: NetworkConfig } {
+): any {
   if (
     typeof persistedState === 'object' &&
     persistedState !== null &&
     'networkConfig' in persistedState
   ) {
-    const persisted = persistedState as { networkConfig: unknown }
+    const persisted = persistedState as {
+      networkConfig: unknown
+      preferences?: {
+        byteDisplayMode: string
+        bigIntDisplayMode: string
+      }
+    }
     const parsedNetworkConfig = parsePersistedNetworkConfig(
       persisted.networkConfig,
     )
 
     if (isValidNetworkConfig(parsedNetworkConfig)) {
-      return { networkConfig: parsedNetworkConfig }
+      return {
+        networkConfig: parsedNetworkConfig,
+        ...(persisted.preferences
+          ? {
+              byteDisplayMode: (persisted.preferences as any).byteDisplayMode,
+              bigIntDisplayMode: (persisted.preferences as any)
+                .bigIntDisplayMode,
+            }
+          : {}),
+      }
     }
 
     console.warn(
