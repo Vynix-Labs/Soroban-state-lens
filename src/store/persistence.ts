@@ -2,7 +2,13 @@ import { createJSONStorage } from 'zustand/middleware'
 import { parsePersistedNetworkConfig } from '../lib/storage/parsePersistedNetworkConfig'
 import { serializePersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
 
-import { DEFAULT_NETWORKS } from './types'
+import {
+  DEFAULT_NETWORKS,
+  DEFAULT_PREFERENCES,
+  ByteDisplayMode,
+  BigIntDisplayMode,
+  type DisplayPreferences,
+} from './types'
 import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
 
 import type { NetworkConfig } from './types'
@@ -15,15 +21,66 @@ import type { PersistStorage } from 'zustand/middleware'
 export const NETWORK_CONFIG_STORAGE_KEY = 'ssl.network-config.v1'
 
 /**
+ * Storage key for preferences persistence
+ */
+export const PREFERENCES_STORAGE_KEY = 'ssl.preferences.v1'
+
+/**
  * Default network config used when storage is missing or corrupt
  */
 export const DEFAULT_NETWORK_CONFIG: NetworkConfig = DEFAULT_NETWORKS.futurenet
 
 /**
- * Persisted state shape (only networkConfig)
+ * Persisted state shape
  */
 export interface PersistedState {
   networkConfig: PersistedNetworkConfig
+  preferences: DisplayPreferences
+}
+
+/**
+ * Validates that a byte display mode is valid
+ */
+export function isValidByteDisplayMode(
+  value: unknown,
+): value is ByteDisplayMode {
+  return Object.values(ByteDisplayMode).includes(value as ByteDisplayMode)
+}
+
+/**
+ * Validates that a big int display mode is valid
+ */
+export function isValidBigIntDisplayMode(
+  value: unknown,
+): value is BigIntDisplayMode {
+  return Object.values(BigIntDisplayMode).includes(value as BigIntDisplayMode)
+}
+
+/**
+ * Validates that display preferences are valid
+ * Falls back to defaults for any invalid values
+ */
+export function validateDisplayPreferences(
+  value: unknown,
+): DisplayPreferences {
+  if (typeof value !== 'object' || value === null) {
+    return { ...DEFAULT_PREFERENCES }
+  }
+
+  const prefs = value as Record<string, unknown>
+
+  const byteDisplayMode = isValidByteDisplayMode(prefs.byteDisplayMode)
+    ? prefs.byteDisplayMode
+    : DEFAULT_PREFERENCES.byteDisplayMode
+
+  const bigIntDisplayMode = isValidBigIntDisplayMode(prefs.bigIntDisplayMode)
+    ? prefs.bigIntDisplayMode
+    : DEFAULT_PREFERENCES.bigIntDisplayMode
+
+  return {
+    byteDisplayMode,
+    bigIntDisplayMode,
+  }
 }
 
 /**
@@ -130,6 +187,61 @@ export function serializeNetworkConfigForStorage(
   networkConfig: NetworkConfig,
 ): PersistedNetworkConfig {
   return serializePersistedNetworkConfig(networkConfig)
+}
+
+/**
+ * Hydration merge function for preferences
+ * Validates persisted preferences and falls back to defaults for invalid values
+ */
+export function mergePreferences(
+  persistedState: unknown,
+  currentState: { preferences: DisplayPreferences },
+): { preferences: DisplayPreferences } {
+  if (
+    typeof persistedState === 'object' &&
+    persistedState !== null &&
+    'preferences' in persistedState
+  ) {
+    const persisted = persistedState as { preferences: unknown }
+    const validatedPreferences = validateDisplayPreferences(
+      persisted.preferences,
+    )
+
+    // Log if any values were corrected
+    if (
+      persisted.preferences !== null &&
+      typeof persisted.preferences === 'object'
+    ) {
+      const original = persisted.preferences as Record<string, unknown>
+      if (
+        !isValidByteDisplayMode(original.byteDisplayMode) ||
+        !isValidBigIntDisplayMode(original.bigIntDisplayMode)
+      ) {
+        console.warn(
+          '[LensStore] Persisted preferences contain invalid values, applying defaults',
+          persisted.preferences,
+        )
+      }
+    }
+
+    return { preferences: validatedPreferences }
+  }
+
+  // Return current state (with defaults) if persisted data is invalid or missing
+  return currentState
+}
+
+/**
+ * Clear persisted preferences (for testing)
+ */
+export function clearPersistedPreferences(): void {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(PREFERENCES_STORAGE_KEY)
+    }
+  } catch {
+    // Ignore errors during cleanup
+  }
 }
 
 /**

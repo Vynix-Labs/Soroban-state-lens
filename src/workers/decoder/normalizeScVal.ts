@@ -342,6 +342,28 @@ export function normalizeScVal(
       return createUnsupportedFallback(ScValType.SCV_I128, scVal.value)
     }
 
+    case ScValType.SCV_TIMEPOINT: {
+      const str = bigIntLikeToString(scVal.value)
+      if (str !== null) {
+        const n = BigInt(str)
+        if (n >= 0n && n <= 0xffffffffffffffffn) {
+          return { kind: 'primitive', primitive: 'timepoint', value: str }
+        }
+      }
+      return createUnsupportedFallback(ScValType.SCV_TIMEPOINT, scVal.value)
+    }
+
+    case ScValType.SCV_DURATION: {
+      const str = bigIntLikeToString(scVal.value)
+      if (str !== null) {
+        const n = BigInt(str)
+        if (n >= 0n && n <= 0xffffffffffffffffn) {
+          return { kind: 'primitive', primitive: 'duration', value: str }
+        }
+      }
+      return createUnsupportedFallback(ScValType.SCV_DURATION, scVal.value)
+    }
+
     case ScValType.SCV_STRING:
       return {
         kind: 'primitive',

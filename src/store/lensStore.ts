@@ -1,12 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-import { ConnectionStatus, DEFAULT_NETWORKS } from './types'
+import { ConnectionStatus, DEFAULT_NETWORKS, DEFAULT_PREFERENCES, ByteDisplayMode, BigIntDisplayMode } from './types'
 import {
   DEFAULT_NETWORK_CONFIG,
   NETWORK_CONFIG_STORAGE_KEY,
   createSafeStorage,
   mergeNetworkConfig,
+  mergePreferences,
   serializeNetworkConfigForStorage,
 } from './persistence'
 import { createContractSlice } from './contractSlice'
@@ -20,6 +21,7 @@ import type {
   LensStore,
   NetworkConfig,
   NetworkConfigSlice,
+  PreferencesSlice,
   SnapshotSlice,
 } from './types'
 
@@ -209,11 +211,36 @@ const createSnapshotSlice = (
 })
 
 /**
- * Combined Lens Store with persistence for networkConfig only
+ * Preferences slice creator
+ */
+const createPreferencesSlice = (
+  set: (fn: (state: LensStore) => Partial<LensStore>) => void,
+): PreferencesSlice => ({
+  preferences: DEFAULT_PREFERENCES,
+
+  setByteDisplayMode: (mode: ByteDisplayMode) =>
+    set((state) => ({
+      preferences: { ...state.preferences, byteDisplayMode: mode },
+    })),
+
+  setBigIntDisplayMode: (mode: BigIntDisplayMode) =>
+    set((state) => ({
+      preferences: { ...state.preferences, bigIntDisplayMode: mode },
+    })),
+
+  resetPreferences: () =>
+    set(() => ({
+      preferences: DEFAULT_PREFERENCES,
+    })),
+})
+
+/**
+ * Combined Lens Store with persistence for networkConfig and preferences
  *
  * Centralized state management for Soroban State Lens.
  * Includes slices for:
  * - networkConfig: Current network configuration (PERSISTED)
+ * - preferences: Display preferences (PERSISTED)
  * - ledgerData: Cached ledger entries (NOT persisted)
  * - expandedNodes: Tree view expansion state (NOT persisted)
  */
@@ -225,19 +252,26 @@ export const useLensStore = create<LensStore>()(
       ...createExpandedNodesSlice(set),
       ...createSnapshotSlice(set, get),
       ...createContractSlice(set),
+      ...createPreferencesSlice(set),
     }),
     {
       name: NETWORK_CONFIG_STORAGE_KEY,
       storage: createSafeStorage<PersistedState>(),
-      // Only persist networkConfig slice (excluding connectionStatus)
+      // Persist both networkConfig and preferences slices
       partialize: (state): PersistedState => ({
         networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
+        preferences: state.preferences,
       }),
       // Validate and merge persisted data safely
-      merge: (persistedState, currentState) => ({
-        ...currentState,
-        ...mergeNetworkConfig(persistedState, currentState),
-      }),
+      merge: (persistedState, currentState) => {
+        const mergedNetwork = mergeNetworkConfig(persistedState, currentState)
+        const mergedPreferences = mergePreferences(persistedState, currentState)
+        return {
+          ...currentState,
+          ...mergedNetwork,
+          ...mergedPreferences,
+        }
+      },
     },
   ),
 )
@@ -269,6 +303,7 @@ export const resetStore = () => {
     expandedNodes: [],
     snapshots: {},
     activeContractId: null,
+    preferences: DEFAULT_PREFERENCES,
   })
 }
 

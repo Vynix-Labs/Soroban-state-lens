@@ -98,13 +98,41 @@ export interface ContractSlice {
   clearActiveContractId: () => void
 }
 
+// Display preferences enums
+export enum ByteDisplayMode {
+  HEX = 'hex',
+  BASE64 = 'base64',
+  UTF8 = 'utf8',
+}
+
+export enum BigIntDisplayMode {
+  DECIMAL = 'decimal',
+  HEX = 'hex',
+  SCIENTIFIC = 'scientific',
+}
+
+// Display preferences
+export interface DisplayPreferences {
+  byteDisplayMode: ByteDisplayMode
+  bigIntDisplayMode: BigIntDisplayMode
+}
+
+// Preferences slice
+export interface PreferencesSlice {
+  preferences: DisplayPreferences
+  setByteDisplayMode: (mode: ByteDisplayMode) => void
+  setBigIntDisplayMode: (mode: BigIntDisplayMode) => void
+  resetPreferences: () => void
+}
+
 // Combined store type
 export interface LensStore
   extends NetworkConfigSlice,
     LedgerDataSlice,
     ExpandedNodesSlice,
     SnapshotSlice,
-    ContractSlice {}
+    ContractSlice,
+    PreferencesSlice {}
 
 // Default network configurations
 export const DEFAULT_NETWORKS: Record<string, NetworkConfig> = {
@@ -126,4 +154,12 @@ export const DEFAULT_NETWORKS: Record<string, NetworkConfig> = {
     rpcUrl: 'https://soroban.stellar.org',
     horizonUrl: 'https://horizon.stellar.org',
   },
+}
+
+/**
+ * Default display preferences
+ */
+export const DEFAULT_PREFERENCES: DisplayPreferences = {
+  byteDisplayMode: ByteDisplayMode.HEX,
+  bigIntDisplayMode: BigIntDisplayMode.DECIMAL,
 }

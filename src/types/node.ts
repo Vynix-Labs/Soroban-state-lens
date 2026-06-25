@@ -65,6 +65,8 @@ export type PrimitiveKind =
   | 'string'
   | 'symbol'
   | 'void'
+  | 'timepoint'
+  | 'duration'
 
 /**
  * A primitive scalar value with its ScVal variant name and raw value.
