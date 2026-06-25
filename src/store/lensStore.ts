@@ -1,7 +1,17 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-import { ConnectionStatus, DEFAULT_NETWORKS, DEFAULT_PREFERENCES, ByteDisplayMode, BigIntDisplayMode } from './types'
+import { getLedgerEntries } from '../lib/network/getLedgerEntries'
+import { mapLedgerEntriesToStoreEntries } from '../lib/network/mapLedgerEntriesToStoreEntries'
+import { isDecoderWorkerError } from '../types/decoder-worker'
+import { createDecoderWorkerSafe } from '../workers/createDecoderWorkerSafe'
+import {
+  BigIntDisplayMode,
+  ByteDisplayMode,
+  ConnectionStatus,
+  ContractLoadStatus,
+  DEFAULT_NETWORKS,
+} from './types'
 import {
   DEFAULT_NETWORK_CONFIG,
   NETWORK_CONFIG_STORAGE_KEY,
@@ -11,9 +21,11 @@ import {
   serializeNetworkConfigForStorage,
 } from './persistence'
 import { createContractSlice } from './contractSlice'
+import { createPreferencesSlice } from './preferencesSlice'
 
 import type { PersistedState } from './persistence'
 import type {
+  ContractLoadSlice,
   ExpandedNodesSlice,
   LedgerDataSlice,
   LedgerEntry,
@@ -23,6 +35,7 @@ import type {
   NetworkConfigSlice,
   PreferencesSlice,
   SnapshotSlice,
+  WatchlistSlice,
 } from './types'
 
 export type { LedgerEntry, LedgerKey } from './types'
@@ -172,7 +185,11 @@ const createSnapshotSlice = (
 ): SnapshotSlice => ({
   snapshots: {},
 
-  addSnapshot: (contractId: string, entries: Record<string, LedgerEntry>, label?: string) =>
+  addSnapshot: (
+    contractId: string,
+    entries: Record<string, LedgerEntry>,
+    label?: string,
+  ) =>
     set((state) => ({
       snapshots: {
         ...state.snapshots,
@@ -211,31 +228,166 @@ const createSnapshotSlice = (
 })
 
 /**
- * Preferences slice creator
+ * Contract-load slice creator
+ * Manages load lifecycle and guards against stale in-flight requests.
  */
-const createPreferencesSlice = (
+const createContractLoadSlice = (
   set: (fn: (state: LensStore) => Partial<LensStore>) => void,
-): PreferencesSlice => ({
-  preferences: DEFAULT_PREFERENCES,
+  get: () => LensStore,
+): ContractLoadSlice => {
+  let requestId = 0
+  let activeController: AbortController | null = null
 
-  setByteDisplayMode: (mode: ByteDisplayMode) =>
+  return {
+    contractLoadStatus: ContractLoadStatus.IDLE,
+    contractLoadError: null,
+
+    setContractLoadStatus: (status: ContractLoadStatus) =>
+      set(() => ({ contractLoadStatus: status })),
+
+    setContractLoadError: (message: string | null) =>
+      set(() => ({ contractLoadError: message })),
+
+    resetContractLoadState: () =>
+      set(() => ({
+        contractLoadStatus: ContractLoadStatus.IDLE,
+        contractLoadError: null,
+      })),
+
+    loadContract: async (contractId: string, keys: Array<string>) => {
+      requestId += 1
+      const currentRequestId = requestId
+
+      if (activeController) {
+        activeController.abort()
+      }
+
+      const controller = new AbortController()
+      activeController = controller
+      const { signal } = controller
+
+      set((state) => ({
+        activeContractId: contractId,
+        contractLoadStatus: ContractLoadStatus.LOADING,
+        contractLoadError: null,
+        ledgerData:
+          state.activeContractId === contractId ? state.ledgerData : {},
+      }))
+
+      try {
+        const { entries } = await getLedgerEntries({
+          rpcUrl: get().networkConfig.rpcUrl,
+          keys,
+          signal,
+        })
+
+        if (currentRequestId !== requestId || signal.aborted) {
+          return
+        }
+
+        const worker = await createDecoderWorkerSafe()
+        const decodedValuesByKey: Record<string, unknown> = {}
+
+        for (const entry of entries) {
+          const result = await worker.decodeScVal({ xdr: entry.xdr })
+          decodedValuesByKey[entry.key] = isDecoderWorkerError(result)
+            ? entry.xdr
+            : result
+        }
+
+        const mappedEntries = mapLedgerEntriesToStoreEntries({
+          contractId,
+          entries,
+          decodedValuesByKey,
+        })
+
+        set(() => ({
+          ledgerData: Object.fromEntries(
+            mappedEntries.map((entry) => [entry.key, entry]),
+          ),
+          contractLoadStatus:
+            mappedEntries.length === 0
+              ? ContractLoadStatus.EMPTY
+              : ContractLoadStatus.SUCCESS,
+          contractLoadError: null,
+        }))
+      } catch (error) {
+        if (currentRequestId !== requestId || signal.aborted) {
+          return
+        }
+
+        set(() => ({
+          contractLoadStatus: ContractLoadStatus.ERROR,
+          contractLoadError:
+            error instanceof Error ? error.message : 'Failed to load contract',
+        }))
+      } finally {
+        if (activeController === controller) {
+          activeController = null
+        }
+      }
+    },
+  }
+}
+
+/**
+ * Watchlist slice creator
+ * Manages pinned keys for quick access across routes
+ */
+const createWatchlistSlice = (
+  set: (fn: (state: LensStore) => Partial<LensStore>) => void,
+  get: () => LensStore,
+): WatchlistSlice => ({
+  watchlist: {},
+
+  addToWatchlist: (contractId: string, keyPath: string) =>
+    set((state) => {
+      const currentItems = state.watchlist[contractId] ?? []
+      
+      // Check if item already exists (duplicate protection)
+      const isDuplicate = currentItems.some((item) => item.keyPath === keyPath)
+      if (isDuplicate) {
+        return state
+      }
+
+      return {
+        watchlist: {
+          ...state.watchlist,
+          [contractId]: [
+            ...currentItems,
+            {
+              contractId,
+              keyPath,
+              timestamp: Date.now(),
+            },
+          ],
+        },
+      }
+    }),
+
+  removeFromWatchlist: (contractId: string, keyPath: string) =>
     set((state) => ({
-      preferences: { ...state.preferences, byteDisplayMode: mode },
+      watchlist: {
+        ...state.watchlist,
+        [contractId]: (state.watchlist[contractId] ?? []).filter(
+          (item) => item.keyPath !== keyPath,
+        ),
+      },
     })),
 
-  setBigIntDisplayMode: (mode: BigIntDisplayMode) =>
-    set((state) => ({
-      preferences: { ...state.preferences, bigIntDisplayMode: mode },
-    })),
+  getWatchlistForContract: (contractId: string) => {
+    return get().watchlist[contractId] ?? []
+  },
 
-  resetPreferences: () =>
-    set(() => ({
-      preferences: DEFAULT_PREFERENCES,
-    })),
+  clearWatchlist: (contractId: string) =>
+    set((state) => {
+      const { [contractId]: _, ...rest } = state.watchlist
+      return { watchlist: rest }
+    }),
 })
 
 /**
- * Combined Lens Store with persistence for networkConfig and preferences
+ * Combined Lens Store with persistence for networkConfig only
  *
  * Centralized state management for Soroban State Lens.
  * Includes slices for:
@@ -243,6 +395,8 @@ const createPreferencesSlice = (
  * - preferences: Display preferences (PERSISTED)
  * - ledgerData: Cached ledger entries (NOT persisted)
  * - expandedNodes: Tree view expansion state (NOT persisted)
+ * - contractLoadStatus: Contract fetch lifecycle (NOT persisted)
+ * - watchlist: Pinned keys for quick access (NOT persisted)
  */
 export const useLensStore = create<LensStore>()(
   persist<LensStore, [], [], PersistedState>(
@@ -251,16 +405,21 @@ export const useLensStore = create<LensStore>()(
       ...createLedgerDataSlice(set),
       ...createExpandedNodesSlice(set),
       ...createSnapshotSlice(set, get),
+      ...createWatchlistSlice(set, get),
       ...createContractSlice(set),
+      ...createContractLoadSlice(set, get),
       ...createPreferencesSlice(set),
     }),
     {
       name: NETWORK_CONFIG_STORAGE_KEY,
       storage: createSafeStorage<PersistedState>(),
-      // Persist both networkConfig and preferences slices
+      // Persist networkConfig and preferences
       partialize: (state): PersistedState => ({
         networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
-        preferences: state.preferences,
+        preferences: {
+          byteDisplayMode: state.byteDisplayMode,
+          bigIntDisplayMode: state.bigIntDisplayMode,
+        },
       }),
       // Validate and merge persisted data safely
       merge: (persistedState, currentState) => {
@@ -284,8 +443,18 @@ export const useNetworkConfig = () =>
 export const useLedgerData = () => useLensStore((state) => state.ledgerData)
 export const useExpandedNodes = () =>
   useLensStore((state) => state.expandedNodes)
+export const useActiveContractId = () =>
+  useLensStore((state) => state.activeContractId)
+export const useSelectedKeyPath = () =>
+  useLensStore((state) => state.selectedKeyPath)
+export const useContractLoadStatus = () =>
+  useLensStore((state) => state.contractLoadStatus)
+export const useContractLoadError = () =>
+  useLensStore((state) => state.contractLoadError)
 export const useSnapshots = (contractId: string) =>
   useLensStore((state) => state.snapshots[contractId] ?? [])
+export const useWatchlist = (contractId: string) =>
+  useLensStore((state) => state.watchlist[contractId] ?? [])
 
 /**
  * Get store state outside of React components (for testing)
@@ -302,8 +471,13 @@ export const resetStore = () => {
     ledgerData: {},
     expandedNodes: [],
     snapshots: {},
+    watchlist: {},
     activeContractId: null,
-    preferences: DEFAULT_PREFERENCES,
+    selectedKeyPath: null,
+    contractLoadStatus: ContractLoadStatus.IDLE,
+    contractLoadError: null,
+    byteDisplayMode: ByteDisplayMode.HEX,
+    bigIntDisplayMode: BigIntDisplayMode.RAW,
   })
 }
 
@@ -326,4 +500,25 @@ export const lensActions = {
     upserts: Array<LedgerEntry>,
     removals: Array<LedgerKey>,
   ) => useLensStore.getState().batchLedgerUpdate(upserts, removals),
+  addToWatchlist: (contractId: string, keyPath: string) =>
+    useLensStore.getState().addToWatchlist(contractId, keyPath),
+  removeFromWatchlist: (contractId: string, keyPath: string) =>
+    useLensStore.getState().removeFromWatchlist(contractId, keyPath),
+  getWatchlistForContract: (contractId: string) =>
+    useLensStore.getState().getWatchlistForContract(contractId),
+  clearWatchlist: (contractId: string) =>
+    useLensStore.getState().clearWatchlist(contractId),
+  setActiveContractId: (contractId: string) =>
+    useLensStore.getState().setActiveContractId(contractId),
+  clearActiveContractId: () => useLensStore.getState().clearActiveContractId(),
+  setSelectedKeyPath: (keyPath: string) =>
+    useLensStore.getState().setSelectedKeyPath(keyPath),
+  clearSelectedKeyPath: () => useLensStore.getState().clearSelectedKeyPath(),
+  setContractLoadStatus: (status: ContractLoadStatus) =>
+    useLensStore.getState().setContractLoadStatus(status),
+  setContractLoadError: (message: string | null) =>
+    useLensStore.getState().setContractLoadError(message),
+  resetContractLoadState: () => useLensStore.getState().resetContractLoadState(),
+  loadContract: (contractId: string, keys: Array<string>) =>
+    useLensStore.getState().loadContract(contractId, keys),
 }

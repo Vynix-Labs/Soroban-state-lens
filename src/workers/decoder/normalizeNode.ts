@@ -138,6 +138,61 @@ function parts128ToString(value: unknown, signed: boolean): string | null {
   }
 }
 
+function parts256ToString(value: unknown, signed: boolean): string | null {
+  if (value === null || value === undefined || typeof value !== 'object') {
+    return null
+  }
+
+  const v = value as any
+  const hiHiRaw = typeof v.hiHi === 'function' ? v.hiHi() : v.hiHi
+  const hiLoRaw = typeof v.hiLo === 'function' ? v.hiLo() : v.hiLo
+  const loHiRaw = typeof v.loHi === 'function' ? v.loHi() : v.loHi
+  const loLoRaw = typeof v.loLo === 'function' ? v.loLo() : v.loLo
+
+  const hiHiStr = bigIntLikeToString(hiHiRaw)
+  const hiLoStr = bigIntLikeToString(hiLoRaw)
+  const loHiStr = bigIntLikeToString(loHiRaw)
+  const loLoStr = bigIntLikeToString(loLoRaw)
+
+  if (
+    hiHiStr === null ||
+    hiLoStr === null ||
+    loHiStr === null ||
+    loLoStr === null
+  ) {
+    return null
+  }
+
+  const hiHi = BigInt(hiHiStr)
+  const hiLo = BigInt(hiLoStr)
+  const loHi = BigInt(loHiStr)
+  const loLo = BigInt(loLoStr)
+
+  const uLoLo = loLo < 0n ? loLo + (1n << 64n) : loLo
+  const uLoHi = loHi < 0n ? loHi + (1n << 64n) : loHi
+  const uHiLo = hiLo < 0n ? hiLo + (1n << 64n) : hiLo
+
+  if (signed) {
+    const combined =
+      hiHi * (1n << 192n) + uHiLo * (1n << 128n) + uLoHi * (1n << 64n) + uLoLo
+    const min = -(1n << 255n)
+    const max = (1n << 255n) - 1n
+    if (combined < min || combined > max) {
+      return null
+    }
+    return combined.toString()
+  } else {
+    const uHiHi = hiHi < 0n ? hiHi + (1n << 64n) : hiHi
+    const combined =
+      uHiHi * (1n << 192n) + uHiLo * (1n << 128n) + uLoHi * (1n << 64n) + uLoLo
+    const max = (1n << 256n) - 1n
+    if (combined < 0n || combined > max) {
+      return null
+    }
+    return combined.toString()
+  }
+}
+
 function createCycleNode(path: Path, depth: number): CycleNode {
   return { kind: 'cycle', path, depth }
 }
@@ -325,10 +380,30 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_U256: {
+      const str = parts256ToString(scVal.value, false)
+      if (str !== null) {
+        return {
+          kind: 'primitive',
+          path,
+          scType: 'u256',
+          value: str,
+          raw: toRaw(scVal),
+        } satisfies PrimitiveNode
+      }
       return createUnsupportedNode(path, ScValType.SCV_U256, scVal)
     }
 
     case ScValType.SCV_I256: {
+      const str = parts256ToString(scVal.value, true)
+      if (str !== null) {
+        return {
+          kind: 'primitive',
+          path,
+          scType: 'i256',
+          value: str,
+          raw: toRaw(scVal),
+        } satisfies PrimitiveNode
+      }
       return createUnsupportedNode(path, ScValType.SCV_I256, scVal)
     }
 

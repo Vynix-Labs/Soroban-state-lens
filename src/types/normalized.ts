@@ -118,6 +118,8 @@ export type PrimitiveKind =
   | 'i64'
   | 'u128'
   | 'i128'
+  | 'u256'
+  | 'i256'
   | 'string'
   | 'symbol'
   | 'void'
@@ -126,6 +128,7 @@ export interface NormalizedPrimitive {
   kind: 'primitive'
   primitive: PrimitiveKind
   value: boolean | number | string | null
+  preview?: string | null
 }
 
 export interface NormalizedVec {

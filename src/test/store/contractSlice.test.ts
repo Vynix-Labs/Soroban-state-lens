@@ -2,8 +2,6 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { getStoreState, resetStore } from '../../store/lensStore'
 
-
-
 describe('Contract Slice', () => {
   beforeEach(() => {
     resetStore()

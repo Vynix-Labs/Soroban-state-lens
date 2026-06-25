@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'vitest'
-import { bytesToHex, isUint8Array } from '../../lib/format/bytesToHex'
+import {
+  bytesToHex,
+  bytesToUtf8Preview,
+  isUint8Array,
+} from '../../lib/format/bytesToHex'
 
 describe('bytesToHex', () => {
   test('should return "0x" for null input', () => {
@@ -27,13 +31,12 @@ describe('bytesToHex', () => {
 
   test('should convert longer payload to hex', () => {
     const longerBytes = new Uint8Array([
-      0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
-      0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10,
-      0x00, 0xff, 0x80, 0x7f, 0x11, 0x22, 0x33, 0x44,
-      0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc
+      0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98,
+      0x76, 0x54, 0x32, 0x10, 0x00, 0xff, 0x80, 0x7f, 0x11, 0x22, 0x33, 0x44,
+      0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
     ])
     expect(bytesToHex(longerBytes)).toBe(
-      '0x0123456789abcdeffedcba987654321000ff807f112233445566778899aabbcc'
+      '0x0123456789abcdeffedcba987654321000ff807f112233445566778899aabbcc',
     )
   })
 
@@ -45,6 +48,23 @@ describe('bytesToHex', () => {
   test('should handle mixed values', () => {
     const mixedBytes = new Uint8Array([0, 1, 15, 16, 255, 128])
     expect(bytesToHex(mixedBytes)).toBe('0x00010f10ff80')
+  })
+})
+
+describe('bytesToUtf8Preview', () => {
+  test('should return empty string for empty byte array', () => {
+    const emptyBytes = new Uint8Array([])
+    expect(bytesToUtf8Preview(emptyBytes)).toBe('')
+  })
+
+  test('should decode valid UTF-8 text', () => {
+    const textBytes = new TextEncoder().encode('Hello, Soroban!')
+    expect(bytesToUtf8Preview(textBytes)).toBe('Hello, Soroban!')
+  })
+
+  test('should return null for invalid UTF-8 byte sequences', () => {
+    const invalidBytes = new Uint8Array([0xc3, 0x28])
+    expect(bytesToUtf8Preview(invalidBytes)).toBe(null)
   })
 })
 

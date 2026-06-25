@@ -35,51 +35,9 @@ export const DEFAULT_NETWORK_CONFIG: NetworkConfig = DEFAULT_NETWORKS.futurenet
  */
 export interface PersistedState {
   networkConfig: PersistedNetworkConfig
-  preferences: DisplayPreferences
-}
-
-/**
- * Validates that a byte display mode is valid
- */
-export function isValidByteDisplayMode(
-  value: unknown,
-): value is ByteDisplayMode {
-  return Object.values(ByteDisplayMode).includes(value as ByteDisplayMode)
-}
-
-/**
- * Validates that a big int display mode is valid
- */
-export function isValidBigIntDisplayMode(
-  value: unknown,
-): value is BigIntDisplayMode {
-  return Object.values(BigIntDisplayMode).includes(value as BigIntDisplayMode)
-}
-
-/**
- * Validates that display preferences are valid
- * Falls back to defaults for any invalid values
- */
-export function validateDisplayPreferences(
-  value: unknown,
-): DisplayPreferences {
-  if (typeof value !== 'object' || value === null) {
-    return { ...DEFAULT_PREFERENCES }
-  }
-
-  const prefs = value as Record<string, unknown>
-
-  const byteDisplayMode = isValidByteDisplayMode(prefs.byteDisplayMode)
-    ? prefs.byteDisplayMode
-    : DEFAULT_PREFERENCES.byteDisplayMode
-
-  const bigIntDisplayMode = isValidBigIntDisplayMode(prefs.bigIntDisplayMode)
-    ? prefs.bigIntDisplayMode
-    : DEFAULT_PREFERENCES.bigIntDisplayMode
-
-  return {
-    byteDisplayMode,
-    bigIntDisplayMode,
+  preferences?: {
+    byteDisplayMode: string
+    bigIntDisplayMode: string
   }
 }
 
@@ -158,19 +116,34 @@ export const createSafeStorage = <T>(): PersistStorage<T> | undefined =>
 export function mergeNetworkConfig(
   persistedState: unknown,
   currentState: { networkConfig: NetworkConfig },
-): { networkConfig: NetworkConfig } {
+): any {
   if (
     typeof persistedState === 'object' &&
     persistedState !== null &&
     'networkConfig' in persistedState
   ) {
-    const persisted = persistedState as { networkConfig: unknown }
+    const persisted = persistedState as {
+      networkConfig: unknown
+      preferences?: {
+        byteDisplayMode: string
+        bigIntDisplayMode: string
+      }
+    }
     const parsedNetworkConfig = parsePersistedNetworkConfig(
       persisted.networkConfig,
     )
 
     if (isValidNetworkConfig(parsedNetworkConfig)) {
-      return { networkConfig: parsedNetworkConfig }
+      return {
+        networkConfig: parsedNetworkConfig,
+        ...(persisted.preferences
+          ? {
+              byteDisplayMode: (persisted.preferences as any).byteDisplayMode,
+              bigIntDisplayMode: (persisted.preferences as any)
+                .bigIntDisplayMode,
+            }
+          : {}),
+      }
     }
 
     console.warn(

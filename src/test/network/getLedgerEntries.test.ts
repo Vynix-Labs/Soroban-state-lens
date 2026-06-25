@@ -207,7 +207,7 @@ describe('getLedgerEntries', () => {
 
     it('throws AbortError if signal is aborted after fetch completes but before result return', async () => {
       const controller = new AbortController()
-      
+
       vi.mocked(fetch).mockImplementation(async () => {
         controller.abort()
         return {
@@ -230,4 +230,3 @@ describe('getLedgerEntries', () => {
     })
   })
 })
-
