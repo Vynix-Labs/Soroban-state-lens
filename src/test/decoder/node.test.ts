@@ -179,6 +179,72 @@ describe('normalizeNode – Primitive Nodes', () => {
   })
 })
 
+describe('normalizeNode – Timepoint and Duration', () => {
+  it('timepoint node returns primitive with decimal-string for non-zero', () => {
+    const result = normalizeNode(
+      makeScVal(ScValType.SCV_TIMEPOINT, '1719878400'),
+    ) as PrimitiveNode
+
+    expect(result.kind).toBe('primitive')
+    expect(result.scType).toBe('timepoint')
+    expect(result.value).toBe('1719878400')
+    expect(typeof result.value).toBe('string')
+    expect(result.raw.switch).toBe(ScValType.SCV_TIMEPOINT)
+  })
+
+  it('timepoint node returns primitive for zero', () => {
+    const result = normalizeNode(
+      makeScVal(ScValType.SCV_TIMEPOINT, '0'),
+    ) as PrimitiveNode
+
+    expect(result.kind).toBe('primitive')
+    expect(result.scType).toBe('timepoint')
+    expect(result.value).toBe('0')
+    expect(typeof result.value).toBe('string')
+  })
+
+  it('duration node returns primitive with decimal-string for non-zero', () => {
+    const result = normalizeNode(
+      makeScVal(ScValType.SCV_DURATION, '86400'),
+    ) as PrimitiveNode
+
+    expect(result.kind).toBe('primitive')
+    expect(result.scType).toBe('duration')
+    expect(result.value).toBe('86400')
+    expect(typeof result.value).toBe('string')
+    expect(result.raw.switch).toBe(ScValType.SCV_DURATION)
+  })
+
+  it('duration node returns primitive for zero', () => {
+    const result = normalizeNode(
+      makeScVal(ScValType.SCV_DURATION, '0'),
+    ) as PrimitiveNode
+
+    expect(result.kind).toBe('primitive')
+    expect(result.scType).toBe('duration')
+    expect(result.value).toBe('0')
+    expect(typeof result.value).toBe('string')
+  })
+
+  it('timepoint falls back to unsupported for invalid value', () => {
+    const result = normalizeNode(
+      makeScVal(ScValType.SCV_TIMEPOINT, 'not-a-number'),
+    ) as UnsupportedNode
+
+    expect(result.kind).toBe('unsupported')
+    expect(result.variant).toBe(ScValType.SCV_TIMEPOINT)
+  })
+
+  it('duration falls back to unsupported for out-of-range value', () => {
+    const result = normalizeNode(
+      makeScVal(ScValType.SCV_DURATION, '18446744073709551616'),
+    ) as UnsupportedNode
+
+    expect(result.kind).toBe('unsupported')
+    expect(result.variant).toBe(ScValType.SCV_DURATION)
+  })
+})
+
 describe('normalizeNode – Container Nodes', () => {
   it('vec node has correct shape', () => {
     const scVal = makeScVal(ScValType.SCV_VEC, [
