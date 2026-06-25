@@ -430,6 +430,8 @@ export const useLensStore = create<LensStore>()(
 /**
  * Selector hooks for common use cases
  */
+const EMPTY_ARRAY: never[] = []
+
 export const useNetworkConfig = () =>
   useLensStore((state) => state.networkConfig)
 export const useLedgerData = () => useLensStore((state) => state.ledgerData)
@@ -444,9 +446,9 @@ export const useContractLoadStatus = () =>
 export const useContractLoadError = () =>
   useLensStore((state) => state.contractLoadError)
 export const useSnapshots = (contractId: string) =>
-  useLensStore((state) => state.snapshots[contractId] ?? [])
+  useLensStore((state) => state.snapshots[contractId] ?? EMPTY_ARRAY)
 export const useWatchlist = (contractId: string) =>
-  useLensStore((state) => state.watchlist[contractId] ?? [])
+  useLensStore((state) => state.watchlist[contractId] ?? EMPTY_ARRAY)
 
 /**
  * Get store state outside of React components (for testing)
