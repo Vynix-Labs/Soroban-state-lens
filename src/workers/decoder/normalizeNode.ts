@@ -334,6 +334,23 @@ export function normalizeNode(
       return createUnsupportedNode(path, ScValType.SCV_U64, scVal)
     }
 
+    case ScValType.SCV_TIMEPOINT: {
+      const str = bigIntLikeToString(scVal.value)
+      if (str !== null) {
+        const n = BigInt(str)
+        if (n >= 0n && n <= 0xffffffffffffffffn) {
+          return {
+            kind: 'primitive',
+            path,
+            scType: 'timepoint',
+            value: str,
+            raw: toRaw(scVal),
+          } satisfies PrimitiveNode
+        }
+      }
+      return createUnsupportedNode(path, ScValType.SCV_TIMEPOINT, scVal)
+    }
+
     case ScValType.SCV_I64: {
       const str = bigIntLikeToString(scVal.value)
       if (str !== null) {
