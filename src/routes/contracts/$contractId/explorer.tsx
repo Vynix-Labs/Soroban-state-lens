@@ -2,7 +2,6 @@ import { useEffect, useMemo } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Button, Card, Heading } from '@stellar/design-system'
 import { VirtualizedTreeList } from '../../../components/explorer/VirtualizedTreeList'
-import { selectLedgerEntriesByContractId } from '../../../lib/selectors/selectLedgerEntriesByContractId'
 import { flattenTree } from '../../../lib/tree/flattenTree'
 import { ContractLoadStatus } from '../../../store/types'
 import { useLensStore } from '../../../store/lensStore'
@@ -54,9 +53,26 @@ function ContractExplorer() {
   const selectedKeyPath = useLensStore((state) => state.selectedKeyPath)
   const setSelectedKeyPath = useLensStore((state) => state.setSelectedKeyPath)
 
-  const ledgerEntries = useLensStore((state) =>
-    selectLedgerEntriesByContractId(state, contractId),
-  )
+  const ledgerData = useLensStore((state) => state.ledgerData)
+  const ledgerEntries = useMemo(() => {
+    const entries = Object.values(ledgerData).filter(
+      (entry) => entry.contractId === contractId,
+    )
+    return entries.sort((a, b) => a.key.localeCompare(b.key))
+  }, [ledgerData, contractId])
+
+  const snapshots = useLensStore((state) => state.snapshots[contractId] ?? [])
+  const addSnapshot = useLensStore((state) => state.addSnapshot)
+
+  const handleCaptureSnapshot = () => {
+    if (ledgerEntries.length === 0) return
+    const entriesDict: Record<string, typeof ledgerEntries[0]> = {}
+    ledgerEntries.forEach((entry) => {
+      entriesDict[entry.key] = entry
+    })
+    const label = `Snapshot #${snapshots.length + 1}`
+    addSnapshot(contractId, entriesDict, label)
+  }
 
   const keys = useMemo(
     () =>
@@ -142,6 +158,11 @@ function ContractExplorer() {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          {contractLoadStatus === ContractLoadStatus.SUCCESS && (
+            <Button variant="primary" size="sm" onClick={handleCaptureSnapshot}>
+              Capture Snapshot
+            </Button>
+          )}
           <Button variant="secondary" size="sm" onClick={handleRetry}>
             Retry Load
           </Button>
