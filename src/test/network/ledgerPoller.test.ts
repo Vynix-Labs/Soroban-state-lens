@@ -26,6 +26,7 @@ describe('startLedgerHeadPoll', () => {
   describe('emits changes only on sequence increment', () => {
     it('calls onLedgerChange when sequence increases', async () => {
       const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc
         .mockResolvedValueOnce({ result: { sequence: 100 } })
         .mockResolvedValueOnce({ result: { sequence: 101 } })
@@ -45,10 +46,12 @@ describe('startLedgerHeadPoll', () => {
       expect(onLedgerChange).toHaveBeenCalledWith(102)
       expect(onLedgerChange).toHaveBeenCalledTimes(3)
       stop()
+      randomSpy.mockRestore()
     })
 
     it('does not call onLedgerChange when sequence is unchanged', async () => {
       const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc
         .mockResolvedValueOnce({ result: { sequence: 100 } })
         .mockResolvedValueOnce({ result: { sequence: 100 } })
@@ -67,10 +70,12 @@ describe('startLedgerHeadPoll', () => {
       await vi.advanceTimersByTimeAsync(1000)
       expect(onLedgerChange).toHaveBeenCalledTimes(1)
       stop()
+      randomSpy.mockRestore()
     })
 
     it('does not call onLedgerChange when sequence decreases', async () => {
       const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc
         .mockResolvedValueOnce({ result: { sequence: 102 } })
         .mockResolvedValueOnce({ result: { sequence: 101 } })
@@ -88,10 +93,12 @@ describe('startLedgerHeadPoll', () => {
       await vi.advanceTimersByTimeAsync(1000)
       expect(onLedgerChange).toHaveBeenCalledTimes(1)
       stop()
+      randomSpy.mockRestore()
     })
 
     it('calls onLedgerChange only for first poll when result has no sequence then valid sequence', async () => {
       const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc
         .mockResolvedValueOnce({ result: {} })
         .mockResolvedValueOnce({ result: { sequence: 100 } })
@@ -108,10 +115,12 @@ describe('startLedgerHeadPoll', () => {
       expect(onLedgerChange).toHaveBeenCalledTimes(1)
       expect(onLedgerChange).toHaveBeenCalledWith(100)
       stop()
+      randomSpy.mockRestore()
     })
 
     it('does not call onLedgerChange when RPC returns error', async () => {
       const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc.mockResolvedValue({
         message: 'Network error',
         code: 'NETWORK_ERROR',
@@ -127,6 +136,7 @@ describe('startLedgerHeadPoll', () => {
       await vi.advanceTimersByTimeAsync(1000)
       expect(onLedgerChange).not.toHaveBeenCalled()
       stop()
+      randomSpy.mockRestore()
     })
   })
 
