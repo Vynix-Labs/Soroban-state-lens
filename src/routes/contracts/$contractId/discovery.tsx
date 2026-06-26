@@ -1,19 +1,20 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Card, Heading, IconButton } from '@stellar/design-system'
 import { useLensStore } from '../../../store/lensStore'
 import { validateContractRouteParam } from './-validateContractRouteParam'
 
 export const Route = createFileRoute('/contracts/$contractId/discovery')({
-  component: DiscoveryRoute,
-  beforeLoad: ({ params }) => {
+  beforeLoad({ params }) {
     const result = validateContractRouteParam(params.contractId)
     if (!result.ok) {
-      console.error(`Invalid contract ID: ${result.reason}`)
+      throw redirect({ to: '/' })
     }
+
     return {
-      normalizedContractId: result.ok ? result.contractId : params.contractId,
+      normalizedContractId: result.contractId,
     }
   },
+  component: DiscoveryRoute,
 })
 
 interface DiscoveredKey {
@@ -25,7 +26,7 @@ function DiscoveryRoute() {
   const { contractId } = Route.useParams()
   const { normalizedContractId } = Route.useRouteContext()
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
-  
+
   // Mock discovered keys for demonstration
   const discoveredKeys: Array<DiscoveredKey> = [
     { keyPath: '/contracts/key1', type: 'ContractData' },
@@ -39,7 +40,6 @@ function DiscoveryRoute() {
 
   return (
     <div className="flex flex-col gap-6 p-6 lg:p-10 max-w-6xl mx-auto w-full">
-      {/* Header */}
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-dark pb-6">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
@@ -50,10 +50,14 @@ function DiscoveryRoute() {
           <Heading size="lg" as="h1" className="font-mono break-all text-white">
             {normalizedContractId || contractId}
           </Heading>
+          <p className="text-text-secondary leading-relaxed text-sm max-w-2xl">
+            This dedicated discovery route is contract-aware and refresh-safe.
+            It reserves space for simulation-driven key discovery workflows while
+            avoiding live simulation and footprint parsing for now.
+          </p>
         </div>
       </header>
 
-      {/* Discovery Results */}
       <div className="space-y-4">
         <Heading size="sm" as="h2" className="text-text-muted uppercase tracking-widest text-[11px] font-bold">
           Discovered Keys
@@ -61,8 +65,8 @@ function DiscoveryRoute() {
 
         <div className="grid gap-3">
           {discoveredKeys.length > 0 ? (
-            discoveredKeys.map((item, idx) => (
-              <Card key={idx}>
+            discoveredKeys.map((item) => (
+              <Card key={item.keyPath}>
                 <div className="p-4 flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-mono text-white truncate">{item.keyPath}</div>

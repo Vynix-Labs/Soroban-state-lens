@@ -334,23 +334,6 @@ export function normalizeNode(
       return createUnsupportedNode(path, ScValType.SCV_U64, scVal)
     }
 
-    case ScValType.SCV_I64: {
-      const str = bigIntLikeToString(scVal.value)
-      if (str !== null) {
-        const n = BigInt(str)
-        if (n >= -0x8000000000000000n && n <= 0x7fffffffffffffffn) {
-          return {
-            kind: 'primitive',
-            path,
-            scType: 'i64',
-            value: str,
-            raw: toRaw(scVal),
-          } satisfies PrimitiveNode
-        }
-      }
-      return createUnsupportedNode(path, ScValType.SCV_I64, scVal)
-    }
-
     case ScValType.SCV_TIMEPOINT: {
       const str = bigIntLikeToString(scVal.value)
       if (str !== null) {
@@ -366,6 +349,23 @@ export function normalizeNode(
         }
       }
       return createUnsupportedNode(path, ScValType.SCV_TIMEPOINT, scVal)
+    }
+
+    case ScValType.SCV_I64: {
+      const str = bigIntLikeToString(scVal.value)
+      if (str !== null) {
+        const n = BigInt(str)
+        if (n >= -0x8000000000000000n && n <= 0x7fffffffffffffffn) {
+          return {
+            kind: 'primitive',
+            path,
+            scType: 'i64',
+            value: str,
+            raw: toRaw(scVal),
+          } satisfies PrimitiveNode
+        }
+      }
+      return createUnsupportedNode(path, ScValType.SCV_I64, scVal)
     }
 
     case ScValType.SCV_DURATION: {
