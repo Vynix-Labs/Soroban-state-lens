@@ -189,21 +189,32 @@ const createSnapshotSlice = (
     entries: Record<string, LedgerEntry>,
     label?: string,
   ) =>
-    set((state) => ({
-      snapshots: {
-        ...state.snapshots,
-        [contractId]: [
-          ...(state.snapshots[contractId] ?? []),
-          {
-            id: crypto.randomUUID(),
-            contractId,
-            timestamp: Date.now(),
-            ledgerData: { ...entries },
-            label,
-          },
-        ],
-      },
-    })),
+    set((state) => {
+      // Deep clone entries to ensure immutability
+      const clonedEntries: Record<string, LedgerEntry> = {}
+      for (const [key, entry] of Object.entries(entries)) {
+        clonedEntries[key] = {
+          ...entry,
+          value: JSON.parse(JSON.stringify(entry.value)),
+        }
+      }
+
+      return {
+        snapshots: {
+          ...state.snapshots,
+          [contractId]: [
+            ...(state.snapshots[contractId] ?? []),
+            {
+              id: crypto.randomUUID(),
+              contractId,
+              timestamp: Date.now(),
+              ledgerData: clonedEntries,
+              label,
+            },
+          ],
+        },
+      }
+    }),
 
   getSnapshots: (contractId: string) => {
     return get().snapshots[contractId] ?? []
@@ -516,4 +527,27 @@ export const lensActions = {
   resetContractLoadState: () => useLensStore.getState().resetContractLoadState(),
   loadContract: (contractId: string, keys: Array<string>) =>
     useLensStore.getState().loadContract(contractId, keys),
+  addSnapshot: (
+    contractId: string,
+    entries: Record<string, LedgerEntry>,
+    label?: string,
+  ) => useLensStore.getState().addSnapshot(contractId, entries, label),
+  getSnapshots: (contractId: string) =>
+    useLensStore.getState().getSnapshots(contractId),
+  removeSnapshot: (contractId: string, snapshotId: string) =>
+    useLensStore.getState().removeSnapshot(contractId, snapshotId),
+  clearSnapshots: (contractId: string) =>
+    useLensStore.getState().clearSnapshots(contractId),
+  /**
+   * Capture current contract state as a timestamped snapshot.
+   * Clones the active contract's ledger data into an immutable snapshot record.
+   */
+  captureSnapshot: (label?: string) => {
+    const state = useLensStore.getState()
+    if (!state.activeContractId) {
+      console.warn('No active contract to capture snapshot for')
+      return
+    }
+    state.addSnapshot(state.activeContractId, state.ledgerData, label)
+  },
 }
