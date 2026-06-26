@@ -113,6 +113,33 @@ describe('selectors', () => {
       expect(def).toHaveLength(1)
     })
 
+    it('selectLedgerEntriesByContract is referentially stable across identical state reads', () => {
+      useLensStore
+        .getState()
+        .upsertLedgerEntries([mockEntry, mockEntry2, mockEntry3])
+
+      const first = selectLedgerEntriesByContract('ABC123')(getStoreState())
+      const second = selectLedgerEntriesByContract('ABC123')(getStoreState())
+
+      expect(first).toBe(second)
+    })
+
+    it('selectLedgerEntriesByContract recomputes after ledger upsert', () => {
+      useLensStore
+        .getState()
+        .upsertLedgerEntries([mockEntry, mockEntry2, mockEntry3])
+
+      const first = selectLedgerEntriesByContract('ABC123')(getStoreState())
+
+      const newEntry = { ...mockEntry, key: 'contract:ABC123:New', lastModifiedLedger: 200 }
+      useLensStore.getState().upsertLedgerEntry(newEntry)
+
+      const second = selectLedgerEntriesByContract('ABC123')(getStoreState())
+
+      expect(second).not.toBe(first)
+      expect(second.map((e) => e.key)).toContain(newEntry.key)
+    })
+
     it('selectLedgerEntryCount returns correct count', () => {
       expect(selectLedgerEntryCount(getStoreState())).toBe(0)
 

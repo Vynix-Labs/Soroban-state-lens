@@ -12,9 +12,33 @@ export const selectHorizonUrl = (state: LensStore) =>
 export const selectLedgerData = (state: LensStore) => state.ledgerData
 export const selectLedgerEntry = (key: string) => (state: LensStore) =>
   state.ledgerData[key] as LensStore['ledgerData'][string] | undefined
-export const selectLedgerEntriesByContract =
-  (contractId: string) => (state: LensStore) =>
-    Object.values(state.ledgerData).filter((e) => e.contractId === contractId)
+// Memoize filtered ledger entries per contractId by ledgerData reference.
+const _ledgerEntriesByContractCache: Map<
+  string,
+  { ledgerDataRef: LensStore['ledgerData'] | null; result: Array<LensStore['ledgerData'][string]> }
+> = new Map()
+
+export const selectLedgerEntriesByContract = (contractId: string) => (
+  state: LensStore,
+) => {
+  const ledgerData = state.ledgerData
+  const cached = _ledgerEntriesByContractCache.get(contractId)
+
+  if (cached && cached.ledgerDataRef === ledgerData) {
+    return cached.result
+  }
+
+  const result = Object.values(ledgerData).filter(
+    (e) => e.contractId === contractId,
+  )
+
+  _ledgerEntriesByContractCache.set(contractId, {
+    ledgerDataRef: ledgerData,
+    result,
+  })
+
+  return result
+}
 export const selectLedgerEntryCount = (state: LensStore) =>
   Object.keys(state.ledgerData).length
 export const selectHasLedgerData = (state: LensStore) =>

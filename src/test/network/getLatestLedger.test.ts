@@ -34,6 +34,40 @@ describe('getLatestLedgerConnectionCheck', () => {
     )
   })
 
+  it('allows specifying a custom timeout', async () => {
+    const spy = vi.spyOn(rpcClient, 'callRpc').mockResolvedValue({
+      jsonrpc: '2.0',
+      id: 7,
+      result: {
+        id: 'abc123',
+        protocolVersion: 23,
+        sequence: 987654,
+      },
+    })
+
+    const result = await getLatestLedgerConnectionCheck(
+      'https://valid-rpc.com',
+      1234,
+    )
+
+    expect(result).toEqual({
+      success: true,
+      ledger: {
+        id: 'abc123',
+        protocolVersion: 23,
+        sequence: 987654,
+      },
+    })
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://valid-rpc.com', timeout: 1234 }),
+      expect.objectContaining({
+        jsonrpc: '2.0',
+        method: 'getLatestLedger',
+        params: {},
+      }),
+    )
+  })
+
   it('returns a handled failure when the endpoint is unreachable', async () => {
     vi.spyOn(rpcClient, 'callRpc').mockResolvedValue({
       message: 'Network error',
