@@ -64,6 +64,9 @@ describe('decoderWorkerApi.decodeScVal', () => {
     }
 
     expect(result.kind).toBe('vec')
+    if (result.kind !== 'vec') {
+      throw new Error('expected vec node')
+    }
     expect(result.items).toHaveLength(2)
     expect(result.items[0].kind).toBe('truncated')
     expect(result.items[1].kind).toBe('truncated')
