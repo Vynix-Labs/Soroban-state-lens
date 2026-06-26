@@ -21,6 +21,7 @@ import {
   selectNetworkId,
   selectRpcUrl,
   selectSelectedKeyPath,
+  selectSnapshotsForContract,
   selectWatchlistForContract,
 } from '../../store/selectors'
 
@@ -98,6 +99,28 @@ describe('selectors', () => {
     it('selectLedgerEntry returns undefined for missing key', () => {
       const entry = selectLedgerEntry('nonexistent')(getStoreState())
       expect(entry).toBeUndefined()
+    })
+
+    it('selectSnapshotsForContract returns snapshots for a contract', () => {
+      const state = getStoreState()
+      state.snapshots['ABC123'] = [
+        {
+          id: 'snapshot-1',
+          contractId: 'ABC123',
+          label: 'Snapshot 1',
+          ledgerData: {},
+          timestamp: 123,
+        },
+      ]
+
+      const snapshots = selectSnapshotsForContract('ABC123')(getStoreState())
+      expect(snapshots).toHaveLength(1)
+      expect(snapshots[0].contractId).toBe('ABC123')
+      expect(snapshots[0].id).toBe('snapshot-1')
+    })
+
+    it('selectSnapshotsForContract returns empty array for unknown contract', () => {
+      expect(selectSnapshotsForContract('UNKNOWN')(getStoreState())).toEqual([])
     })
 
     it('selectLedgerEntriesByContract filters by contractId', () => {
