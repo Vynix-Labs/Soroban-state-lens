@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { render, screen } from '@testing-library/react'
+import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { routeTree } from '../../routeTree.gen'
+import { resetStore, useLensStore } from '../../store/lensStore'
+
 vi.mock('@stellar/design-system', () => ({
   Button: (props: any) => <button {...props} />,
   Card: (props: any) => <div {...props}>{props.children}</div>,
   Heading: (props: any) => <div {...props}>{props.children}</div>,
 }))
-
-import { render, screen } from '@testing-library/react'
-import { createRouter, RouterProvider } from '@tanstack/react-router'
-import { routeTree } from '../../routeTree.gen'
-import { resetStore, useLensStore } from '../../store/lensStore'
 
 const VALID_CONTRACT_ID =
   'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC'

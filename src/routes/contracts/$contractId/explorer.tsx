@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Button, Card, Heading } from '@stellar/design-system'
 import { VirtualizedTreeList } from '../../../components/explorer/VirtualizedTreeList'
 import { selectLedgerEntriesByContractId } from '../../../lib/selectors/selectLedgerEntriesByContractId'
@@ -27,10 +27,10 @@ export const Route = createFileRoute('/contracts/$contractId/explorer')({
   beforeLoad: ({ params }) => {
     const result = validateContractRouteParam(params.contractId)
     if (!result.ok) {
-      console.error(`Invalid contract ID: ${result.reason}`)
+      throw redirect({ to: '/' })
     }
     return {
-      normalizedContractId: result.ok ? result.contractId : params.contractId,
+      normalizedContractId: result.contractId,
     }
   },
 })

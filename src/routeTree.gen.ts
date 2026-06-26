@@ -16,6 +16,7 @@ import { Route as SettingsNetworkRouteImport } from './routes/settings/network'
 import { Route as ContractsContractIdIndexRouteImport } from './routes/contracts/$contractId/index'
 import { Route as ContractsContractIdWatchlistRouteImport } from './routes/contracts/$contractId/watchlist'
 import { Route as ContractsContractIdInspectRouteImport } from './routes/contracts/$contractId/inspect'
+import { Route as ContractsContractIdHistoryRouteImport } from './routes/contracts/$contractId/history'
 import { Route as ContractsContractIdExplorerRouteImport } from './routes/contracts/$contractId/explorer'
 import { Route as ContractsContractIdDiscoveryRouteImport } from './routes/contracts/$contractId/discovery'
 import { Route as ContractsContractIdInspectIndexRouteImport } from './routes/contracts/$contractId/inspect.index'
@@ -59,6 +60,12 @@ const ContractsContractIdInspectRoute =
     path: '/contracts/$contractId/inspect',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ContractsContractIdHistoryRoute =
+  ContractsContractIdHistoryRouteImport.update({
+    id: '/contracts/$contractId/history',
+    path: '/contracts/$contractId/history',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ContractsContractIdExplorerRoute =
   ContractsContractIdExplorerRouteImport.update({
     id: '/contracts/$contractId/explorer',
@@ -91,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/settings/preferences': typeof SettingsPreferencesRoute
   '/contracts/$contractId/discovery': typeof ContractsContractIdDiscoveryRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
+  '/contracts/$contractId/history': typeof ContractsContractIdHistoryRoute
   '/contracts/$contractId/inspect': typeof ContractsContractIdInspectRouteWithChildren
   '/contracts/$contractId/watchlist': typeof ContractsContractIdWatchlistRoute
   '/contracts/$contractId/': typeof ContractsContractIdIndexRoute
@@ -104,6 +112,7 @@ export interface FileRoutesByTo {
   '/settings/preferences': typeof SettingsPreferencesRoute
   '/contracts/$contractId/discovery': typeof ContractsContractIdDiscoveryRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
+  '/contracts/$contractId/history': typeof ContractsContractIdHistoryRoute
   '/contracts/$contractId/watchlist': typeof ContractsContractIdWatchlistRoute
   '/contracts/$contractId': typeof ContractsContractIdIndexRoute
   '/contracts/$contractId/inspect/$keyPath': typeof ContractsContractIdInspectKeyPathRoute
@@ -117,6 +126,7 @@ export interface FileRoutesById {
   '/settings/preferences': typeof SettingsPreferencesRoute
   '/contracts/$contractId/discovery': typeof ContractsContractIdDiscoveryRoute
   '/contracts/$contractId/explorer': typeof ContractsContractIdExplorerRoute
+  '/contracts/$contractId/history': typeof ContractsContractIdHistoryRoute
   '/contracts/$contractId/inspect': typeof ContractsContractIdInspectRouteWithChildren
   '/contracts/$contractId/watchlist': typeof ContractsContractIdWatchlistRoute
   '/contracts/$contractId/': typeof ContractsContractIdIndexRoute
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/settings/preferences'
     | '/contracts/$contractId/discovery'
     | '/contracts/$contractId/explorer'
+    | '/contracts/$contractId/history'
     | '/contracts/$contractId/inspect'
     | '/contracts/$contractId/watchlist'
     | '/contracts/$contractId/'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/settings/preferences'
     | '/contracts/$contractId/discovery'
     | '/contracts/$contractId/explorer'
+    | '/contracts/$contractId/history'
     | '/contracts/$contractId/watchlist'
     | '/contracts/$contractId'
     | '/contracts/$contractId/inspect/$keyPath'
@@ -157,6 +169,7 @@ export interface FileRouteTypes {
     | '/settings/preferences'
     | '/contracts/$contractId/discovery'
     | '/contracts/$contractId/explorer'
+    | '/contracts/$contractId/history'
     | '/contracts/$contractId/inspect'
     | '/contracts/$contractId/watchlist'
     | '/contracts/$contractId/'
@@ -171,6 +184,7 @@ export interface RootRouteChildren {
   SettingsPreferencesRoute: typeof SettingsPreferencesRoute
   ContractsContractIdDiscoveryRoute: typeof ContractsContractIdDiscoveryRoute
   ContractsContractIdExplorerRoute: typeof ContractsContractIdExplorerRoute
+  ContractsContractIdHistoryRoute: typeof ContractsContractIdHistoryRoute
   ContractsContractIdInspectRoute: typeof ContractsContractIdInspectRouteWithChildren
   ContractsContractIdWatchlistRoute: typeof ContractsContractIdWatchlistRoute
   ContractsContractIdIndexRoute: typeof ContractsContractIdIndexRoute
@@ -225,6 +239,13 @@ declare module '@tanstack/react-router' {
       path: '/contracts/$contractId/inspect'
       fullPath: '/contracts/$contractId/inspect'
       preLoaderRoute: typeof ContractsContractIdInspectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contracts/$contractId/history': {
+      id: '/contracts/$contractId/history'
+      path: '/contracts/$contractId/history'
+      fullPath: '/contracts/$contractId/history'
+      preLoaderRoute: typeof ContractsContractIdHistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contracts/$contractId/explorer': {
@@ -282,6 +303,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsPreferencesRoute: SettingsPreferencesRoute,
   ContractsContractIdDiscoveryRoute: ContractsContractIdDiscoveryRoute,
   ContractsContractIdExplorerRoute: ContractsContractIdExplorerRoute,
+  ContractsContractIdHistoryRoute: ContractsContractIdHistoryRoute,
   ContractsContractIdInspectRoute: ContractsContractIdInspectRouteWithChildren,
   ContractsContractIdWatchlistRoute: ContractsContractIdWatchlistRoute,
   ContractsContractIdIndexRoute: ContractsContractIdIndexRoute,

@@ -20,6 +20,7 @@ import {
   serializeNetworkConfigForStorage,
 } from './persistence'
 import { createContractSlice } from './contractSlice'
+import { createContractSpecSlice } from './contractSpecSlice'
 import { createPreferencesSlice } from './preferencesSlice'
 
 import type { PersistedState } from './persistence'
@@ -404,6 +405,7 @@ export const useLensStore = create<LensStore>()(
       ...createSnapshotSlice(set, get),
       ...createWatchlistSlice(set, get),
       ...createContractSlice(set),
+      ...createContractSpecSlice(set, get),
       ...createContractLoadSlice(set, get),
       ...createPreferencesSlice(set),
     }),
@@ -430,7 +432,7 @@ export const useLensStore = create<LensStore>()(
 /**
  * Selector hooks for common use cases
  */
-const EMPTY_ARRAY: never[] = []
+const EMPTY_ARRAY: Array<never> = []
 
 export const useNetworkConfig = () =>
   useLensStore((state) => state.networkConfig)
@@ -466,6 +468,7 @@ export const resetStore = () => {
     expandedNodes: [],
     snapshots: {},
     watchlist: {},
+    contractSpecs: {},
     activeContractId: null,
     selectedKeyPath: null,
     contractLoadStatus: ContractLoadStatus.IDLE,
