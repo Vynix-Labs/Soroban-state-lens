@@ -21,6 +21,7 @@ import {
   selectNetworkId,
   selectRpcUrl,
   selectSelectedKeyPath,
+  selectWatchlistForContract,
 } from '../../store/selectors'
 
 import type { LedgerEntry } from '../../store/types'
@@ -181,6 +182,28 @@ describe('selectors', () => {
     it('selectSelectedKeyPath returns selected value', () => {
       useLensStore.getState().setSelectedKeyPath('root.entry-0-value')
       expect(selectSelectedKeyPath(getStoreState())).toBe('root.entry-0-value')
+    })
+  })
+
+  describe('watchlist selectors', () => {
+    it('selectWatchlistForContract returns pinned items for a contract', () => {
+      useLensStore.getState().addToWatchlist('contract-1', '/path/to/key1')
+      useLensStore.getState().addToWatchlist('contract-1', '/path/to/key2')
+      useLensStore.getState().addToWatchlist('contract-2', '/path/to/key1')
+
+      const watchlist = selectWatchlistForContract('contract-1')(getStoreState())
+
+      expect(watchlist).toHaveLength(2)
+      expect(watchlist.map((item) => item.keyPath)).toEqual([
+        '/path/to/key1',
+        '/path/to/key2',
+      ])
+      expect(watchlist.every((item) => item.contractId === 'contract-1')).toBe(true)
+    })
+
+    it('selectWatchlistForContract returns an empty array for unknown contracts', () => {
+      const watchlist = selectWatchlistForContract('non-existent')(getStoreState())
+      expect(watchlist).toEqual([])
     })
   })
 })
