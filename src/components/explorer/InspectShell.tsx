@@ -5,6 +5,7 @@ interface InspectShellProps {
   contractId: string
   normalizedContractId: string
   keyPath: string
+  keyPathError?: string
 }
 
 interface KeyMetadata {
@@ -17,6 +18,7 @@ export function InspectShell({
   contractId,
   normalizedContractId,
   keyPath,
+  keyPathError,
 }: InspectShellProps) {
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
 
@@ -66,6 +68,17 @@ export function InspectShell({
         <span>/</span>
         <span className="text-white truncate">{keyPath || 'No key selected'}</span>
       </div>
+
+      {keyPathError ? (
+        <Card>
+          <div className="p-6 space-y-2">
+            <Heading size="sm" as="h2" className="text-white">
+              Invalid key path
+            </Heading>
+            <p className="text-sm text-text-muted">{keyPathError}</p>
+          </div>
+        </Card>
+      ) : null}
 
       <Card>
         <div className="p-6 space-y-4">

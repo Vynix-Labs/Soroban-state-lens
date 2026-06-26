@@ -65,7 +65,7 @@ The project is split into three main layers:
 
 We love contributors\! Whether you are a Rustacean who loves XDR or a Frontend dev with an eye for UX:
 
-1. Check the [Issues](https://www.google.com/search?q=https://github.com/Vynix-Labs/soroban-state-lens/issues) for "Good First Issue" tags.
+1. Check the [Issues](https://github.com/Vynix-Labs/Soroban-state-lens/issues) for "Good First Issue" tags.
 2. Fork the repo and create your branch.
 3. Submit a PR with a detailed description of your changes.
 

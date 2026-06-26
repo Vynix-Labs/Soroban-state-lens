@@ -149,6 +149,14 @@ export interface WatchlistSlice {
   clearWatchlist: (contractId: string) => void
 }
 
+// Contract spec slice – parsed schema data keyed by contract ID
+export interface ContractSpecSlice {
+  contractSpecs: Record<string, unknown>
+  setContractSpec: (contractId: string, spec: unknown) => void
+  getContractSpec: (contractId: string) => unknown
+  clearContractSpec: (contractId: string) => void
+}
+
 // Preferences slice
 export interface PreferencesSlice {
   byteDisplayMode: ByteDisplayMode
@@ -167,6 +175,7 @@ export interface LensStore
     SnapshotSlice,
     ContractSlice,
     ContractLoadSlice,
+    ContractSpecSlice,
     PreferencesSlice,
     WatchlistSlice {}
 

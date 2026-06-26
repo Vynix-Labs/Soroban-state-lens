@@ -1,5 +1,6 @@
 import { buildJsonRpcRequest } from '../rpc/buildJsonRpcRequest'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
+import { withJitter } from '../rpc/withJitter'
 import { callRpc } from './rpcClient'
 import type { LatestLedgerResult, RpcConfig, RpcError } from './types'
 
@@ -61,12 +62,27 @@ export function startLedgerHeadPoll(
     }
   }
 
-  const intervalId = setInterval(tick, intervalMs)
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+  const scheduleNextPoll = (): void => {
+    if (stoppedRef.current) return
+
+    const delayMs = withJitter(intervalMs)
+    timeoutId = setTimeout(async () => {
+      if (stoppedRef.current) return
+      await tick()
+      scheduleNextPoll()
+    }, delayMs)
+  }
+
   tick()
+  scheduleNextPoll()
 
   return function stop(): void {
     if (stoppedRef.current) return
     stoppedRef.current = true
-    clearInterval(intervalId)
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId)
+    }
   }
 }
