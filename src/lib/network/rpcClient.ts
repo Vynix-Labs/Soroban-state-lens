@@ -47,7 +47,7 @@ export async function callRpc<T = unknown>(
       }
     }
 
-    if (error instanceof TypeError && error.message.includes('fetch')) {
+    if (error instanceof TypeError) {
       return {
         message: 'Network error',
         code: 'NETWORK_ERROR',
