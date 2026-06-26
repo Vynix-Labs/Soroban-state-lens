@@ -15,7 +15,7 @@ export const selectLedgerEntry = (key: string) => (state: LensStore) =>
 // Memoize filtered ledger entries per contractId by ledgerData reference.
 const _ledgerEntriesByContractCache: Map<
   string,
-  { ledgerDataRef: LensStore['ledgerData'] | null; result: LensStore['ledgerData'][string][] }
+  { ledgerDataRef: LensStore['ledgerData'] | null; result: Array<LensStore['ledgerData'][string]> }
 > = new Map()
 
 export const selectLedgerEntriesByContract = (contractId: string) => (
