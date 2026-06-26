@@ -282,7 +282,7 @@ describe('Snapshot Slice', () => {
       upsertLedgerEntry,
     } = useLensStore.getState()
 
-    const entries: LedgerEntry[] = [
+    const entries: Array<LedgerEntry> = [
       {
         key: 'key-1',
         contractId: 'contract-1',
