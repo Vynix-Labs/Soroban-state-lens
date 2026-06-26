@@ -1,5 +1,5 @@
-import { ChevronDown, ChevronRight, ChevronUp, Filter, X, History as HistoryIcon, PlusCircle, Trash2, GitCompare } from 'lucide-react'
-import { useEffect, useRef, useMemo } from 'react'
+import { ChevronDown, ChevronRight, ChevronUp, Filter, GitCompare, History as HistoryIcon, PlusCircle, Trash2, X } from 'lucide-react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useLensStore } from '../../store/lensStore'
 import { resolveDiffStatus } from '../../lib/diff/resolveDiffStatus'
 
