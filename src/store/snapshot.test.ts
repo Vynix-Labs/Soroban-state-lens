@@ -303,7 +303,6 @@ describe('Snapshot Slice', () => {
     entries.forEach((entry) => upsertLedgerEntry(entry))
 
     // Capture snapshot of current state
-    const state = useLensStore.getState()
     const ledgerDataEntries = Object.fromEntries(
       entries.map((entry) => [entry.key, entry]),
     )
