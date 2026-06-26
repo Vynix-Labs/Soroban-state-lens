@@ -42,6 +42,9 @@ export const selectLedgerEntriesByContract = (contractId: string) => (
 export const selectWatchlistForContract =
   (contractId: string) => (state: LensStore) =>
     state.watchlist[contractId] ?? []
+export const selectSnapshotsForContract =
+  (contractId: string) => (state: LensStore) =>
+    state.snapshots[contractId] ?? []
 export const selectLedgerEntryCount = (state: LensStore) =>
   Object.keys(state.ledgerData).length
 export const selectHasLedgerData = (state: LensStore) =>
