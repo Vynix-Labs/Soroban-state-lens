@@ -127,6 +127,31 @@ describe('normalizeNode – Primitive Nodes', () => {
     expect(typeof result.value).toBe('string')
   })
 
+  it('timepoint node returns decimal string value', () => {
+    const result = normalizeNode(
+      makeScVal(ScValType.SCV_TIMEPOINT, '1672531200'),
+    ) as PrimitiveNode
+
+    expect(result.kind).toBe('primitive')
+    expect(result.scType).toBe('timepoint')
+    expect(result.value).toBe('1672531200')
+    expect(typeof result.value).toBe('string')
+    expect(result.raw).toEqual({
+      switch: ScValType.SCV_TIMEPOINT,
+      value: '1672531200',
+    })
+  })
+
+  it('zero timepoint node returns decimal string zero', () => {
+    const result = normalizeNode(
+      makeScVal(ScValType.SCV_TIMEPOINT, '0'),
+    ) as PrimitiveNode
+
+    expect(result.kind).toBe('primitive')
+    expect(result.scType).toBe('timepoint')
+    expect(result.value).toBe('0')
+  })
+
   it('i64 node handles negative values as string', () => {
     const result = normalizeNode(
       makeScVal(ScValType.SCV_I64, '-9223372036854775808'),

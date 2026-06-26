@@ -48,6 +48,7 @@ describe('startLedgerHeadPoll', () => {
   describe('emits changes only on sequence increment', () => {
     it('calls onLedgerChange when sequence increases', async () => {
       const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc
         .mockResolvedValueOnce({ result: { sequence: 100 } })
         .mockResolvedValueOnce({ result: { sequence: 101 } })
@@ -67,10 +68,12 @@ describe('startLedgerHeadPoll', () => {
       expect(onLedgerChange).toHaveBeenCalledWith(102)
       expect(onLedgerChange).toHaveBeenCalledTimes(3)
       stop()
+      randomSpy.mockRestore()
     })
 
     it('does not call onLedgerChange when sequence is unchanged', async () => {
       const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc
         .mockResolvedValueOnce({ result: { sequence: 100 } })
         .mockResolvedValueOnce({ result: { sequence: 100 } })
@@ -89,10 +92,12 @@ describe('startLedgerHeadPoll', () => {
       await vi.advanceTimersByTimeAsync(1000)
       expect(onLedgerChange).toHaveBeenCalledTimes(1)
       stop()
+      randomSpy.mockRestore()
     })
 
     it('does not call onLedgerChange when sequence decreases', async () => {
       const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc
         .mockResolvedValueOnce({ result: { sequence: 102 } })
         .mockResolvedValueOnce({ result: { sequence: 101 } })
@@ -110,10 +115,12 @@ describe('startLedgerHeadPoll', () => {
       await vi.advanceTimersByTimeAsync(1000)
       expect(onLedgerChange).toHaveBeenCalledTimes(1)
       stop()
+      randomSpy.mockRestore()
     })
 
     it('calls onLedgerChange only for first poll when result has no sequence then valid sequence', async () => {
       const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc
         .mockResolvedValueOnce({ result: {} })
         .mockResolvedValueOnce({ result: { sequence: 100 } })
@@ -130,10 +137,12 @@ describe('startLedgerHeadPoll', () => {
       expect(onLedgerChange).toHaveBeenCalledTimes(1)
       expect(onLedgerChange).toHaveBeenCalledWith(100)
       stop()
+      randomSpy.mockRestore()
     })
 
     it('does not call onLedgerChange when RPC returns error', async () => {
       const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc.mockResolvedValue({
         message: 'Network error',
         code: 'NETWORK_ERROR',
@@ -149,12 +158,14 @@ describe('startLedgerHeadPoll', () => {
       await vi.advanceTimersByTimeAsync(1000)
       expect(onLedgerChange).not.toHaveBeenCalled()
       stop()
+      randomSpy.mockRestore()
     })
   })
 
   describe('stop function', () => {
     it('halts further polling and callbacks after stop', async () => {
       const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc
         .mockResolvedValueOnce({ result: { sequence: 100 } })
         .mockResolvedValueOnce({ result: { sequence: 101 } })
@@ -177,6 +188,7 @@ describe('startLedgerHeadPoll', () => {
       await vi.advanceTimersByTimeAsync(5000)
       expect(mockCallRpc).toHaveBeenCalledTimes(3)
       expect(onLedgerChange).toHaveBeenCalledTimes(3)
+      randomSpy.mockRestore()
     })
 
     it('stop is idempotent', async () => {
@@ -198,6 +210,7 @@ describe('startLedgerHeadPoll', () => {
 
   describe('configurable options', () => {
     it('uses default interval 5000ms when intervalMs omitted', async () => {
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc.mockResolvedValue({ result: { sequence: 1 } })
       const onLedgerChange = vi.fn()
 
@@ -211,9 +224,11 @@ describe('startLedgerHeadPoll', () => {
       expect(mockCallRpc).toHaveBeenCalledTimes(1)
       await vi.advanceTimersByTimeAsync(1)
       expect(mockCallRpc).toHaveBeenCalledTimes(2)
+      randomSpy.mockRestore()
     })
 
     it('uses custom interval when intervalMs provided', async () => {
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc.mockResolvedValue({ result: { sequence: 1 } })
 
       startLedgerHeadPoll({
@@ -227,6 +242,48 @@ describe('startLedgerHeadPoll', () => {
       expect(mockCallRpc).toHaveBeenCalledTimes(1)
       await vi.advanceTimersByTimeAsync(1)
       expect(mockCallRpc).toHaveBeenCalledTimes(2)
+      randomSpy.mockRestore()
+    })
+
+    it('jittered interval stays within expected bounds', async () => {
+      const timeoutSpy = vi.spyOn(globalThis, 'setTimeout')
+      const randomSpy = vi
+        .spyOn(Math, 'random')
+        .mockReturnValueOnce(0.1)
+        .mockReturnValueOnce(0.5)
+        .mockReturnValueOnce(0.9)
+      mockCallRpc.mockResolvedValue({ result: { sequence: 1 } })
+
+      const stop = startLedgerHeadPoll({
+        rpcConfig: defaultRpcConfig,
+        intervalMs: 1000,
+        onLedgerChange: vi.fn(),
+      })
+
+      expect(timeoutSpy).toHaveBeenCalledTimes(1)
+      const firstDelay = timeoutSpy.mock.calls[0][1] as number
+      expect(firstDelay).toBeGreaterThanOrEqual(800)
+      expect(firstDelay).toBeLessThanOrEqual(1200)
+
+      await vi.advanceTimersByTimeAsync(firstDelay)
+      expect(mockCallRpc).toHaveBeenCalledTimes(2)
+      expect(timeoutSpy).toHaveBeenCalledTimes(2)
+
+      const secondDelay = timeoutSpy.mock.calls[1][1] as number
+      expect(secondDelay).toBeGreaterThanOrEqual(800)
+      expect(secondDelay).toBeLessThanOrEqual(1200)
+
+      await vi.advanceTimersByTimeAsync(secondDelay)
+      expect(mockCallRpc).toHaveBeenCalledTimes(3)
+      expect(timeoutSpy).toHaveBeenCalledTimes(3)
+
+      const thirdDelay = timeoutSpy.mock.calls[2][1] as number
+      expect(thirdDelay).toBeGreaterThanOrEqual(800)
+      expect(thirdDelay).toBeLessThanOrEqual(1200)
+
+      stop()
+      randomSpy.mockRestore()
+      timeoutSpy.mockRestore()
     })
 
     it('passes rpcConfig to callRpc', async () => {
@@ -256,6 +313,11 @@ describe('startLedgerHeadPoll', () => {
   })
 
   describe('visibility-aware pausing', () => {
+    beforeEach(() => {
+      // Deterministic jitter so scheduled poll timing is predictable.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    })
+
     it('does not fire an RPC call during interval ticks while the tab is hidden', async () => {
       const onLedgerChange = vi.fn()
       mockCallRpc.mockResolvedValue({ result: { sequence: 100 } })
