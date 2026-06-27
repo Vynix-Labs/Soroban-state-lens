@@ -10,17 +10,6 @@ export enum ConnectionStatus {
   ERROR = 'error',
 }
 
-// Display preferences
-export enum ByteDisplayMode {
-  HEX = 'hex',
-  BASE64 = 'base64',
-}
-
-export enum BigIntDisplayMode {
-  RAW = 'raw',
-  FORMATTED = 'formatted',
-}
-
 // Network configuration
 export interface NetworkConfig {
   networkId: string
@@ -147,15 +136,6 @@ export interface WatchlistSlice {
   removeFromWatchlist: (contractId: string, keyPath: string) => void
   getWatchlistForContract: (contractId: string) => Array<WatchlistItem>
   clearWatchlist: (contractId: string) => void
-}
-
-// Preferences slice
-export interface PreferencesSlice {
-  byteDisplayMode: ByteDisplayMode
-  bigIntDisplayMode: BigIntDisplayMode
-  setByteDisplayMode: (mode: ByteDisplayMode) => void
-  setBigIntDisplayMode: (mode: BigIntDisplayMode) => void
-  resetPreferences: () => void
 }
 
 // Display preferences enums

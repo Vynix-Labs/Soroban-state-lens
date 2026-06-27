@@ -7,6 +7,8 @@ import {
   ByteDisplayMode,
   DEFAULT_NETWORKS,
   DEFAULT_PREFERENCES,
+} from './types'
+import type {
   DisplayPreferences,
   NetworkConfig,
 } from './types'
@@ -57,6 +59,49 @@ export function isValidNetworkConfig(value: unknown): value is NetworkConfig {
     typeof rpcUrl === 'string' &&
     rpcUrl.length > 0
   )
+}
+
+export function isValidByteDisplayMode(
+  value: unknown,
+): value is ByteDisplayMode {
+  return (
+    value === ByteDisplayMode.HEX ||
+    value === ByteDisplayMode.BASE64 ||
+    value === ByteDisplayMode.UTF8
+  )
+}
+
+export function isValidBigIntDisplayMode(
+  value: unknown,
+): value is BigIntDisplayMode {
+  return (
+    value === BigIntDisplayMode.DECIMAL ||
+    value === BigIntDisplayMode.HEX ||
+    value === BigIntDisplayMode.SCIENTIFIC
+  )
+}
+
+export function validateDisplayPreferences(
+  value: unknown,
+): DisplayPreferences {
+  if (typeof value !== 'object' || value === null) {
+    return DEFAULT_PREFERENCES
+  }
+
+  const candidate = value as Record<string, unknown>
+
+  const byteDisplayMode = isValidByteDisplayMode(candidate.byteDisplayMode)
+    ? (candidate.byteDisplayMode as ByteDisplayMode)
+    : DEFAULT_PREFERENCES.byteDisplayMode
+
+  const bigIntDisplayMode = isValidBigIntDisplayMode(candidate.bigIntDisplayMode)
+    ? (candidate.bigIntDisplayMode as BigIntDisplayMode)
+    : DEFAULT_PREFERENCES.bigIntDisplayMode
+
+  return {
+    byteDisplayMode,
+    bigIntDisplayMode,
+  }
 }
 
 function unwrapPersistedState(persistedState: unknown): Record<string, unknown> | null {
