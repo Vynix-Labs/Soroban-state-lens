@@ -405,7 +405,7 @@ const createWatchlistSlice = (
  * - ledgerData: Cached ledger entries (NOT persisted)
  * - expandedNodes: Tree view expansion state (NOT persisted)
  * - contractLoadStatus: Contract fetch lifecycle (NOT persisted)
- * - watchlist: Pinned keys for quick access (NOT persisted)
+ * - watchlist: Pinned keys for quick access (PERSISTED)
  */
 export const useLensStore = create<LensStore>()(
   persist<LensStore, [], [], PersistedState>(
@@ -423,13 +423,14 @@ export const useLensStore = create<LensStore>()(
     {
       name: NETWORK_CONFIG_STORAGE_KEY,
       storage: createSafeStorage<PersistedState>(),
-      // Persist networkConfig and preferences
+      // Persist networkConfig, preferences, and the watchlist
       partialize: (state): PersistedState => ({
         networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
         preferences: {
           byteDisplayMode: state.byteDisplayMode,
           bigIntDisplayMode: state.bigIntDisplayMode,
         },
+        watchlist: state.watchlist,
       }),
       // Validate and merge persisted data safely
       merge: (persistedState, currentState) => ({
