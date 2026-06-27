@@ -101,11 +101,22 @@ describe('getLedgerEntries', () => {
 
       const result = await getLedgerEntries({
         rpcUrl: mockRpcUrl,
-        keys: [],
+        keys: ['key1'],
       })
 
       expect(result.entries).toEqual([])
       expect(result.latestLedger).toBe(100)
+    })
+
+    it('returns a handled empty result for an empty keys array without a request', async () => {
+      const result = await getLedgerEntries({
+        rpcUrl: mockRpcUrl,
+        keys: [],
+      })
+
+      expect(result.entries).toEqual([])
+      expect(result.latestLedger).toBe(0)
+      expect(fetch).not.toHaveBeenCalled()
     })
   })
 
@@ -227,6 +238,59 @@ describe('getLedgerEntries', () => {
           signal: controller.signal,
         }),
       ).rejects.toThrow(AbortError)
+    })
+  })
+
+  describe('retry scenarios', () => {
+    it('retries a transient 429 then succeeds', async () => {
+      const success = {
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          entries: [{ key: 'key1', xdr: 'xdr1' }],
+          latestLedger: 150,
+        },
+      }
+      vi.mocked(fetch)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => success,
+        } as Response)
+
+      const result = await getLedgerEntries({
+        rpcUrl: mockRpcUrl,
+        keys: mockKeys,
+      })
+
+      expect(result.entries).toHaveLength(1)
+      expect(result.latestLedger).toBe(150)
+      expect(fetch).toHaveBeenCalledTimes(2)
+    })
+
+    it('aborts promptly during retries instead of exhausting the cap', async () => {
+      const controller = new AbortController()
+      const abortError = new Error('The operation was aborted')
+      abortError.name = 'AbortError'
+
+      vi.mocked(fetch).mockImplementation(() => {
+        controller.abort()
+        return Promise.reject(abortError)
+      })
+
+      await expect(
+        getLedgerEntries({
+          rpcUrl: mockRpcUrl,
+          keys: mockKeys,
+          signal: controller.signal,
+        }),
+      ).rejects.toThrow(AbortError)
+
+      // AbortError is non-retryable, so the helper returns immediately.
+      expect(fetch).toHaveBeenCalledTimes(1)
     })
   })
 })
