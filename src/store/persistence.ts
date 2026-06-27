@@ -5,7 +5,7 @@ import { serializePersistedNetworkConfig } from '../lib/storage/serializePersist
 import { DEFAULT_NETWORKS } from './types'
 import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
 
-import type { NetworkConfig } from './types'
+import type { NetworkConfig, WatchlistItem } from './types'
 import type { PersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
 import type { PersistStorage } from 'zustand/middleware'
 
@@ -28,6 +28,7 @@ export interface PersistedState {
     byteDisplayMode: string
     bigIntDisplayMode: string
   }
+  watchlist?: Record<string, Array<WatchlistItem>>
 }
 
 /**
@@ -106,6 +107,17 @@ export function mergeNetworkConfig(
   persistedState: unknown,
   currentState: { networkConfig: NetworkConfig },
 ): any {
+  let watchlist: Record<string, Array<WatchlistItem>> = {}
+
+  if (
+    typeof persistedState === 'object' &&
+    persistedState !== null &&
+    'watchlist' in persistedState
+  ) {
+    const persisted = persistedState as { watchlist?: unknown }
+    watchlist = sanitizeWatchlist(persisted.watchlist)
+  }
+
   if (
     typeof persistedState === 'object' &&
     persistedState !== null &&
@@ -132,6 +144,7 @@ export function mergeNetworkConfig(
                 .bigIntDisplayMode,
             }
           : {}),
+        watchlist,
       }
     }
 
@@ -142,7 +155,55 @@ export function mergeNetworkConfig(
   }
 
   // Return current state (with defaults) if persisted data is invalid or missing
-  return currentState
+  return { ...currentState, watchlist }
+}
+
+/**
+ * Sanitizes a persisted watchlist into the known shape, dropping any entry
+ * that does not match the {@link WatchlistItem} contract. Guards against
+ * corrupted localStorage payloads crashing the store on hydration.
+ */
+export function sanitizeWatchlist(
+  value: unknown,
+): Record<string, Array<WatchlistItem>> {
+  if (typeof value !== 'object' || value === null) {
+    return {}
+  }
+
+  const source = value as Record<string, unknown>
+  const sanitized: Record<string, Array<WatchlistItem>> = {}
+
+  for (const [contractId, items] of Object.entries(source)) {
+    if (typeof contractId !== 'string' || contractId.length === 0) {
+      continue
+    }
+    if (!Array.isArray(items)) {
+      continue
+    }
+
+    const validItems: Array<WatchlistItem> = []
+    for (const item of items) {
+      if (
+        typeof item === 'object' &&
+        item !== null &&
+        'contractId' in item &&
+        'keyPath' in item &&
+        'timestamp' in item &&
+        typeof (item as Record<string, unknown>).contractId === 'string' &&
+        typeof (item as Record<string, unknown>).keyPath === 'string' &&
+        typeof (item as Record<string, unknown>).timestamp === 'number' &&
+        Number.isFinite((item as Record<string, unknown>).timestamp as number)
+      ) {
+        validItems.push(item as unknown as WatchlistItem)
+      }
+    }
+
+    if (validItems.length > 0) {
+      sanitized[contractId] = validItems
+    }
+  }
+
+  return sanitized
 }
 
 export function serializeNetworkConfigForStorage(
