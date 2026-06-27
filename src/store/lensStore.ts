@@ -6,11 +6,10 @@ import { mapLedgerEntriesToStoreEntries } from '../lib/network/mapLedgerEntriesT
 import { isDecoderWorkerError } from '../types/decoder-worker'
 import { createDecoderWorkerSafe } from '../workers/createDecoderWorkerSafe'
 import {
-  BigIntDisplayMode,
-  ByteDisplayMode,
   ConnectionStatus,
   ContractLoadStatus,
   DEFAULT_NETWORKS,
+  DEFAULT_PREFERENCES,
 } from './types'
 import {
   DEFAULT_NETWORK_CONFIG,
@@ -33,7 +32,6 @@ import type {
   LensStore,
   NetworkConfig,
   NetworkConfigSlice,
-  PreferencesSlice,
   SnapshotSlice,
   WatchlistSlice,
 } from './types'
@@ -387,7 +385,7 @@ const createWatchlistSlice = (
 })
 
 /**
- * Combined Lens Store with persistence for networkConfig only
+ * Combined Lens Store with persistence for networkConfig and preferences
  *
  * Centralized state management for Soroban State Lens.
  * Includes slices for:
@@ -413,13 +411,10 @@ export const useLensStore = create<LensStore>()(
     {
       name: NETWORK_CONFIG_STORAGE_KEY,
       storage: createSafeStorage<PersistedState>(),
-      // Persist networkConfig and preferences
+      // Persist both networkConfig and preferences
       partialize: (state): PersistedState => ({
         networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
-        preferences: {
-          byteDisplayMode: state.byteDisplayMode,
-          bigIntDisplayMode: state.bigIntDisplayMode,
-        },
+        preferences: state.preferences,
       }),
       // Validate and merge persisted data safely
       merge: (persistedState, currentState) => {
@@ -476,8 +471,7 @@ export const resetStore = () => {
     selectedKeyPath: null,
     contractLoadStatus: ContractLoadStatus.IDLE,
     contractLoadError: null,
-    byteDisplayMode: ByteDisplayMode.HEX,
-    bigIntDisplayMode: BigIntDisplayMode.RAW,
+    preferences: DEFAULT_PREFERENCES,
   })
 }
 

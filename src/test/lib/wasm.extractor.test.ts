@@ -35,16 +35,12 @@ function addCustomSection(
 ): Uint8Array {
   // Encode LEB128 length
   function encodeLeb128(num: number): Uint8Array {
-    const bytes: number[] = []
-    while (true) {
+    const bytes: Array<number> = []
+    do {
       const byte = num & 0x7f
       num >>= 7
-      if (num === 0) {
-        bytes.push(byte)
-        break
-      }
-      bytes.push(byte | 0x80)
-    }
+      bytes.push(byte | (num === 0 ? 0 : 0x80))
+    } while (num > 0)
     return new Uint8Array(bytes)
   }
 

@@ -1,15 +1,15 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  isValidByteDisplayMode,
-  isValidBigIntDisplayMode,
-  validateDisplayPreferences,
-  mergePreferences,
   clearPersistedPreferences,
+  isValidBigIntDisplayMode,
+  isValidByteDisplayMode,
+  mergePreferences,
+  validateDisplayPreferences,
 } from '../../store/persistence'
 import {
-  ByteDisplayMode,
   BigIntDisplayMode,
+  ByteDisplayMode,
   DEFAULT_PREFERENCES,
 } from '../../store/types'
 

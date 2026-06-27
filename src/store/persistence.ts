@@ -1,17 +1,15 @@
 import { createJSONStorage } from 'zustand/middleware'
 import { parsePersistedNetworkConfig } from '../lib/storage/parsePersistedNetworkConfig'
 import { serializePersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
-
+import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
 import {
+  BigIntDisplayMode,
+  ByteDisplayMode,
   DEFAULT_NETWORKS,
   DEFAULT_PREFERENCES,
-  ByteDisplayMode,
-  BigIntDisplayMode,
-  type DisplayPreferences,
+  DisplayPreferences,
+  NetworkConfig,
 } from './types'
-import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
-
-import type { NetworkConfig } from './types'
 import type { PersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
 import type { PersistStorage } from 'zustand/middleware'
 
@@ -35,10 +33,7 @@ export const DEFAULT_NETWORK_CONFIG: NetworkConfig = DEFAULT_NETWORKS.futurenet
  */
 export interface PersistedState {
   networkConfig: PersistedNetworkConfig
-  preferences?: {
-    byteDisplayMode: string
-    bigIntDisplayMode: string
-  }
+  preferences: DisplayPreferences
 }
 
 /**
@@ -62,6 +57,20 @@ export function isValidNetworkConfig(value: unknown): value is NetworkConfig {
     typeof rpcUrl === 'string' &&
     rpcUrl.length > 0
   )
+}
+
+function unwrapPersistedState(persistedState: unknown): Record<string, unknown> | null {
+  if (typeof persistedState !== 'object' || persistedState === null) {
+    return null
+  }
+
+  const persisted = persistedState as Record<string, unknown>
+
+  if ('state' in persisted && typeof persisted.state === 'object' && persisted.state !== null) {
+    return persisted.state as Record<string, unknown>
+  }
+
+  return persisted
 }
 
 /**
@@ -116,44 +125,26 @@ export const createSafeStorage = <T>(): PersistStorage<T> | undefined =>
 export function mergeNetworkConfig(
   persistedState: unknown,
   currentState: { networkConfig: NetworkConfig },
-): any {
-  if (
-    typeof persistedState === 'object' &&
-    persistedState !== null &&
-    'networkConfig' in persistedState
-  ) {
-    const persisted = persistedState as {
-      networkConfig: unknown
-      preferences?: {
-        byteDisplayMode: string
-        bigIntDisplayMode: string
-      }
-    }
+): { networkConfig: NetworkConfig } {
+  const hydratedState = unwrapPersistedState(persistedState)
+
+  if (hydratedState && 'networkConfig' in hydratedState) {
     const parsedNetworkConfig = parsePersistedNetworkConfig(
-      persisted.networkConfig,
+      hydratedState.networkConfig,
     )
 
     if (isValidNetworkConfig(parsedNetworkConfig)) {
-      return {
-        networkConfig: parsedNetworkConfig,
-        ...(persisted.preferences
-          ? {
-              byteDisplayMode: (persisted.preferences as any).byteDisplayMode,
-              bigIntDisplayMode: (persisted.preferences as any)
-                .bigIntDisplayMode,
-            }
-          : {}),
-      }
+      return { networkConfig: parsedNetworkConfig }
     }
 
     console.warn(
       '[LensStore] Persisted network config is invalid, falling back to default',
-      persisted.networkConfig,
+      hydratedState.networkConfig,
     )
   }
 
   // Return current state (with defaults) if persisted data is invalid or missing
-  return currentState
+  return { networkConfig: currentState.networkConfig }
 }
 
 export function serializeNetworkConfigForStorage(
@@ -170,29 +161,26 @@ export function mergePreferences(
   persistedState: unknown,
   currentState: { preferences: DisplayPreferences },
 ): { preferences: DisplayPreferences } {
-  if (
-    typeof persistedState === 'object' &&
-    persistedState !== null &&
-    'preferences' in persistedState
-  ) {
-    const persisted = persistedState as { preferences: unknown }
+  const hydratedState = unwrapPersistedState(persistedState)
+
+  if (hydratedState && 'preferences' in hydratedState) {
     const validatedPreferences = validateDisplayPreferences(
-      persisted.preferences,
+      hydratedState.preferences,
     )
 
     // Log if any values were corrected
     if (
-      persisted.preferences !== null &&
-      typeof persisted.preferences === 'object'
+      hydratedState.preferences !== null &&
+      typeof hydratedState.preferences === 'object'
     ) {
-      const original = persisted.preferences as Record<string, unknown>
+      const original = hydratedState.preferences as Record<string, unknown>
       if (
         !isValidByteDisplayMode(original.byteDisplayMode) ||
         !isValidBigIntDisplayMode(original.bigIntDisplayMode)
       ) {
         console.warn(
           '[LensStore] Persisted preferences contain invalid values, applying defaults',
-          persisted.preferences,
+          hydratedState.preferences,
         )
       }
     }
@@ -201,7 +189,7 @@ export function mergePreferences(
   }
 
   // Return current state (with defaults) if persisted data is invalid or missing
-  return currentState
+  return { preferences: currentState.preferences }
 }
 
 /**
