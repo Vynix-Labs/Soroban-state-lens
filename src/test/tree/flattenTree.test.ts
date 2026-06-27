@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { flattenTree } from '../../lib/tree/flattenTree'
+import {
+  collectExpandableNodeIds,
+  flattenTree,
+} from '../../lib/tree/flattenTree'
 import type { Node } from '../../types/node'
 
 function primitive(value: string): Node {
@@ -76,5 +79,46 @@ describe('flattenTree', () => {
 
     const rows = flattenTree(roots, [])
     expect(rows.map((row) => row.kind)).toEqual(['unsupported', 'truncated'])
+  })
+})
+
+describe('collectExpandableNodeIds', () => {
+  const tree: Node = {
+    kind: 'map',
+    path: [],
+    raw: { switch: 'ScvMap' },
+    entries: [
+      {
+        key: primitive('k0'),
+        value: {
+          kind: 'vec',
+          path: [],
+          raw: { switch: 'ScvVec' },
+          items: [primitive('v0'), primitive('v1')],
+        },
+      },
+      {
+        key: primitive('k1'),
+        value: primitive('leaf'),
+      },
+    ],
+  }
+
+  it('returns the root and nested container ids regardless of expansion', () => {
+    const ids = collectExpandableNodeIds([
+      { id: 'root', label: 'root', node: tree },
+    ])
+    expect(ids).toEqual(['root', 'root.entry-0-value'])
+  })
+
+  it('returns an empty array for primitive roots', () => {
+    const ids = collectExpandableNodeIds([
+      { id: 'root', label: 'root', node: primitive('leaf') },
+    ])
+    expect(ids).toEqual([])
+  })
+
+  it('returns an empty array when there are no roots', () => {
+    expect(collectExpandableNodeIds([])).toEqual([])
   })
 })

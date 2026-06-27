@@ -2,7 +2,10 @@ import { useEffect, useMemo } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Button, Card, Heading } from '@stellar/design-system'
 import { VirtualizedTreeList } from '../../../components/explorer/VirtualizedTreeList'
-import { flattenTree } from '../../../lib/tree/flattenTree'
+import {
+  collectExpandableNodeIds,
+  flattenTree,
+} from '../../../lib/tree/flattenTree'
 import { ContractLoadStatus } from '../../../store/types'
 import { useLensStore } from '../../../store/lensStore'
 import { validateContractRouteParam } from './-validateContractRouteParam'
@@ -50,6 +53,8 @@ function ContractExplorer() {
   const contractLoadError = useLensStore((state) => state.contractLoadError)
   const expandedNodes = useLensStore((state) => state.expandedNodes)
   const toggleExpanded = useLensStore((state) => state.toggleExpanded)
+  const expandAll = useLensStore((state) => state.expandAll)
+  const collapseAll = useLensStore((state) => state.collapseAll)
   const selectedKeyPath = useLensStore((state) => state.selectedKeyPath)
   const setSelectedKeyPath = useLensStore((state) => state.setSelectedKeyPath)
 
@@ -105,6 +110,19 @@ function ContractExplorer() {
     () => flattenTree(treeRoots, expandedNodes),
     [expandedNodes, treeRoots],
   )
+
+  const expandableNodeIds = useMemo(
+    () => collectExpandableNodeIds(treeRoots),
+    [treeRoots],
+  )
+
+  const handleExpandAll = () => {
+    expandAll(expandableNodeIds)
+  }
+
+  const handleCollapseAll = () => {
+    collapseAll()
+  }
 
   useEffect(() => {
     setActiveContractId(contractId)
@@ -232,13 +250,34 @@ function ContractExplorer() {
       {contractLoadStatus === ContractLoadStatus.SUCCESS && (
         <Card>
           <div className="p-6 space-y-4">
-            <Heading
-              size="sm"
-              as="h3"
-              className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
-            >
-              Explorer Rows ({flatRows.length})
-            </Heading>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <Heading
+                size="sm"
+                as="h3"
+                className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
+              >
+                Explorer Rows ({flatRows.length})
+              </Heading>
+
+              {expandableNodeIds.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleExpandAll}
+                  >
+                    Expand all
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleCollapseAll}
+                  >
+                    Collapse all
+                  </Button>
+                </div>
+              ) : null}
+            </div>
 
             {flatRows.length === 0 ? (
               <p className="text-text-muted text-sm">
