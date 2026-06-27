@@ -1,4 +1,5 @@
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
+import { Link } from '@tanstack/react-router'
 import { useLensStore } from '../../store/lensStore'
 
 interface InspectShellProps {
@@ -53,6 +54,15 @@ export function InspectShell({
           </Heading>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Link
+            to="/contracts/$contractId/explorer"
+            params={{ contractId }}
+            search={{ keys: '' }}
+            aria-label="Back to explorer"
+            className="text-sm text-primary hover:underline font-mono whitespace-nowrap"
+          >
+            ← Explorer
+          </Link>
           <IconButton
             icon="pin"
             altText="Add to watchlist"
