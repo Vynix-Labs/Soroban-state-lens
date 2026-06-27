@@ -87,6 +87,47 @@ describe('decoderWorkerApi.decodeScVal', () => {
     }
   })
 
+  it('should decode a map ScVal with multiple entries into key/value child nodes', async () => {
+    const scVal = xdr.ScVal.scvMap([
+      { key: xdr.ScVal.scvSymbol('a'), val: xdr.ScVal.scvU32(1) },
+      { key: xdr.ScVal.scvSymbol('b'), val: xdr.ScVal.scvU32(2) },
+    ])
+    const xdrString = scVal.toXDR('base64')
+
+    const result = await decoderWorkerApi.decodeScVal({ xdr: xdrString })
+
+    if (isDecoderWorkerError(result)) {
+      throw new Error(`Expected success, got error: ${result.message}`)
+    }
+
+    expect(result.kind).toBe('map')
+    if (result.kind === 'map') {
+      expect(result.entries).toHaveLength(2)
+
+      expect(result.entries[0].key).toMatchObject({
+        kind: 'primitive',
+        scType: 'symbol',
+        value: 'a',
+      })
+      expect(result.entries[0].value).toMatchObject({
+        kind: 'primitive',
+        scType: 'u32',
+        value: 1,
+      })
+
+      expect(result.entries[1].key).toMatchObject({
+        kind: 'primitive',
+        scType: 'symbol',
+        value: 'b',
+      })
+      expect(result.entries[1].value).toMatchObject({
+        kind: 'primitive',
+        scType: 'u32',
+        value: 2,
+      })
+    }
+  })
+
   it('should respect maxDepth and truncate nested vec children', async () => {
     const scVal = xdr.ScVal.scvVec([
       xdr.ScVal.scvVec([xdr.ScVal.scvI32(1)]),
