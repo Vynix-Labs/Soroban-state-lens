@@ -132,6 +132,68 @@ describe('callRpc', () => {
     })
   })
 
+  it('aborts the in-flight request when a caller signal aborts', async () => {
+    const caller = new AbortController()
+    mockFetch.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          caller.signal.addEventListener('abort', () =>
+            reject(new DOMException('The operation was aborted.', 'AbortError')),
+          )
+        }),
+    )
+
+    const abortPromise = callRpc(
+      { ...defaultConfig, signal: caller.signal },
+      { method: 'test' },
+    )
+    caller.abort()
+    const result = await abortPromise
+
+    expect(result).toMatchObject({
+      message: 'Request aborted',
+      code: 'ABORTED',
+      isTimeout: false,
+    })
+  })
+
+  it('returns an aborted shape when the caller signal is already aborted', async () => {
+    const caller = new AbortController()
+    caller.abort()
+    mockFetch.mockImplementationOnce(
+      () =>
+        Promise.reject(
+          new DOMException('The operation was aborted.', 'AbortError'),
+        ),
+    )
+
+    const result = await callRpc(
+      { ...defaultConfig, signal: caller.signal },
+      { method: 'test' },
+    )
+
+    expect(result).toMatchObject({
+      message: 'Request aborted',
+      code: 'ABORTED',
+      isTimeout: false,
+    })
+  })
+
+  it('still uses the internal timeout when no caller signal is provided', async () => {
+    mockFetch.mockRejectedValueOnce(
+      new DOMException('The operation was aborted.', 'AbortError'),
+    )
+
+    const result = await callRpc({ ...defaultConfig, timeout: 1000 })
+
+    expect(result).toMatchObject({
+      message: 'Request timeout',
+      code: 'TIMEOUT',
+      details: 'Request timed out after 1000ms',
+      isTimeout: true,
+    })
+  })
+
   it('should handle JSON parsing errors', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
