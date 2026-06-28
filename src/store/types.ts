@@ -138,21 +138,16 @@ export interface WatchlistSlice {
   clearWatchlist: (contractId: string) => void
 }
 
-// Display preferences enums
-export enum ByteDisplayMode {
-  HEX = 'hex',
-  BASE64 = 'base64',
-  UTF8 = 'utf8',
+// Contract spec slice – parsed schema data keyed by contract ID
+export interface ContractSpecSlice {
+  contractSpecs: Record<string, unknown>
+  setContractSpec: (contractId: string, spec: unknown) => void
+  getContractSpec: (contractId: string) => unknown
+  clearContractSpec: (contractId: string) => void
 }
 
-export enum BigIntDisplayMode {
-  DECIMAL = 'decimal',
-  HEX = 'hex',
-  SCIENTIFIC = 'scientific',
-}
-
-// Display preferences
-export interface DisplayPreferences {
+// Preferences slice
+export interface PreferencesSlice {
   byteDisplayMode: ByteDisplayMode
   bigIntDisplayMode: BigIntDisplayMode
 }
@@ -174,6 +169,7 @@ export interface LensStore
     SnapshotSlice,
     ContractSlice,
     ContractLoadSlice,
+    ContractSpecSlice,
     PreferencesSlice,
     WatchlistSlice {}
 

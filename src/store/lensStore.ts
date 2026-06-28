@@ -20,6 +20,7 @@ import {
   serializeNetworkConfigForStorage,
 } from './persistence'
 import { createContractSlice } from './contractSlice'
+import { createContractSpecSlice } from './contractSpecSlice'
 import { createPreferencesSlice } from './preferencesSlice'
 
 import type { PersistedState } from './persistence'
@@ -188,21 +189,32 @@ const createSnapshotSlice = (
     entries: Record<string, LedgerEntry>,
     label?: string,
   ) =>
-    set((state) => ({
-      snapshots: {
-        ...state.snapshots,
-        [contractId]: [
-          ...(state.snapshots[contractId] ?? []),
-          {
-            id: crypto.randomUUID(),
-            contractId,
-            timestamp: Date.now(),
-            ledgerData: { ...entries },
-            label,
-          },
-        ],
-      },
-    })),
+    set((state) => {
+      // Deep clone entries to ensure immutability
+      const clonedEntries: Record<string, LedgerEntry> = {}
+      for (const [key, entry] of Object.entries(entries)) {
+        clonedEntries[key] = {
+          ...entry,
+          value: JSON.parse(JSON.stringify(entry.value)),
+        }
+      }
+
+      return {
+        snapshots: {
+          ...state.snapshots,
+          [contractId]: [
+            ...(state.snapshots[contractId] ?? []),
+            {
+              id: crypto.randomUUID(),
+              contractId,
+              timestamp: Date.now(),
+              ledgerData: clonedEntries,
+              label,
+            },
+          ],
+        },
+      }
+    }),
 
   getSnapshots: (contractId: string) => {
     return get().snapshots[contractId] ?? []
@@ -394,7 +406,7 @@ const createWatchlistSlice = (
  * - ledgerData: Cached ledger entries (NOT persisted)
  * - expandedNodes: Tree view expansion state (NOT persisted)
  * - contractLoadStatus: Contract fetch lifecycle (NOT persisted)
- * - watchlist: Pinned keys for quick access (NOT persisted)
+ * - watchlist: Pinned keys for quick access (PERSISTED)
  */
 export const useLensStore = create<LensStore>()(
   persist<LensStore, [], [], PersistedState>(
@@ -405,16 +417,21 @@ export const useLensStore = create<LensStore>()(
       ...createSnapshotSlice(set, get),
       ...createWatchlistSlice(set, get),
       ...createContractSlice(set),
+      ...createContractSpecSlice(set, get),
       ...createContractLoadSlice(set, get),
       ...createPreferencesSlice(set),
     }),
     {
       name: NETWORK_CONFIG_STORAGE_KEY,
       storage: createSafeStorage<PersistedState>(),
-      // Persist both networkConfig and preferences
+      // Persist networkConfig, preferences, and the watchlist
       partialize: (state): PersistedState => ({
         networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
-        preferences: state.preferences,
+        preferences: {
+          byteDisplayMode: state.byteDisplayMode,
+          bigIntDisplayMode: state.bigIntDisplayMode,
+        },
+        watchlist: state.watchlist,
       }),
       // Validate and merge persisted data safely
       merge: (persistedState, currentState) => {
@@ -433,6 +450,8 @@ export const useLensStore = create<LensStore>()(
 /**
  * Selector hooks for common use cases
  */
+const EMPTY_ARRAY: Array<never> = []
+
 export const useNetworkConfig = () =>
   useLensStore((state) => state.networkConfig)
 export const useLedgerData = () => useLensStore((state) => state.ledgerData)
@@ -447,9 +466,9 @@ export const useContractLoadStatus = () =>
 export const useContractLoadError = () =>
   useLensStore((state) => state.contractLoadError)
 export const useSnapshots = (contractId: string) =>
-  useLensStore((state) => state.snapshots[contractId] ?? [])
+  useLensStore((state) => state.snapshots[contractId] ?? EMPTY_ARRAY)
 export const useWatchlist = (contractId: string) =>
-  useLensStore((state) => state.watchlist[contractId] ?? [])
+  useLensStore((state) => state.watchlist[contractId] ?? EMPTY_ARRAY)
 
 /**
  * Get store state outside of React components (for testing)
@@ -467,6 +486,7 @@ export const resetStore = () => {
     expandedNodes: [],
     snapshots: {},
     watchlist: {},
+    contractSpecs: {},
     activeContractId: null,
     selectedKeyPath: null,
     contractLoadStatus: ContractLoadStatus.IDLE,
@@ -515,4 +535,27 @@ export const lensActions = {
   resetContractLoadState: () => useLensStore.getState().resetContractLoadState(),
   loadContract: (contractId: string, keys: Array<string>) =>
     useLensStore.getState().loadContract(contractId, keys),
+  addSnapshot: (
+    contractId: string,
+    entries: Record<string, LedgerEntry>,
+    label?: string,
+  ) => useLensStore.getState().addSnapshot(contractId, entries, label),
+  getSnapshots: (contractId: string) =>
+    useLensStore.getState().getSnapshots(contractId),
+  removeSnapshot: (contractId: string, snapshotId: string) =>
+    useLensStore.getState().removeSnapshot(contractId, snapshotId),
+  clearSnapshots: (contractId: string) =>
+    useLensStore.getState().clearSnapshots(contractId),
+  /**
+   * Capture current contract state as a timestamped snapshot.
+   * Clones the active contract's ledger data into an immutable snapshot record.
+   */
+  captureSnapshot: (label?: string) => {
+    const state = useLensStore.getState()
+    if (!state.activeContractId) {
+      console.warn('No active contract to capture snapshot for')
+      return
+    }
+    state.addSnapshot(state.activeContractId, state.ledgerData, label)
+  },
 }

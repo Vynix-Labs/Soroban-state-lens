@@ -2,16 +2,8 @@ import { createJSONStorage } from 'zustand/middleware'
 import { parsePersistedNetworkConfig } from '../lib/storage/parsePersistedNetworkConfig'
 import { serializePersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
 import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
-import {
-  BigIntDisplayMode,
-  ByteDisplayMode,
-  DEFAULT_NETWORKS,
-  DEFAULT_PREFERENCES,
-} from './types'
-import type {
-  DisplayPreferences,
-  NetworkConfig,
-} from './types'
+
+import type { NetworkConfig, WatchlistItem } from './types'
 import type { PersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
 import type { PersistStorage } from 'zustand/middleware'
 
@@ -35,7 +27,11 @@ export const DEFAULT_NETWORK_CONFIG: NetworkConfig = DEFAULT_NETWORKS.futurenet
  */
 export interface PersistedState {
   networkConfig: PersistedNetworkConfig
-  preferences: DisplayPreferences
+  preferences?: {
+    byteDisplayMode: string
+    bigIntDisplayMode: string
+  }
+  watchlist?: Record<string, Array<WatchlistItem>>
 }
 
 /**
@@ -170,16 +166,46 @@ export const createSafeStorage = <T>(): PersistStorage<T> | undefined =>
 export function mergeNetworkConfig(
   persistedState: unknown,
   currentState: { networkConfig: NetworkConfig },
-): { networkConfig: NetworkConfig } {
-  const hydratedState = unwrapPersistedState(persistedState)
+): any {
+  let watchlist: Record<string, Array<WatchlistItem>> = {}
 
-  if (hydratedState && 'networkConfig' in hydratedState) {
+  if (
+    typeof persistedState === 'object' &&
+    persistedState !== null &&
+    'watchlist' in persistedState
+  ) {
+    const persisted = persistedState as { watchlist?: unknown }
+    watchlist = sanitizeWatchlist(persisted.watchlist)
+  }
+
+  if (
+    typeof persistedState === 'object' &&
+    persistedState !== null &&
+    'networkConfig' in persistedState
+  ) {
+    const persisted = persistedState as {
+      networkConfig: unknown
+      preferences?: {
+        byteDisplayMode: string
+        bigIntDisplayMode: string
+      }
+    }
     const parsedNetworkConfig = parsePersistedNetworkConfig(
       hydratedState.networkConfig,
     )
 
     if (isValidNetworkConfig(parsedNetworkConfig)) {
-      return { networkConfig: parsedNetworkConfig }
+      return {
+        networkConfig: parsedNetworkConfig,
+        ...(persisted.preferences
+          ? {
+              byteDisplayMode: (persisted.preferences as any).byteDisplayMode,
+              bigIntDisplayMode: (persisted.preferences as any)
+                .bigIntDisplayMode,
+            }
+          : {}),
+        watchlist,
+      }
     }
 
     console.warn(
@@ -189,7 +215,55 @@ export function mergeNetworkConfig(
   }
 
   // Return current state (with defaults) if persisted data is invalid or missing
-  return { networkConfig: currentState.networkConfig }
+  return { ...currentState, watchlist }
+}
+
+/**
+ * Sanitizes a persisted watchlist into the known shape, dropping any entry
+ * that does not match the {@link WatchlistItem} contract. Guards against
+ * corrupted localStorage payloads crashing the store on hydration.
+ */
+export function sanitizeWatchlist(
+  value: unknown,
+): Record<string, Array<WatchlistItem>> {
+  if (typeof value !== 'object' || value === null) {
+    return {}
+  }
+
+  const source = value as Record<string, unknown>
+  const sanitized: Record<string, Array<WatchlistItem>> = {}
+
+  for (const [contractId, items] of Object.entries(source)) {
+    if (typeof contractId !== 'string' || contractId.length === 0) {
+      continue
+    }
+    if (!Array.isArray(items)) {
+      continue
+    }
+
+    const validItems: Array<WatchlistItem> = []
+    for (const item of items) {
+      if (
+        typeof item === 'object' &&
+        item !== null &&
+        'contractId' in item &&
+        'keyPath' in item &&
+        'timestamp' in item &&
+        typeof (item as Record<string, unknown>).contractId === 'string' &&
+        typeof (item as Record<string, unknown>).keyPath === 'string' &&
+        typeof (item as Record<string, unknown>).timestamp === 'number' &&
+        Number.isFinite((item as Record<string, unknown>).timestamp as number)
+      ) {
+        validItems.push(item as unknown as WatchlistItem)
+      }
+    }
+
+    if (validItems.length > 0) {
+      sanitized[contractId] = validItems
+    }
+  }
+
+  return sanitized
 }
 
 export function serializeNetworkConfigForStorage(

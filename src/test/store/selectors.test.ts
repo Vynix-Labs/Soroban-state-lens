@@ -21,6 +21,8 @@ import {
   selectNetworkId,
   selectRpcUrl,
   selectSelectedKeyPath,
+  selectSnapshotsForContract,
+  selectWatchlistForContract,
 } from '../../store/selectors'
 
 import type { LedgerEntry } from '../../store/types'
@@ -99,6 +101,28 @@ describe('selectors', () => {
       expect(entry).toBeUndefined()
     })
 
+    it('selectSnapshotsForContract returns snapshots for a contract', () => {
+      const state = getStoreState()
+      state.snapshots['ABC123'] = [
+        {
+          id: 'snapshot-1',
+          contractId: 'ABC123',
+          label: 'Snapshot 1',
+          ledgerData: {},
+          timestamp: 123,
+        },
+      ]
+
+      const snapshots = selectSnapshotsForContract('ABC123')(getStoreState())
+      expect(snapshots).toHaveLength(1)
+      expect(snapshots[0].contractId).toBe('ABC123')
+      expect(snapshots[0].id).toBe('snapshot-1')
+    })
+
+    it('selectSnapshotsForContract returns empty array for unknown contract', () => {
+      expect(selectSnapshotsForContract('UNKNOWN')(getStoreState())).toEqual([])
+    })
+
     it('selectLedgerEntriesByContract filters by contractId', () => {
       useLensStore
         .getState()
@@ -111,6 +135,33 @@ describe('selectors', () => {
 
       const def = selectLedgerEntriesByContract('DEF456')(getStoreState())
       expect(def).toHaveLength(1)
+    })
+
+    it('selectLedgerEntriesByContract is referentially stable across identical state reads', () => {
+      useLensStore
+        .getState()
+        .upsertLedgerEntries([mockEntry, mockEntry2, mockEntry3])
+
+      const first = selectLedgerEntriesByContract('ABC123')(getStoreState())
+      const second = selectLedgerEntriesByContract('ABC123')(getStoreState())
+
+      expect(first).toBe(second)
+    })
+
+    it('selectLedgerEntriesByContract recomputes after ledger upsert', () => {
+      useLensStore
+        .getState()
+        .upsertLedgerEntries([mockEntry, mockEntry2, mockEntry3])
+
+      const first = selectLedgerEntriesByContract('ABC123')(getStoreState())
+
+      const newEntry = { ...mockEntry, key: 'contract:ABC123:New', lastModifiedLedger: 200 }
+      useLensStore.getState().upsertLedgerEntry(newEntry)
+
+      const second = selectLedgerEntriesByContract('ABC123')(getStoreState())
+
+      expect(second).not.toBe(first)
+      expect(second.map((e) => e.key)).toContain(newEntry.key)
     })
 
     it('selectLedgerEntryCount returns correct count', () => {
@@ -154,6 +205,28 @@ describe('selectors', () => {
     it('selectSelectedKeyPath returns selected value', () => {
       useLensStore.getState().setSelectedKeyPath('root.entry-0-value')
       expect(selectSelectedKeyPath(getStoreState())).toBe('root.entry-0-value')
+    })
+  })
+
+  describe('watchlist selectors', () => {
+    it('selectWatchlistForContract returns pinned items for a contract', () => {
+      useLensStore.getState().addToWatchlist('contract-1', '/path/to/key1')
+      useLensStore.getState().addToWatchlist('contract-1', '/path/to/key2')
+      useLensStore.getState().addToWatchlist('contract-2', '/path/to/key1')
+
+      const watchlist = selectWatchlistForContract('contract-1')(getStoreState())
+
+      expect(watchlist).toHaveLength(2)
+      expect(watchlist.map((item) => item.keyPath)).toEqual([
+        '/path/to/key1',
+        '/path/to/key2',
+      ])
+      expect(watchlist.every((item) => item.contractId === 'contract-1')).toBe(true)
+    })
+
+    it('selectWatchlistForContract returns an empty array for unknown contracts', () => {
+      const watchlist = selectWatchlistForContract('non-existent')(getStoreState())
+      expect(watchlist).toEqual([])
     })
   })
 })
