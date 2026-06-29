@@ -146,8 +146,21 @@ export interface ContractSpecSlice {
   clearContractSpec: (contractId: string) => void
 }
 
-// Preferences slice
-export interface PreferencesSlice {
+// Display preferences enums
+export enum ByteDisplayMode {
+  HEX = 'hex',
+  BASE64 = 'base64',
+  UTF8 = 'utf8',
+}
+
+export enum BigIntDisplayMode {
+  DECIMAL = 'decimal',
+  HEX = 'hex',
+  SCIENTIFIC = 'scientific',
+}
+
+// Display preferences
+export interface DisplayPreferences {
   byteDisplayMode: ByteDisplayMode
   bigIntDisplayMode: BigIntDisplayMode
 }

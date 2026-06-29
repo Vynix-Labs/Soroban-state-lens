@@ -427,11 +427,7 @@ export const useLensStore = create<LensStore>()(
       // Persist networkConfig, preferences, and the watchlist
       partialize: (state): PersistedState => ({
         networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
-        preferences: {
-          byteDisplayMode: state.byteDisplayMode,
-          bigIntDisplayMode: state.bigIntDisplayMode,
-        },
-        watchlist: state.watchlist,
+        preferences: state.preferences,
       }),
       // Validate and merge persisted data safely
       merge: (persistedState, currentState) => {

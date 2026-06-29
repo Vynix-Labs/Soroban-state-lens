@@ -497,40 +497,6 @@ export function normalizeNode(
       return createUnsupportedNode(path, ScValType.SCV_I256, scVal)
     }
 
-    case ScValType.SCV_TIMEPOINT: {
-      const str = bigIntLikeToString(scVal.value)
-      if (str !== null) {
-        const n = BigInt(str)
-        if (n >= 0n && n <= 0xffffffffffffffffn) {
-          return {
-            kind: 'primitive',
-            path,
-            scType: 'timepoint',
-            value: str,
-            raw: toRaw(scVal),
-          } satisfies PrimitiveNode
-        }
-      }
-      return createUnsupportedNode(path, ScValType.SCV_TIMEPOINT, scVal)
-    }
-
-    case ScValType.SCV_DURATION: {
-      const str = bigIntLikeToString(scVal.value)
-      if (str !== null) {
-        const n = BigInt(str)
-        if (n >= 0n && n <= 0xffffffffffffffffn) {
-          return {
-            kind: 'primitive',
-            path,
-            scType: 'duration',
-            value: str,
-            raw: toRaw(scVal),
-          } satisfies PrimitiveNode
-        }
-      }
-      return createUnsupportedNode(path, ScValType.SCV_DURATION, scVal)
-    }
-
     case ScValType.SCV_STRING: {
       return {
         kind: 'primitive',
