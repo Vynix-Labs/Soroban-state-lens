@@ -92,11 +92,11 @@ export function validateDisplayPreferences(
   const candidate = value as Record<string, unknown>
 
   const byteDisplayMode = isValidByteDisplayMode(candidate.byteDisplayMode)
-    ? (candidate.byteDisplayMode as ByteDisplayMode)
+    ? candidate.byteDisplayMode
     : DEFAULT_PREFERENCES.byteDisplayMode
 
   const bigIntDisplayMode = isValidBigIntDisplayMode(candidate.bigIntDisplayMode)
-    ? (candidate.bigIntDisplayMode as BigIntDisplayMode)
+    ? candidate.bigIntDisplayMode
     : DEFAULT_PREFERENCES.bigIntDisplayMode
 
   return {
