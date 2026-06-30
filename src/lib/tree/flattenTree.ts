@@ -78,7 +78,7 @@ function walkNode(params: {
 
 export function flattenTree(
   roots: Array<FlattenTreeRoot>,
-  expandedNodeIds: ReadonlySet<string> | ReadonlyArray<string>,
+  expandedNodeIds: ReadonlyArray<string> | Set<string>,
 ): Array<FlatTreeRow> {
   const rows: Array<FlatTreeRow> = []
   const expandedIds =
@@ -99,4 +99,30 @@ export function flattenTree(
   }
 
   return rows
+}
+
+/**
+ * Returns every expandable node id in the supplied roots, regardless of the
+ * current expansion state. Used to drive expand-all controls for the explorer.
+ */
+export function collectExpandableNodeIds(
+  roots: Array<FlattenTreeRoot>,
+): Array<string> {
+  const ids: Array<string> = []
+
+  const visit = (node: Node, id: string): void => {
+    const children = getChildren(node)
+    if (isExpandable(node) && children.length > 0) {
+      ids.push(id)
+      for (const child of children) {
+        visit(child.node, `${id}.${child.idPart}`)
+      }
+    }
+  }
+
+  for (const root of roots) {
+    visit(root.node, root.id)
+  }
+
+  return ids
 }

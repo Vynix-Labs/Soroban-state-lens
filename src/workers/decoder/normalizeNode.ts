@@ -76,6 +76,50 @@ function toRaw(scVal: ScVal | null | undefined): RawScVal {
   }
 }
 
+function getScValSwitch(scVal: any): string | undefined {
+  if (!scVal || typeof scVal !== 'object') {
+    return undefined
+  }
+
+  if (typeof scVal.switch === 'string') {
+    return scVal.switch
+  }
+
+  if (typeof scVal.switch === 'function') {
+    try {
+      const switchEnum = scVal.switch()
+      if (
+        switchEnum &&
+        typeof switchEnum === 'object' &&
+        typeof (switchEnum as { name: unknown }).name === 'string'
+      ) {
+        const name = String((switchEnum as { name: string }).name)
+        return name.charAt(0).toUpperCase() + name.slice(1)
+      }
+    } catch {
+      return undefined
+    }
+  }
+
+  return undefined
+}
+
+function getScValValue(scVal: any): unknown {
+  if (!scVal || typeof scVal !== 'object') {
+    return scVal
+  }
+
+  if (typeof scVal.value === 'function') {
+    try {
+      return scVal.value()
+    } catch {
+      return undefined
+    }
+  }
+
+  return scVal.value
+}
+
 function bigIntLikeToString(value: unknown): string | null {
   if (typeof value === 'bigint') {
     return value.toString()
@@ -256,17 +300,27 @@ export function normalizeNode(
     visited.markVisited(scVal)
   }
 
-  if (!scVal || typeof scVal.switch !== 'string') {
+  const switchValue = getScValSwitch(scVal)
+  const value = getScValValue(scVal)
+
+  if (!scVal || typeof switchValue !== 'string') {
     return createUnsupportedNode(path, 'Invalid', scVal)
   }
 
-  switch (scVal.switch) {
+  const normalizedScVal: ScVal = {
+    switch: switchValue as ScValType,
+    value,
+  }
+
+  switch (switchValue) {
     case ScValType.SCV_BOOL: {
       return {
         kind: 'primitive',
         path,
         scType: 'bool',
-        value: typeof scVal.value === 'boolean' ? scVal.value : false,
+        value: typeof normalizedScVal.value === 'boolean'
+          ? normalizedScVal.value
+          : false,
         raw: toRaw(scVal),
       } satisfies PrimitiveNode
     }
@@ -282,17 +336,18 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_U32: {
+      const value = normalizedScVal.value
       if (
-        typeof scVal.value === 'number' &&
-        Number.isInteger(scVal.value) &&
-        scVal.value >= 0 &&
-        scVal.value <= 0xffffffff
+        typeof value === 'number' &&
+        Number.isInteger(value) &&
+        value >= 0 &&
+        value <= 0xffffffff
       ) {
         return {
           kind: 'primitive',
           path,
           scType: 'u32',
-          value: scVal.value,
+          value,
           raw: toRaw(scVal),
         } satisfies PrimitiveNode
       }
@@ -300,17 +355,18 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_I32: {
+      const value = normalizedScVal.value
       if (
-        typeof scVal.value === 'number' &&
-        Number.isInteger(scVal.value) &&
-        scVal.value >= -0x80000000 &&
-        scVal.value <= 0x7fffffff
+        typeof value === 'number' &&
+        Number.isInteger(value) &&
+        value >= -0x80000000 &&
+        value <= 0x7fffffff
       ) {
         return {
           kind: 'primitive',
           path,
           scType: 'i32',
-          value: scVal.value,
+          value,
           raw: toRaw(scVal),
         } satisfies PrimitiveNode
       }
@@ -318,7 +374,7 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_U64: {
-      const str = bigIntLikeToString(scVal.value)
+      const str = bigIntLikeToString(normalizedScVal.value)
       if (str !== null) {
         const n = BigInt(str)
         if (n >= 0n && n <= 0xffffffffffffffffn) {
@@ -352,7 +408,7 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_I64: {
-      const str = bigIntLikeToString(scVal.value)
+      const str = bigIntLikeToString(normalizedScVal.value)
       if (str !== null) {
         const n = BigInt(str)
         if (n >= -0x8000000000000000n && n <= 0x7fffffffffffffffn) {
@@ -368,8 +424,25 @@ export function normalizeNode(
       return createUnsupportedNode(path, ScValType.SCV_I64, scVal)
     }
 
+    case ScValType.SCV_DURATION: {
+      const str = bigIntLikeToString(scVal.value)
+      if (str !== null) {
+        const n = BigInt(str)
+        if (n >= 0n && n <= 0xffffffffffffffffn) {
+          return {
+            kind: 'primitive',
+            path,
+            scType: 'duration',
+            value: str,
+            raw: toRaw(scVal),
+          } satisfies PrimitiveNode
+        }
+      }
+      return createUnsupportedNode(path, ScValType.SCV_DURATION, scVal)
+    }
+
     case ScValType.SCV_U128: {
-      const str = parts128ToString(scVal.value, false)
+      const str = parts128ToString(normalizedScVal.value, false)
       if (str !== null) {
         return {
           kind: 'primitive',
@@ -383,7 +456,7 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_I128: {
-      const str = parts128ToString(scVal.value, true)
+      const str = parts128ToString(normalizedScVal.value, true)
       if (str !== null) {
         return {
           kind: 'primitive',
@@ -397,7 +470,7 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_U256: {
-      const str = parts256ToString(scVal.value, false)
+      const str = parts256ToString(normalizedScVal.value, false)
       if (str !== null) {
         return {
           kind: 'primitive',
@@ -411,7 +484,7 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_I256: {
-      const str = parts256ToString(scVal.value, true)
+      const str = parts256ToString(normalizedScVal.value, true)
       if (str !== null) {
         return {
           kind: 'primitive',
@@ -429,7 +502,7 @@ export function normalizeNode(
         kind: 'primitive',
         path,
         scType: 'string',
-        value: typeof scVal.value === 'string' ? scVal.value : '',
+        value: typeof normalizedScVal.value === 'string' ? normalizedScVal.value : '',
         raw: toRaw(scVal),
       } satisfies PrimitiveNode
     }
@@ -439,13 +512,13 @@ export function normalizeNode(
         kind: 'primitive',
         path,
         scType: 'symbol',
-        value: typeof scVal.value === 'string' ? scVal.value : '',
+        value: typeof normalizedScVal.value === 'string' ? normalizedScVal.value : '',
         raw: toRaw(scVal),
       } satisfies PrimitiveNode
     }
 
     case ScValType.SCV_ERROR: {
-      const raw = scVal.value
+      const raw = normalizedScVal.value
       if (
         raw !== null &&
         raw !== undefined &&
@@ -473,7 +546,7 @@ export function normalizeNode(
 
     case ScValType.SCV_VEC: {
       // Early return for null/undefined values - optimization for empty vectors
-      if (scVal.value == null) {
+      if (normalizedScVal.value == null) {
         return {
           kind: 'vec',
           path,
@@ -482,7 +555,7 @@ export function normalizeNode(
         } satisfies VecNode
       }
 
-      if (!Array.isArray(scVal.value)) {
+      if (!Array.isArray(normalizedScVal.value)) {
         return {
           kind: 'vec',
           path,
@@ -492,14 +565,14 @@ export function normalizeNode(
       }
 
       // Pre-allocate array with known size for better performance
-      const items: Array<Node> = new Array(scVal.value.length)
+      const items: Array<Node> = new Array(normalizedScVal.value.length)
 
       // Use for loop with better error handling for large arrays
-      for (let i = 0; i < scVal.value.length; i++) {
+      for (let i = 0; i < normalizedScVal.value.length; i++) {
         try {
           const childPath = appendPath(path, { type: 'index', index: i })
           items[i] = normalizeNode(
-            scVal.value[i],
+            normalizedScVal.value[i],
             childPath,
             visited,
             options,
@@ -510,7 +583,7 @@ export function normalizeNode(
           items[i] = createUnsupportedNode(
             appendPath(path, { type: 'index', index: i }),
             'VectorItemError',
-            scVal.value[i],
+            normalizedScVal.value[i],
           )
         }
       }
@@ -525,8 +598,8 @@ export function normalizeNode(
 
     case ScValType.SCV_MAP: {
       const entries: Array<{ key: Node; value: Node }> = []
-      if (Array.isArray(scVal.value)) {
-        for (const entry of scVal.value) {
+      if (Array.isArray(normalizedScVal.value)) {
+        for (const entry of normalizedScVal.value) {
           const keyNode = normalizeNode(
             entry.key,
             path,

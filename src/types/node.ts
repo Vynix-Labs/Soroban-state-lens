@@ -59,6 +59,7 @@ export type PrimitiveKind =
   | 'u64'
   | 'i64'
   | 'timepoint'
+  | 'duration'
   | 'u128'
   | 'i128'
   | 'u256'

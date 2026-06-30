@@ -1,30 +1,29 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Button, Card, Heading } from '@stellar/design-system'
-import { useLensStore } from '../../../store/lensStore'
+import { useLensStore, useWatchlist } from '../../../store/lensStore'
 import { validateContractRouteParam } from './-validateContractRouteParam'
 
 export const Route = createFileRoute('/contracts/$contractId/watchlist')({
-  component: RouteComponent,
+  component: WatchlistRoute,
   beforeLoad: ({ params }) => {
     const result = validateContractRouteParam(params.contractId)
     if (!result.ok) {
       console.error(`Invalid contract ID: ${result.reason}`)
       throw redirect({ to: '/' })
     }
+
     return {
-      normalizedContractId:  result.contractId,
+      normalizedContractId: result.contractId,
     }
   },
 })
 
-function RouteComponent() {
+function WatchlistRoute() {
   const { contractId } = Route.useParams()
   const { normalizedContractId } = Route.useRouteContext()
   const navigate = Route.useNavigate()
-
-  const watchlistItems = useLensStore((state) =>
-    state.getWatchlistForContract(contractId),
-  )
+  const watchlistItems = useWatchlist(contractId)
+  const removeFromWatchlist = useLensStore((state) => state.removeFromWatchlist)
 
   const handleInspect = (keyPath: string) => {
     void navigate({
@@ -33,8 +32,12 @@ function RouteComponent() {
     })
   }
 
+  const handleRemove = (keyPath: string) => {
+    removeFromWatchlist(contractId, keyPath)
+  }
+
   return (
-    <div className="flex flex-col gap-3 p-6 lg:p-10 max-w-6xl mx-auto w-full">
+    <div className="flex flex-col gap-6 p-6 lg:p-10 max-w-6xl mx-auto w-full">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-dark pb-6">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
@@ -43,53 +46,61 @@ function RouteComponent() {
             </span>
           </div>
           <Heading size="lg" as="h1" className="font-mono break-all text-white">
-            {normalizedContractId}
+            {normalizedContractId || contractId}
           </Heading>
         </div>
       </header>
+
       {watchlistItems.length === 0 ? (
         <Card>
-          <div className="p-6">
+          <div className="p-6 space-y-4">
             <Heading
-              as="h1"
               size="sm"
-              className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
+              as="h2"
+              className="text-white font-bold"
             >
-              No watchlist items
+              No saved watchlist items
             </Heading>
             <p className="text-text-muted text-sm">
-              Pin keys from the Inspector to quickly revisit them here.
+              You do not have any pinned keys for this contract yet.
+              Navigate from discovery or inspect a key to add items to the watchlist.
             </p>
           </div>
         </Card>
       ) : (
-        watchlistItems.map((item, index) => (
-          <Card key={index}>
-            <div className="border-l-2 border-primary p-3">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                Watchlist Item
-              </div>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 text-sm text-text-muted font-mono">
-                    <span>Contract</span>
-                    <span>/</span>
-                    <span className="text-white break-all">{item.keyPath}</span>
+        <div className="space-y-4">
+          {watchlistItems.map((item) => (
+            <Card key={item.keyPath}>
+              <div className="p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0">
+                  <div className="text-sm font-mono text-white break-all">
+                    {item.keyPath}
+                  </div>
+                  <div className="text-xs text-text-muted mt-1">
+                    Pinned {new Date(item.timestamp).toLocaleString()}
                   </div>
                 </div>
 
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleInspect(item.keyPath)}
-                >
-                  Inspect
-                </Button>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleInspect(item.keyPath)}
+                  >
+                    Inspect
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleRemove(item.keyPath)}
+                  >
+                    Remove
+                  </Button>
+                </div>
               </div>
-            </div>
-          </Card>
-        ))
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   )
