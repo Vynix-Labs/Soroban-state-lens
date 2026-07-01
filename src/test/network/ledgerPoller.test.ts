@@ -214,7 +214,7 @@ describe('startLedgerHeadPoll', () => {
       mockCallRpc.mockResolvedValue({ result: { sequence: 1 } })
       const onLedgerChange = vi.fn()
 
-      startLedgerHeadPoll({
+      const stop = startLedgerHeadPoll({
         rpcConfig: defaultRpcConfig,
         onLedgerChange,
       })
@@ -224,6 +224,7 @@ describe('startLedgerHeadPoll', () => {
       expect(mockCallRpc).toHaveBeenCalledTimes(1)
       await vi.advanceTimersByTimeAsync(1)
       expect(mockCallRpc).toHaveBeenCalledTimes(2)
+      stop()
       randomSpy.mockRestore()
     })
 
@@ -231,7 +232,7 @@ describe('startLedgerHeadPoll', () => {
       const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc.mockResolvedValue({ result: { sequence: 1 } })
 
-      startLedgerHeadPoll({
+      const stop = startLedgerHeadPoll({
         rpcConfig: defaultRpcConfig,
         intervalMs: 2000,
         onLedgerChange: vi.fn(),
@@ -242,6 +243,7 @@ describe('startLedgerHeadPoll', () => {
       expect(mockCallRpc).toHaveBeenCalledTimes(1)
       await vi.advanceTimersByTimeAsync(1)
       expect(mockCallRpc).toHaveBeenCalledTimes(2)
+      stop()
       randomSpy.mockRestore()
     })
 
