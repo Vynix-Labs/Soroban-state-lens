@@ -10,17 +10,6 @@ export enum ConnectionStatus {
   ERROR = 'error',
 }
 
-// Display preferences
-export enum ByteDisplayMode {
-  HEX = 'hex',
-  BASE64 = 'base64',
-}
-
-export enum BigIntDisplayMode {
-  RAW = 'raw',
-  FORMATTED = 'formatted',
-}
-
 // Network configuration
 export interface NetworkConfig {
   networkId: string
@@ -157,10 +146,28 @@ export interface ContractSpecSlice {
   clearContractSpec: (contractId: string) => void
 }
 
-// Preferences slice
-export interface PreferencesSlice {
+// Display preferences enums
+export enum ByteDisplayMode {
+  HEX = 'hex',
+  BASE64 = 'base64',
+  UTF8 = 'utf8',
+}
+
+export enum BigIntDisplayMode {
+  DECIMAL = 'decimal',
+  HEX = 'hex',
+  SCIENTIFIC = 'scientific',
+}
+
+// Display preferences
+export interface DisplayPreferences {
   byteDisplayMode: ByteDisplayMode
   bigIntDisplayMode: BigIntDisplayMode
+}
+
+// Preferences slice
+export interface PreferencesSlice {
+  preferences: DisplayPreferences
   setByteDisplayMode: (mode: ByteDisplayMode) => void
   setBigIntDisplayMode: (mode: BigIntDisplayMode) => void
   resetPreferences: () => void
@@ -199,4 +206,12 @@ export const DEFAULT_NETWORKS: Record<string, NetworkConfig> = {
     rpcUrl: 'https://soroban.stellar.org',
     horizonUrl: 'https://horizon.stellar.org',
   },
+}
+
+/**
+ * Default display preferences
+ */
+export const DEFAULT_PREFERENCES: DisplayPreferences = {
+  byteDisplayMode: ByteDisplayMode.HEX,
+  bigIntDisplayMode: BigIntDisplayMode.DECIMAL,
 }

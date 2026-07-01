@@ -1,11 +1,18 @@
 import { createJSONStorage } from 'zustand/middleware'
 import { parsePersistedNetworkConfig } from '../lib/storage/parsePersistedNetworkConfig'
 import { serializePersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
-
-import { DEFAULT_NETWORKS } from './types'
 import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
-
-import type { NetworkConfig, WatchlistItem } from './types'
+import {
+  BigIntDisplayMode,
+  ByteDisplayMode,
+  DEFAULT_NETWORKS,
+  DEFAULT_PREFERENCES,
+} from './types'
+import type {
+  DisplayPreferences,
+  NetworkConfig,
+  WatchlistItem,
+} from './types'
 import type { PersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
 import type { PersistStorage } from 'zustand/middleware'
 
@@ -15,19 +22,21 @@ import type { PersistStorage } from 'zustand/middleware'
 export const NETWORK_CONFIG_STORAGE_KEY = 'ssl.network-config.v1'
 
 /**
+ * Storage key for preferences persistence
+ */
+export const PREFERENCES_STORAGE_KEY = 'ssl.preferences.v1'
+
+/**
  * Default network config used when storage is missing or corrupt
  */
 export const DEFAULT_NETWORK_CONFIG: NetworkConfig = DEFAULT_NETWORKS.futurenet
 
 /**
- * Persisted state shape (only networkConfig)
+ * Persisted state shape
  */
 export interface PersistedState {
   networkConfig: PersistedNetworkConfig
-  preferences?: {
-    byteDisplayMode: string
-    bigIntDisplayMode: string
-  }
+  preferences: DisplayPreferences
   watchlist?: Record<string, Array<WatchlistItem>>
 }
 
@@ -41,7 +50,6 @@ export function isValidNetworkConfig(value: unknown): value is NetworkConfig {
     return false
   }
 
-  // Ensure all required fields are present and non-empty
   const { networkId, networkPassphrase, rpcUrl } = result.patch
 
   return (
@@ -52,6 +60,69 @@ export function isValidNetworkConfig(value: unknown): value is NetworkConfig {
     typeof rpcUrl === 'string' &&
     rpcUrl.length > 0
   )
+}
+
+export function isValidByteDisplayMode(
+  value: unknown,
+): value is ByteDisplayMode {
+  return (
+    value === ByteDisplayMode.HEX ||
+    value === ByteDisplayMode.BASE64 ||
+    value === ByteDisplayMode.UTF8
+  )
+}
+
+export function isValidBigIntDisplayMode(
+  value: unknown,
+): value is BigIntDisplayMode {
+  return (
+    value === BigIntDisplayMode.DECIMAL ||
+    value === BigIntDisplayMode.HEX ||
+    value === BigIntDisplayMode.SCIENTIFIC
+  )
+}
+
+export function validateDisplayPreferences(
+  value: unknown,
+): DisplayPreferences {
+  if (typeof value !== 'object' || value === null) {
+    return DEFAULT_PREFERENCES
+  }
+
+  const candidate = value as Record<string, unknown>
+
+  const byteDisplayMode = isValidByteDisplayMode(candidate.byteDisplayMode)
+    ? candidate.byteDisplayMode
+    : DEFAULT_PREFERENCES.byteDisplayMode
+
+  const bigIntDisplayMode = isValidBigIntDisplayMode(candidate.bigIntDisplayMode)
+    ? candidate.bigIntDisplayMode
+    : DEFAULT_PREFERENCES.bigIntDisplayMode
+
+  return {
+    byteDisplayMode,
+    bigIntDisplayMode,
+  }
+}
+
+function unwrapPersistedState(
+  persistedState: unknown,
+): Record<string, unknown> | null {
+  if (typeof persistedState !== 'object' || persistedState === null) {
+    return null
+  }
+
+  const persisted = persistedState as Record<string, unknown>
+
+  if (
+    'state' in persisted &&
+    typeof persisted.state === 'object' &&
+    persisted.state !== null
+  ) {
+    return persisted.state as Record<string, unknown>
+  }
+
+  return persisted
 }
 
 /**
@@ -100,68 +171,46 @@ export const createSafeStorage = <T>(): PersistStorage<T> | undefined =>
   createJSONStorage<T>(() => safeLocalStorage)
 
 /**
- * Hydration merge function that validates persisted data
- * Returns default config if persisted data is invalid
+ * Hydration merge function that validates persisted data.
  */
 export function mergeNetworkConfig(
   persistedState: unknown,
   currentState: { networkConfig: NetworkConfig },
-): any {
-  let watchlist: Record<string, Array<WatchlistItem>> = {}
+): { networkConfig: NetworkConfig; watchlist: Record<string, Array<WatchlistItem>> } {
+  const hydratedState = unwrapPersistedState(persistedState)
+  const watchlist = sanitizeWatchlist(
+    hydratedState && typeof hydratedState === 'object' && 'watchlist' in hydratedState
+      ? hydratedState.watchlist
+      : undefined,
+  )
 
-  if (
-    typeof persistedState === 'object' &&
-    persistedState !== null &&
-    'watchlist' in persistedState
-  ) {
-    const persisted = persistedState as { watchlist?: unknown }
-    watchlist = sanitizeWatchlist(persisted.watchlist)
-  }
-
-  if (
-    typeof persistedState === 'object' &&
-    persistedState !== null &&
-    'networkConfig' in persistedState
-  ) {
-    const persisted = persistedState as {
-      networkConfig: unknown
-      preferences?: {
-        byteDisplayMode: string
-        bigIntDisplayMode: string
-      }
-    }
+  if (hydratedState && 'networkConfig' in hydratedState) {
     const parsedNetworkConfig = parsePersistedNetworkConfig(
-      persisted.networkConfig,
+      hydratedState.networkConfig,
     )
 
     if (isValidNetworkConfig(parsedNetworkConfig)) {
       return {
         networkConfig: parsedNetworkConfig,
-        ...(persisted.preferences
-          ? {
-              byteDisplayMode: (persisted.preferences as any).byteDisplayMode,
-              bigIntDisplayMode: (persisted.preferences as any)
-                .bigIntDisplayMode,
-            }
-          : {}),
         watchlist,
       }
     }
 
     console.warn(
       '[LensStore] Persisted network config is invalid, falling back to default',
-      persisted.networkConfig,
+      hydratedState.networkConfig,
     )
   }
 
-  // Return current state (with defaults) if persisted data is invalid or missing
-  return { ...currentState, watchlist }
+  return {
+    networkConfig: currentState.networkConfig,
+    watchlist,
+  }
 }
 
 /**
  * Sanitizes a persisted watchlist into the known shape, dropping any entry
- * that does not match the {@link WatchlistItem} contract. Guards against
- * corrupted localStorage payloads crashing the store on hydration.
+ * that does not match the WatchlistItem contract.
  */
 export function sanitizeWatchlist(
   value: unknown,
@@ -210,6 +259,55 @@ export function serializeNetworkConfigForStorage(
   networkConfig: NetworkConfig,
 ): PersistedNetworkConfig {
   return serializePersistedNetworkConfig(networkConfig)
+}
+
+/**
+ * Hydration merge function for preferences.
+ */
+export function mergePreferences(
+  persistedState: unknown,
+  currentState: { preferences: DisplayPreferences },
+): { preferences: DisplayPreferences } {
+  const hydratedState = unwrapPersistedState(persistedState)
+
+  if (hydratedState && 'preferences' in hydratedState) {
+    const validatedPreferences = validateDisplayPreferences(
+      hydratedState.preferences,
+    )
+
+    if (
+      hydratedState.preferences !== null &&
+      typeof hydratedState.preferences === 'object'
+    ) {
+      const original = hydratedState.preferences as Record<string, unknown>
+      if (
+        !isValidByteDisplayMode(original.byteDisplayMode) ||
+        !isValidBigIntDisplayMode(original.bigIntDisplayMode)
+      ) {
+        console.warn(
+          '[LensStore] Persisted preferences contain invalid values, applying defaults',
+          hydratedState.preferences,
+        )
+      }
+    }
+
+    return { preferences: validatedPreferences }
+  }
+
+  return { preferences: currentState.preferences }
+}
+
+/**
+ * Clear persisted preferences (for testing)
+ */
+export function clearPersistedPreferences(): void {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(PREFERENCES_STORAGE_KEY)
+    }
+  } catch {
+    // Ignore errors during cleanup
+  }
 }
 
 /**

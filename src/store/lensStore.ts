@@ -6,17 +6,17 @@ import { mapLedgerEntriesToStoreEntries } from '../lib/network/mapLedgerEntriesT
 import { isDecoderWorkerError } from '../types/decoder-worker'
 import { createDecoderWorkerSafe } from '../workers/createDecoderWorkerSafe'
 import {
-  BigIntDisplayMode,
-  ByteDisplayMode,
   ConnectionStatus,
   ContractLoadStatus,
   DEFAULT_NETWORKS,
+  DEFAULT_PREFERENCES,
 } from './types'
 import {
   DEFAULT_NETWORK_CONFIG,
   NETWORK_CONFIG_STORAGE_KEY,
   createSafeStorage,
   mergeNetworkConfig,
+  mergePreferences,
   serializeNetworkConfigForStorage,
 } from './persistence'
 import { createContractSlice } from './contractSlice'
@@ -397,11 +397,12 @@ const createWatchlistSlice = (
 })
 
 /**
- * Combined Lens Store with persistence for networkConfig only
+ * Combined Lens Store with persistence for networkConfig and preferences
  *
  * Centralized state management for Soroban State Lens.
  * Includes slices for:
  * - networkConfig: Current network configuration (PERSISTED)
+ * - preferences: Display preferences (PERSISTED)
  * - ledgerData: Cached ledger entries (NOT persisted)
  * - expandedNodes: Tree view expansion state (NOT persisted)
  * - contractLoadStatus: Contract fetch lifecycle (NOT persisted)
@@ -426,17 +427,18 @@ export const useLensStore = create<LensStore>()(
       // Persist networkConfig, preferences, and the watchlist
       partialize: (state): PersistedState => ({
         networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
-        preferences: {
-          byteDisplayMode: state.byteDisplayMode,
-          bigIntDisplayMode: state.bigIntDisplayMode,
-        },
-        watchlist: state.watchlist,
+        preferences: state.preferences,
       }),
       // Validate and merge persisted data safely
-      merge: (persistedState, currentState) => ({
-        ...currentState,
-        ...mergeNetworkConfig(persistedState, currentState),
-      }),
+      merge: (persistedState, currentState) => {
+        const mergedNetwork = mergeNetworkConfig(persistedState, currentState)
+        const mergedPreferences = mergePreferences(persistedState, currentState)
+        return {
+          ...currentState,
+          ...mergedNetwork,
+          ...mergedPreferences,
+        }
+      },
     },
   ),
 )
@@ -485,8 +487,7 @@ export const resetStore = () => {
     selectedKeyPath: null,
     contractLoadStatus: ContractLoadStatus.IDLE,
     contractLoadError: null,
-    byteDisplayMode: ByteDisplayMode.HEX,
-    bigIntDisplayMode: BigIntDisplayMode.RAW,
+    preferences: DEFAULT_PREFERENCES,
   })
 }
 

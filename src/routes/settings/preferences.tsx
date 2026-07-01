@@ -8,8 +8,8 @@ export const Route = createFileRoute('/settings/preferences')({
 })
 
 function PreferencesSettings() {
-  const byteDisplayMode = useLensStore((state) => state.byteDisplayMode)
-  const bigIntDisplayMode = useLensStore((state) => state.bigIntDisplayMode)
+  const byteDisplayMode = useLensStore((state) => state.preferences.byteDisplayMode)
+  const bigIntDisplayMode = useLensStore((state) => state.preferences.bigIntDisplayMode)
   const setByteDisplayMode = useLensStore((state) => state.setByteDisplayMode)
   const setBigIntDisplayMode = useLensStore(
     (state) => state.setBigIntDisplayMode,
@@ -38,6 +38,7 @@ function PreferencesSettings() {
               >
                 <option value={ByteDisplayMode.HEX}>Hex</option>
                 <option value={ByteDisplayMode.BASE64}>Base64</option>
+                <option value={ByteDisplayMode.UTF8}>UTF-8</option>
               </select>
             </div>
 
@@ -52,8 +53,9 @@ function PreferencesSettings() {
                 }
                 className="w-full p-2 border rounded"
               >
-                <option value={BigIntDisplayMode.RAW}>Raw</option>
-                <option value={BigIntDisplayMode.FORMATTED}>Formatted</option>
+                <option value={BigIntDisplayMode.DECIMAL}>Decimal</option>
+                <option value={BigIntDisplayMode.HEX}>Hex</option>
+                <option value={BigIntDisplayMode.SCIENTIFIC}>Scientific</option>
               </select>
             </div>
 
