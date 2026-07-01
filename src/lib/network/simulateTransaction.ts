@@ -99,7 +99,10 @@ export async function simulateTransaction(
       signal,
     })
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
+    // Detect aborts by the canonical `name` rather than `instanceof Error`,
+    // since DOMException is not an Error subclass and fetch implementations
+    // surface aborts as DOMException('AbortError') / plain objects.
+    if (error != null && typeof error === 'object' && 'name' in error && (error as { name: unknown }).name === 'AbortError') {
       return { success: false, error: 'Request aborted' }
     }
     return {
