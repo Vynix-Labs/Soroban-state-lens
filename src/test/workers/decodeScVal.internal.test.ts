@@ -89,8 +89,14 @@ describe('decoderWorkerApi.decodeScVal', () => {
 
   it('should decode a map ScVal with multiple entries into key/value child nodes', async () => {
     const scVal = xdr.ScVal.scvMap([
-      { key: xdr.ScVal.scvSymbol('a'), val: xdr.ScVal.scvU32(1) },
-      { key: xdr.ScVal.scvSymbol('b'), val: xdr.ScVal.scvU32(2) },
+      new xdr.ScMapEntry({
+        key: xdr.ScVal.scvSymbol('a'),
+        val: xdr.ScVal.scvU32(1),
+      }),
+      new xdr.ScMapEntry({
+        key: xdr.ScVal.scvSymbol('b'),
+        val: xdr.ScVal.scvU32(2),
+      }),
     ])
     const xdrString = scVal.toXDR('base64')
 
