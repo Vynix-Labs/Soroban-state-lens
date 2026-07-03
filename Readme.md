@@ -27,8 +27,9 @@ Soroban stores data in the ledger as ScVal (Stellar Contract Values) within Cont
 
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **Routing**: [TanStack Router](https://tanstack.com/router) (File-based routing in `src/routes`)
-- **Data Fetching**: [TanStack Query](https://tanstack.com/query)
-- **State Management**: [TanStack Store](https://tanstack.com/store)
+- **Soroban RPC**: Fetch-based helpers in `src/lib/network` for ledger reads, simulation, and retries
+- **State Management**: [Zustand](https://zustand.docs.pmnd.rs/) (`src/store/lensStore.ts`)
+- **Stellar UI & XDR**: [`@stellar/design-system`](https://github.com/stellar/stellar-design-system) and [`@stellar/stellar-sdk`](https://github.com/stellar/js-stellar-sdk)
 
 ### **Installation**
 
@@ -52,7 +53,7 @@ The project is split into three main layers:
 
 1. **The Scraper:** Periodically polls the RPC getLedgerEntries method for a specific ContractID.
 2. **The Decoder:** A Web Worker handling heavy XDR parsing and mapping raw bytes to the contract's Interface Specification (IDL).
-3. **The Visualizer:** A **React** frontend using @stellar/design-system, zustand for state, and react-window for efficiently rendering deep data structures.
+3. **The Visualizer:** A **React** frontend using @stellar/design-system, Zustand for state, and Stellar SDK helpers for rendering decoded contract data.
 
 ## **🗺 Roadmap**
 
