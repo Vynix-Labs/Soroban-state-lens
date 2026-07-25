@@ -81,4 +81,44 @@ describe('TreeRow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open entry[0].value' }))
     expect(onActivate).toHaveBeenCalledWith(row)
   })
+
+  it('shows a distinct truncation preview for truncated marker rows', () => {
+    const row = makeRow({
+      kind: 'truncated',
+      label: 'truncated-marker',
+      node: { kind: 'truncated', path: [], depth: 3 },
+    })
+
+    render(
+      <TreeRow
+        row={row}
+        rowHeight={40}
+        isExpanded={false}
+        isSelected={false}
+      />,
+    )
+
+    expect(screen.getByText('truncated')).toBeTruthy()
+    expect(screen.getByText('truncated at depth=3')).toBeTruthy()
+  })
+
+  it('shows a distinct cycle preview for cycle marker rows', () => {
+    const row = makeRow({
+      kind: 'cycle',
+      label: 'cycle-marker',
+      node: { kind: 'cycle', path: [], depth: 3 },
+    })
+
+    render(
+      <TreeRow
+        row={row}
+        rowHeight={40}
+        isExpanded={false}
+        isSelected={false}
+      />,
+    )
+
+    expect(screen.getByText('cycle')).toBeTruthy()
+    expect(screen.getByText('cycle detected at depth=3')).toBeTruthy()
+  })
 })

@@ -24,9 +24,9 @@ function formatPreview(row: FlatTreeRow): string {
     case 'unsupported':
       return row.node.variant
     case 'truncated':
-      return `depth=${row.node.depth}`
+      return `truncated at depth=${row.node.depth}`
     case 'cycle':
-      return `depth=${row.node.depth}`
+      return `cycle detected at depth=${row.node.depth}`
     default:
       return ''
   }
