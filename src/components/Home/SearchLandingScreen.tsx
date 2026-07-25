@@ -2,11 +2,20 @@ import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { validateContractRouteParam } from '../../routes/contracts/$contractId/-validateContractRouteParam'
 import WatermarkBg from './WatermarkBg'
+import { useLensStore } from '../../store/lensStore'
+import { ConnectionStatus } from '../../store/types'
 
 const SearchLandingScreen = () => {
   const navigate = useNavigate()
   const [inputValue, setInputValue] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
+
+  const networkConfig = useLensStore((state) => state.networkConfig)
+  const connectionStatus = useLensStore((state) => state.connectionStatus)
+
+  const networkLabel =
+    networkConfig.networkId.charAt(0).toUpperCase() +
+    networkConfig.networkId.slice(1)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -128,28 +137,53 @@ const SearchLandingScreen = () => {
       </main>
       {/* <!-- Footer Status Bar --> */}
       <footer className="relative z-10 w-full border-t border-border-dark bg-background-dark/80 backdrop-blur-sm">
-        <div className="max-w-[960px] mx-auto px-6 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-            <span className="text-xs font-mono text-gray-400">
-              Mainnet Connected
-            </span>
-          </div>
-          <div className="flex items-center gap-6">
-            <span className="text-xs font-mono text-gray-500">
-              Latest Ledger:{' '}
-              <span className="text-primary font-bold">894,221</span>
-            </span>
-            <span className="text-xs font-mono text-gray-500">
-              TPS: <span className="text-white">142</span>
-            </span>
-          </div>
+        <div className="max-w-[960px] mx-auto px-6 py-3 flex items-center justify-center gap-2">
+          <StatusDot status={connectionStatus} />
+          <span className="text-xs font-mono text-gray-400">
+            {networkLabel} {STATUS_LABEL[connectionStatus]}
+          </span>
         </div>
       </footer>
     </div>
+  )
+}
+
+const STATUS_LABEL: Record<ConnectionStatus, string> = {
+  [ConnectionStatus.IDLE]: 'Idle',
+  [ConnectionStatus.LOADING]: 'Connecting…',
+  [ConnectionStatus.SUCCESS]: 'Connected',
+  [ConnectionStatus.ERROR]: 'Error',
+}
+
+const StatusDot = ({ status }: { status: ConnectionStatus }) => {
+  const colorClasses: Record<ConnectionStatus, string> = {
+    [ConnectionStatus.IDLE]: 'bg-gray-500',
+    [ConnectionStatus.LOADING]: 'bg-yellow-400',
+    [ConnectionStatus.SUCCESS]: 'bg-green-500',
+    [ConnectionStatus.ERROR]: 'bg-red-500',
+  }
+
+  const pingColorClasses: Record<ConnectionStatus, string> = {
+    [ConnectionStatus.IDLE]: '',
+    [ConnectionStatus.LOADING]: 'bg-yellow-400 opacity-75',
+    [ConnectionStatus.SUCCESS]: 'bg-green-400 opacity-75',
+    [ConnectionStatus.ERROR]: '',
+  }
+
+  const shouldPing =
+    status !== ConnectionStatus.IDLE && status !== ConnectionStatus.ERROR
+
+  return (
+    <span className="relative flex h-2 w-2">
+      {shouldPing && (
+        <span
+          className={`animate-ping absolute inline-flex h-full w-full rounded-full ${pingColorClasses[status]}`}
+        ></span>
+      )}
+      <span
+        className={`relative inline-flex rounded-full h-2 w-2 ${colorClasses[status]}`}
+      ></span>
+    </span>
   )
 }
 
