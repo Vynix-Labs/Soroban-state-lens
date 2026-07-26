@@ -105,8 +105,12 @@ export function VirtualizedTreeList({
       return
     }
 
+    if (!focusedRowRef.current) {
+      return
+    }
+
     pendingFocusRef.current = false
-    focusedRowRef.current?.focus()
+    focusedRowRef.current.focus()
   }, [focusedRowIndex, startIndex, endIndex])
 
   return (
