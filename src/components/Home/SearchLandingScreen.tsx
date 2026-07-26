@@ -3,6 +3,9 @@ import { useNavigate } from '@tanstack/react-router'
 import { validateContractRouteParam } from '../../routes/contracts/$contractId/-validateContractRouteParam'
 import WatermarkBg from './WatermarkBg'
 
+const SAMPLE_CONTRACT_ID =
+  'CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE'
+
 const SearchLandingScreen = () => {
   const navigate = useNavigate()
   const [inputValue, setInputValue] = useState('')
@@ -18,6 +21,13 @@ const SearchLandingScreen = () => {
     navigate({
       to: '/contracts/$contractId',
       params: { contractId: result.contractId },
+    })
+  }
+
+  const handleLoadSampleContract = () => {
+    navigate({
+      to: '/contracts/$contractId',
+      params: { contractId: SAMPLE_CONTRACT_ID },
     })
   }
 
@@ -110,7 +120,11 @@ const SearchLandingScreen = () => {
                 </span>
                 <span className="text-xs">Connect Wallet</span>
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-surface-dark hover:bg-[#1f262e] border border-border-dark hover:border-primary/40 rounded text-xs text-gray-300 font-mono font-medium transition-all group">
+              <button
+                type="button"
+                onClick={handleLoadSampleContract}
+                className="flex items-center gap-2 px-4 py-2 bg-surface-dark hover:bg-[#1f262e] border border-border-dark hover:border-primary/40 rounded text-xs text-gray-300 font-mono font-medium transition-all group"
+              >
                 <span className="material-symbols-outlined text-[16px] text-gray-500 group-hover:text-primary transition-colors">
                   data_object
                 </span>
