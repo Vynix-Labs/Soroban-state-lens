@@ -67,6 +67,28 @@ describe('getLatestLedgerConnectionCheck', () => {
     })
   })
 
+  it.each([
+    { sequence: -1 },
+    { sequence: 1.5 },
+    { sequence: Number.NaN },
+    { sequence: Number.POSITIVE_INFINITY },
+  ])('rejects invalid ledger sequence $sequence', async ({ sequence }) => {
+    vi.spyOn(rpcClient, 'callRpc').mockResolvedValue({
+      jsonrpc: '2.0',
+      id: 1,
+      result: {
+        sequence,
+      },
+    } as any)
+
+    const result = await getLatestLedgerConnectionCheck('https://weird-rpc.com')
+
+    expect(result).toEqual({
+      success: false,
+      error: 'Invalid response from RPC server',
+    })
+  })
+
   it('handles unexpected thrown errors', async () => {
     vi.spyOn(rpcClient, 'callRpc').mockRejectedValue(new Error('Fatal error'))
 

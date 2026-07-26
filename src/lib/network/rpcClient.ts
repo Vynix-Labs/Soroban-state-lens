@@ -1,11 +1,13 @@
+import { normalizeTimeoutMs } from '../rpc/normalizeTimeoutMs'
 import type { RpcConfig, RpcError } from './types'
 
 export async function callRpc<T = unknown>(
   config: RpcConfig,
   body?: unknown,
 ): Promise<T | RpcError> {
+  const normalizedTimeout = normalizeTimeoutMs(config.timeout)
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), config.timeout)
+  const timeoutId = setTimeout(() => controller.abort(), normalizedTimeout)
 
   try {
     const response = await fetch(config.url, {
@@ -42,7 +44,7 @@ export async function callRpc<T = unknown>(
       return {
         message: 'Request timeout',
         code: 'TIMEOUT',
-        details: `Request timed out after ${config.timeout}ms`,
+        details: `Request timed out after ${normalizedTimeout}ms`,
         isTimeout: true,
       }
     }

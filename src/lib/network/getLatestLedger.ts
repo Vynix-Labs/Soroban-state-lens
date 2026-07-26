@@ -25,7 +25,12 @@ function parseLatestLedgerResult(value: unknown): LatestLedgerResult | null {
   }
 
   const candidate = value as Record<string, unknown>
-  if (typeof candidate.sequence !== 'number') {
+  if (
+    typeof candidate.sequence !== 'number' ||
+    !Number.isFinite(candidate.sequence) ||
+    !Number.isInteger(candidate.sequence) ||
+    candidate.sequence < 0
+  ) {
     return null
   }
 
