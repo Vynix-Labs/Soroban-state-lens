@@ -81,4 +81,48 @@ describe('TreeRow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open entry[0].value' }))
     expect(onActivate).toHaveBeenCalledWith(row)
   })
+
+  it('calls activate handler on Enter and Space', () => {
+    const onActivate = vi.fn()
+    const row = makeRow()
+
+    render(
+      <TreeRow
+        row={row}
+        rowHeight={40}
+        isExpanded={false}
+        isSelected={false}
+        onActivate={onActivate}
+      />,
+    )
+
+    const button = screen.getByRole('button', { name: 'Open entry[0].value' })
+    fireEvent.keyDown(button, { key: 'Enter' })
+    fireEvent.keyDown(button, { key: ' ' })
+
+    expect(onActivate).toHaveBeenCalledTimes(2)
+    expect(onActivate).toHaveBeenCalledWith(row)
+  })
+
+  it('notifies parent on ArrowUp and ArrowDown', () => {
+    const onKeyNavigate = vi.fn()
+    const row = makeRow()
+
+    render(
+      <TreeRow
+        row={row}
+        rowHeight={40}
+        isExpanded={false}
+        isSelected={false}
+        onKeyNavigate={onKeyNavigate}
+      />,
+    )
+
+    const button = screen.getByRole('button', { name: 'Open entry[0].value' })
+    fireEvent.keyDown(button, { key: 'ArrowDown' })
+    fireEvent.keyDown(button, { key: 'ArrowUp' })
+
+    expect(onKeyNavigate).toHaveBeenNthCalledWith(1, 'down')
+    expect(onKeyNavigate).toHaveBeenNthCalledWith(2, 'up')
+  })
 })

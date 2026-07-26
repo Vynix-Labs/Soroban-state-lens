@@ -59,4 +59,55 @@ describe('VirtualizedTreeList', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open row-0' }))
     expect(onActivateRow).toHaveBeenCalled()
   })
+
+  it('moves focus to the next row on ArrowDown', () => {
+    render(<VirtualizedTreeList rows={rows(5)} height={200} rowHeight={40} />)
+
+    const first = screen.getByRole('button', { name: 'Open row-0' })
+    first.focus()
+    fireEvent.keyDown(first, { key: 'ArrowDown' })
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Open row-1' }),
+    )
+  })
+
+  it('moves focus to the previous row on ArrowUp', () => {
+    render(<VirtualizedTreeList rows={rows(5)} height={200} rowHeight={40} />)
+
+    const first = screen.getByRole('button', { name: 'Open row-0' })
+    first.focus()
+    fireEvent.keyDown(first, { key: 'ArrowDown' })
+
+    const second = screen.getByRole('button', { name: 'Open row-1' })
+    fireEvent.keyDown(second, { key: 'ArrowUp' })
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Open row-0' }),
+    )
+  })
+
+  it('keeps Enter activation while navigating with arrows', () => {
+    const onActivateRow = vi.fn()
+
+    render(
+      <VirtualizedTreeList
+        rows={rows(5)}
+        height={200}
+        rowHeight={40}
+        onActivateRow={onActivateRow}
+      />,
+    )
+
+    const first = screen.getByRole('button', { name: 'Open row-0' })
+    first.focus()
+    fireEvent.keyDown(first, { key: 'ArrowDown' })
+
+    const second = screen.getByRole('button', { name: 'Open row-1' })
+    fireEvent.keyDown(second, { key: 'Enter' })
+
+    expect(onActivateRow).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'row-1' }),
+    )
+  })
 })

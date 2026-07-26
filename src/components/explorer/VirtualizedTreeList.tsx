@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { TreeRow } from './TreeRow'
 import type { UIEvent } from 'react'
 import type { FlatTreeRow } from '../../lib/tree/flatTreeRow'
@@ -25,6 +25,10 @@ export function VirtualizedTreeList({
   onActivateRow,
 }: VirtualizedTreeListProps) {
   const [scrollTop, setScrollTop] = useState(0)
+  const [focusedRowIndex, setFocusedRowIndex] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const focusedRowRef = useRef<HTMLDivElement>(null)
+  const pendingFocusRef = useRef(false)
 
   const expandedIds = useMemo(
     () =>
@@ -44,8 +48,70 @@ export function VirtualizedTreeList({
     setScrollTop(event.currentTarget.scrollTop)
   }
 
+  const scrollRowIntoView = (index: number) => {
+    const container = containerRef.current
+    if (!container || rows.length === 0) {
+      return
+    }
+
+    const rowTop = index * rowHeight
+    const rowBottom = rowTop + rowHeight
+    const viewTop = container.scrollTop
+    const viewBottom = viewTop + height
+
+    if (rowTop < viewTop) {
+      container.scrollTop = rowTop
+      setScrollTop(rowTop)
+    } else if (rowBottom > viewBottom) {
+      const nextScrollTop = rowBottom - height
+      container.scrollTop = nextScrollTop
+      setScrollTop(nextScrollTop)
+    }
+  }
+
+  const moveFocus = (direction: 'up' | 'down') => {
+    if (rows.length === 0) {
+      return
+    }
+
+    const delta = direction === 'down' ? 1 : -1
+    const nextIndex = Math.min(
+      rows.length - 1,
+      Math.max(0, focusedRowIndex + delta),
+    )
+
+    if (nextIndex === focusedRowIndex) {
+      return
+    }
+
+    pendingFocusRef.current = true
+    setFocusedRowIndex(nextIndex)
+    scrollRowIntoView(nextIndex)
+  }
+
+  useEffect(() => {
+    if (rows.length === 0) {
+      setFocusedRowIndex(0)
+      return
+    }
+
+    if (focusedRowIndex > rows.length - 1) {
+      setFocusedRowIndex(rows.length - 1)
+    }
+  }, [focusedRowIndex, rows.length])
+
+  useEffect(() => {
+    if (!pendingFocusRef.current) {
+      return
+    }
+
+    pendingFocusRef.current = false
+    focusedRowRef.current?.focus()
+  }, [focusedRowIndex, startIndex, endIndex])
+
   return (
     <div
+      ref={containerRef}
       className="overflow-auto rounded border border-border-dark bg-surface-dark/30"
       style={{ height }}
       onScroll={handleScroll}
@@ -56,6 +122,7 @@ export function VirtualizedTreeList({
           const rowIndex = startIndex + index
           const top = rowIndex * rowHeight
           const isExpanded = expandedIds.has(row.id)
+          const isFocused = rowIndex === focusedRowIndex
 
           return (
             <div
@@ -75,8 +142,12 @@ export function VirtualizedTreeList({
                 rowHeight={rowHeight}
                 isExpanded={isExpanded}
                 isSelected={selectedRowId === row.id}
+                tabIndex={isFocused ? 0 : -1}
+                rowRef={isFocused ? focusedRowRef : undefined}
                 onToggleExpand={onToggleExpand}
                 onActivate={onActivateRow}
+                onKeyNavigate={moveFocus}
+                onFocus={() => setFocusedRowIndex(rowIndex)}
               />
             </div>
           )
