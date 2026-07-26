@@ -230,7 +230,9 @@ export function sanitizeWatchlist(
       continue
     }
 
+    
     const validItems: Array<WatchlistItem> = []
+    const seenPaths = new Set<string>()
     for (const item of items) {
       if (
         typeof item === 'object' &&
@@ -243,9 +245,14 @@ export function sanitizeWatchlist(
         typeof (item as Record<string, unknown>).timestamp === 'number' &&
         Number.isFinite((item as Record<string, unknown>).timestamp as number)
       ) {
-        validItems.push(item as unknown as WatchlistItem)
+        const keyPath = (item as Record<string, unknown>).keyPath as string
+        if (!seenPaths.has(keyPath)) {
+          seenPaths.add(keyPath)
+          validItems.push(item as unknown as WatchlistItem)
+        }
       }
     }
+
 
     if (validItems.length > 0) {
       sanitized[contractId] = validItems

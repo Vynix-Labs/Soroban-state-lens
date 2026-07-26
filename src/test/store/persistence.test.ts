@@ -244,6 +244,22 @@ describe('persistence', () => {
   })
 
   describe('sanitizeWatchlist', () => {
+
+    it('deduplicates watchlist items with identical keyPaths during hydration, preserving first-seen', () => {
+      const watchlist = {
+        'contract-1': [
+          { contractId: 'contract-1', keyPath: '/path1', timestamp: 100 },
+          { contractId: 'contract-1', keyPath: '/path1', timestamp: 200 },
+          { contractId: 'contract-1', keyPath: '/path2', timestamp: 300 }
+        ]
+      }
+      const hydratedState = { networkConfig: DEFAULT_NETWORKS.testnet, watchlist }
+      const result = mergeNetworkConfig(hydratedState, { networkConfig: DEFAULT_NETWORKS.futurenet })
+      expect(result.watchlist['contract-1']).toHaveLength(2)
+      expect(result.watchlist['contract-1'][0].timestamp).toBe(100) // Keeps first instance
+      expect(result.watchlist['contract-1'][1].keyPath).toBe('/path2')
+    })
+
     it('returns an empty record for non-object input', () => {
       expect(sanitizeWatchlist(null)).toEqual({})
       expect(sanitizeWatchlist('x')).toEqual({})
