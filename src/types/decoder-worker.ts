@@ -81,6 +81,8 @@ export type NormalizeResult = NormalizeResponse | DecoderWorkerError
 export interface DecodeScValRequest {
   /** Base64 encoded ScVal XDR string */
   xdr: string
+  /** Optional maximum recursion depth for XDR-decoded normalization */
+  maxDepth?: number
 }
 
 /**

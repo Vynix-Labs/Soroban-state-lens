@@ -1,9 +1,11 @@
 import { useEffect, useMemo } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Button, Card, Heading } from '@stellar/design-system'
 import { VirtualizedTreeList } from '../../../components/explorer/VirtualizedTreeList'
-import { selectLedgerEntriesByContractId } from '../../../lib/selectors/selectLedgerEntriesByContractId'
-import { flattenTree } from '../../../lib/tree/flattenTree'
+import {
+  collectExpandableNodeIds,
+  flattenTree,
+} from '../../../lib/tree/flattenTree'
 import { ContractLoadStatus } from '../../../store/types'
 import { useLensStore } from '../../../store/lensStore'
 import { validateContractRouteParam } from './-validateContractRouteParam'
@@ -27,10 +29,10 @@ export const Route = createFileRoute('/contracts/$contractId/explorer')({
   beforeLoad: ({ params }) => {
     const result = validateContractRouteParam(params.contractId)
     if (!result.ok) {
-      console.error(`Invalid contract ID: ${result.reason}`)
+      throw redirect({ to: '/' })
     }
     return {
-      normalizedContractId: result.ok ? result.contractId : params.contractId,
+      normalizedContractId: result.contractId,
     }
   },
 })
@@ -51,12 +53,31 @@ function ContractExplorer() {
   const contractLoadError = useLensStore((state) => state.contractLoadError)
   const expandedNodes = useLensStore((state) => state.expandedNodes)
   const toggleExpanded = useLensStore((state) => state.toggleExpanded)
+  const expandAll = useLensStore((state) => state.expandAll)
+  const collapseAll = useLensStore((state) => state.collapseAll)
   const selectedKeyPath = useLensStore((state) => state.selectedKeyPath)
   const setSelectedKeyPath = useLensStore((state) => state.setSelectedKeyPath)
 
-  const ledgerEntries = useLensStore((state) =>
-    selectLedgerEntriesByContractId(state, contractId),
-  )
+  const ledgerData = useLensStore((state) => state.ledgerData)
+  const ledgerEntries = useMemo(() => {
+    const entries = Object.values(ledgerData).filter(
+      (entry) => entry.contractId === contractId,
+    )
+    return entries.sort((a, b) => a.key.localeCompare(b.key))
+  }, [ledgerData, contractId])
+
+  const snapshots = useLensStore((state) => state.snapshots[contractId] ?? [])
+  const addSnapshot = useLensStore((state) => state.addSnapshot)
+
+  const handleCaptureSnapshot = () => {
+    if (ledgerEntries.length === 0) return
+    const entriesDict: Record<string, typeof ledgerEntries[0]> = {}
+    ledgerEntries.forEach((entry) => {
+      entriesDict[entry.key] = entry
+    })
+    const label = `Snapshot #${snapshots.length + 1}`
+    addSnapshot(contractId, entriesDict, label)
+  }
 
   const keys = useMemo(
     () =>
@@ -89,6 +110,19 @@ function ContractExplorer() {
     () => flattenTree(treeRoots, expandedNodes),
     [expandedNodes, treeRoots],
   )
+
+  const expandableNodeIds = useMemo(
+    () => collectExpandableNodeIds(treeRoots),
+    [treeRoots],
+  )
+
+  const handleExpandAll = () => {
+    expandAll(expandableNodeIds)
+  }
+
+  const handleCollapseAll = () => {
+    collapseAll()
+  }
 
   useEffect(() => {
     setActiveContractId(contractId)
@@ -142,6 +176,11 @@ function ContractExplorer() {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          {contractLoadStatus === ContractLoadStatus.SUCCESS && (
+            <Button variant="primary" size="sm" onClick={handleCaptureSnapshot}>
+              Capture Snapshot
+            </Button>
+          )}
           <Button variant="secondary" size="sm" onClick={handleRetry}>
             Retry Load
           </Button>
@@ -211,13 +250,34 @@ function ContractExplorer() {
       {contractLoadStatus === ContractLoadStatus.SUCCESS && (
         <Card>
           <div className="p-6 space-y-4">
-            <Heading
-              size="sm"
-              as="h3"
-              className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
-            >
-              Explorer Rows ({flatRows.length})
-            </Heading>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <Heading
+                size="sm"
+                as="h3"
+                className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
+              >
+                Explorer Rows ({flatRows.length})
+              </Heading>
+
+              {expandableNodeIds.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleExpandAll}
+                  >
+                    Expand all
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleCollapseAll}
+                  >
+                    Collapse all
+                  </Button>
+                </div>
+              ) : null}
+            </div>
 
             {flatRows.length === 0 ? (
               <p className="text-text-muted text-sm">
