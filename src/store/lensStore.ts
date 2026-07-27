@@ -275,6 +275,7 @@ const createContractLoadSlice = (
       const controller = new AbortController()
       activeController = controller
       const { signal } = controller
+      const isRequestStale = () => currentRequestId !== requestId || signal.aborted
 
       set((state) => ({
         activeContractId: contractId,
@@ -291,7 +292,7 @@ const createContractLoadSlice = (
           signal,
         })
 
-        if (currentRequestId !== requestId || signal.aborted) {
+        if (isRequestStale()) {
           return
         }
 
@@ -303,6 +304,10 @@ const createContractLoadSlice = (
           decodedValuesByKey[entry.key] = isDecoderWorkerError(result)
             ? entry.xdr
             : result
+        }
+
+        if (isRequestStale()) {
+          return
         }
 
         const mappedEntries = mapLedgerEntriesToStoreEntries({
@@ -322,7 +327,7 @@ const createContractLoadSlice = (
           contractLoadError: null,
         }))
       } catch (error) {
-        if (currentRequestId !== requestId || signal.aborted) {
+        if (isRequestStale()) {
           return
         }
 
