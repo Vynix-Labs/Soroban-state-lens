@@ -63,6 +63,18 @@ describe('makeLedgerEntryKey', () => {
     expect(() => makeLedgerEntryKey('CABC', 'persistent', 123)).toThrow()
   })
 
+  it('should reject the separator in every component', () => {
+    expect(() => makeLedgerEntryKey('C::ABC', 'persistent', 'balance')).toThrow(
+      'contractId must not contain the "::" separator',
+    )
+    expect(() => makeLedgerEntryKey('CABC', 'persistent::extra', 'balance')).toThrow(
+      'entryType must not contain the "::" separator',
+    )
+    expect(() => makeLedgerEntryKey('CABC', 'persistent', 'balance::extra')).toThrow(
+      'keyPart must not contain the "::" separator',
+    )
+  })
+
   it('should produce deterministic output for the same inputs', () => {
     const a = makeLedgerEntryKey('CABC', 'persistent', 'balance')
     const b = makeLedgerEntryKey('CABC', 'persistent', 'balance')
