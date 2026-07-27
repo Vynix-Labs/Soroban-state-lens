@@ -56,4 +56,104 @@ describe('getContractWasm', () => {
       error: 'Network error',
     })
   })
+
+  it('rejects malformed base64 characters', async () => {
+    const mockRpcResponse = {
+      jsonrpc: '2.0',
+      id: 1,
+      result: {
+        code: 'AQIDBA!!!',
+      },
+    }
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => mockRpcResponse,
+    } as Response)
+
+    const result = await getContractWasm({
+      rpcUrl: mockRpcUrl,
+      contractId: mockContractId,
+    })
+
+    expect(result).toEqual({
+      success: false,
+      error: 'Failed to decode contract WASM bytes',
+    })
+  })
+
+  it('rejects bad padding', async () => {
+    const mockRpcResponse = {
+      jsonrpc: '2.0',
+      id: 1,
+      result: {
+        code: 'AQIDBA=',
+      },
+    }
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => mockRpcResponse,
+    } as Response)
+
+    const result = await getContractWasm({
+      rpcUrl: mockRpcUrl,
+      contractId: mockContractId,
+    })
+
+    expect(result).toEqual({
+      success: false,
+      error: 'Failed to decode contract WASM bytes',
+    })
+  })
+
+  it('rejects empty input', async () => {
+    const mockRpcResponse = {
+      jsonrpc: '2.0',
+      id: 1,
+      result: {
+        code: '',
+      },
+    }
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => mockRpcResponse,
+    } as Response)
+
+    const result = await getContractWasm({
+      rpcUrl: mockRpcUrl,
+      contractId: mockContractId,
+    })
+
+    expect(result).toEqual({
+      success: false,
+      error: 'Failed to decode contract WASM bytes',
+    })
+  })
+
+  it('accepts a known valid unpadded fixture', async () => {
+    const mockRpcResponse = {
+      jsonrpc: '2.0',
+      id: 1,
+      result: {
+        code: 'AQIDBA',
+      },
+    }
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => mockRpcResponse,
+    } as Response)
+
+    const result = await getContractWasm({
+      rpcUrl: mockRpcUrl,
+      contractId: mockContractId,
+    })
+
+    expect(result).toEqual({
+      success: true,
+      wasm: new Uint8Array([1, 2, 3, 4]),
+    })
+  })
 })

@@ -30,6 +30,14 @@ export interface SimulateTransactionResult {
   error?: string
 }
 
+function sanitizeFootprintSection(value: unknown): Array<string> {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.every((item) => typeof item === 'string') ? value : []
+}
+
 /**
  * Adapts a raw simulateTransaction response into a typed result shape
  */
@@ -49,8 +57,8 @@ export function simulateTransactionAdapter(
     latestLedger: response.latestLedger,
     results: response.results ?? [],
     footprint: {
-      readOnly: response.footprint?.readOnly ?? [],
-      readWrite: response.footprint?.readWrite ?? [],
+      readOnly: sanitizeFootprintSection(response.footprint?.readOnly),
+      readWrite: sanitizeFootprintSection(response.footprint?.readWrite),
     },
   }
 }
