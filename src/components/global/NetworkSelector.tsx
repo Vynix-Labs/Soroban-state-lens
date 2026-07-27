@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { testRpcConnection } from '../../lib/network/testConnection'
+import { resetConnectionTestState } from '../../lib/network/connectionTestState'
 import { validateRpcUrl } from '../../lib/network/validation'
 import { useLensStore } from '../../store/lensStore'
 import { DEFAULT_NETWORKS } from '../../store/types'
@@ -165,6 +166,9 @@ export default function NetworkSelector() {
 
   const handleCustomUrlChange = (url: string) => {
     setCustomRpcUrl(url)
+    const resetState = resetConnectionTestState()
+    setTestStatus(resetState.status)
+    setTestError(resetState.error)
 
     const validation = validateRpcUrl(url)
     if (validation.isValid) {
