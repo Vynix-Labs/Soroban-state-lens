@@ -47,12 +47,21 @@ function parseLatestLedgerResult(value: unknown): LatestLedgerResult | null {
 export async function getLatestLedgerConnectionCheck(
   url: string,
   timeoutMs?: number,
+  signal?: AbortSignal,
 ): Promise<GetLatestLedgerConnectionResult> {
+  if (signal?.aborted) {
+    return {
+      success: false,
+      error: 'Connection check aborted',
+    }
+  }
+
   try {
     const response = await callRpc(
       {
         url,
         timeout: timeoutMs ?? 5000,
+        signal,
       },
       buildJsonRpcRequest('getLatestLedger', {}, toRpcRequestId()),
     )
@@ -86,7 +95,11 @@ export async function getLatestLedgerConnectionCheck(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Connection failed',
+      error: signal?.aborted
+        ? 'Connection check aborted'
+        : error instanceof Error
+          ? error.message
+          : 'Connection failed',
     }
   }
 }

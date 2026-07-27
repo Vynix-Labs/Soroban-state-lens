@@ -111,4 +111,58 @@ describe('getLatestLedgerConnectionCheck', () => {
       error: 'Fatal error',
     })
   })
+
+  it('passes a caller signal to the RPC request', async () => {
+    const signal = new AbortController().signal
+    const spy = vi.spyOn(rpcClient, 'callRpc').mockResolvedValue({
+      jsonrpc: '2.0',
+      id: 7,
+      result: { sequence: 1 },
+    })
+
+    await getLatestLedgerConnectionCheck('https://valid-rpc.com', 1234, signal)
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ signal }),
+      expect.anything(),
+    )
+  })
+
+  it('does not issue an RPC request when already aborted', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const spy = vi.spyOn(rpcClient, 'callRpc')
+    spy.mockClear()
+
+    const result = await getLatestLedgerConnectionCheck(
+      'https://valid-rpc.com',
+      undefined,
+      controller.signal,
+    )
+
+    expect(result).toEqual({
+      success: false,
+      error: 'Connection check aborted',
+    })
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('handles cancellation during an in-flight request', async () => {
+    const controller = new AbortController()
+    vi.spyOn(rpcClient, 'callRpc').mockImplementation(() => {
+      controller.abort()
+      return Promise.reject(new DOMException('The operation was aborted', 'AbortError'))
+    })
+
+    await expect(
+      getLatestLedgerConnectionCheck(
+        'https://valid-rpc.com',
+        undefined,
+        controller.signal,
+      ),
+    ).resolves.toEqual({
+      success: false,
+      error: 'Connection check aborted',
+    })
+  })
 })
