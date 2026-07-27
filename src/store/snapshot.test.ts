@@ -312,4 +312,83 @@ describe('Snapshot Slice', () => {
     expect(snapshots).toHaveLength(1)
     expect(Object.keys(snapshots[0].ledgerData)).toHaveLength(2)
   })
+
+  it('should handle undefined values without throwing', () => {
+    const { addSnapshot, getSnapshots } = useLensStore.getState()
+
+    const entries: Record<string, LedgerEntry> = {
+      'key-1': {
+        key: 'key-1',
+        contractId: 'contract-1',
+        type: 'ContractData',
+        value: undefined,
+        lastModifiedLedger: 100,
+      },
+      'key-2': {
+        key: 'key-2',
+        contractId: 'contract-1',
+        type: 'ContractData',
+        value: { nested: undefined },
+        lastModifiedLedger: 101,
+      },
+    }
+
+    // Should not throw
+    addSnapshot('contract-1', entries)
+
+    const snapshots = getSnapshots('contract-1')
+    expect(snapshots).toHaveLength(1)
+    expect(snapshots[0].ledgerData['key-1'].value).toBeUndefined()
+    expect(snapshots[0].ledgerData['key-2'].value).toEqual({ nested: undefined })
+  })
+
+  it('should preserve Uint8Array values in snapshots', () => {
+    const { addSnapshot, getSnapshots } = useLensStore.getState()
+
+    const uint8Array = new Uint8Array([1, 2, 3, 4, 5])
+    const entries: Record<string, LedgerEntry> = {
+      'key-1': {
+        key: 'key-1',
+        contractId: 'contract-1',
+        type: 'ContractData',
+        value: { bytes: uint8Array },
+        lastModifiedLedger: 100,
+      },
+    }
+
+    addSnapshot('contract-1', entries)
+
+    const snapshots = getSnapshots('contract-1')
+    expect(snapshots).toHaveLength(1)
+    
+    const capturedValue = snapshots[0].ledgerData['key-1'].value as { bytes: Uint8Array }
+    expect(capturedValue.bytes).toBeInstanceOf(Uint8Array)
+    expect(capturedValue.bytes).toEqual(uint8Array)
+  })
+
+  it('should not affect original values after snapshot mutation', () => {
+    const { addSnapshot, getSnapshots } = useLensStore.getState()
+
+    const originalBytes = new Uint8Array([1, 2, 3, 4, 5])
+    const entries: Record<string, LedgerEntry> = {
+      'key-1': {
+        key: 'key-1',
+        contractId: 'contract-1',
+        type: 'ContractData',
+        value: { bytes: originalBytes },
+        lastModifiedLedger: 100,
+      },
+    }
+
+    addSnapshot('contract-1', entries)
+
+    // Mutate original bytes
+    originalBytes[0] = 99
+
+    const snapshots = getSnapshots('contract-1')
+    const capturedValue = snapshots[0].ledgerData['key-1'].value as { bytes: Uint8Array }
+    
+    // Snapshot should not be affected
+    expect(capturedValue.bytes[0]).toBe(1)
+  })
 })

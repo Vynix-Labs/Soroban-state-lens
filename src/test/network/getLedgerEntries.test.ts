@@ -293,4 +293,79 @@ describe('getLedgerEntries', () => {
       expect(fetch).toHaveBeenCalledTimes(1)
     })
   })
+
+  describe('key deduplication', () => {
+    it('removes duplicate keys while preserving order', async () => {
+      const mockRpcResponse = {
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          entries: [
+            {
+              key: 'key1',
+              xdr: 'xdr1',
+              lastModifiedLedgerSeq: 100,
+            },
+          ],
+          latestLedger: 150,
+        },
+      }
+
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => mockRpcResponse,
+      } as Response)
+
+      const result = await getLedgerEntries({
+        rpcUrl: mockRpcUrl,
+        keys: ['key1', 'key2', 'key1', 'key3', 'key2'],
+      })
+
+      // Verify the request only included deduplicated keys in order
+      const callArgs = vi.mocked(fetch).mock.calls[0]
+      const requestBody = JSON.parse(callArgs[1].body as string)
+      expect(requestBody.params[0]).toEqual(['key1', 'key2', 'key3'])
+
+      expect(result).toEqual({
+        entries: [{ key: 'key1', xdr: 'xdr1', lastModifiedLedgerSeq: 100 }],
+        latestLedger: 150,
+      })
+    })
+
+    it('preserves single key when all keys are the same', async () => {
+      const mockRpcResponse = {
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          entries: [{ key: 'key1', xdr: 'xdr1' }],
+          latestLedger: 150,
+        },
+      }
+
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => mockRpcResponse,
+      } as Response)
+
+      await getLedgerEntries({
+        rpcUrl: mockRpcUrl,
+        keys: ['key1', 'key1', 'key1'],
+      })
+
+      const callArgs = vi.mocked(fetch).mock.calls[0]
+      const requestBody = JSON.parse(callArgs[1].body as string)
+      expect(requestBody.params[0]).toEqual(['key1'])
+    })
+
+    it('handles empty keys array after deduplication', async () => {
+      const result = await getLedgerEntries({
+        rpcUrl: mockRpcUrl,
+        keys: [],
+      })
+
+      expect(result.entries).toEqual([])
+      expect(result.latestLedger).toBe(0)
+      expect(fetch).not.toHaveBeenCalled()
+    })
+  })
 })

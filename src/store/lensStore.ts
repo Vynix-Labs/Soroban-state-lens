@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+import { deepClone } from '../lib/deepClone'
 import { getLedgerEntries } from '../lib/network/getLedgerEntries'
 import { mapLedgerEntriesToStoreEntries } from '../lib/network/mapLedgerEntriesToStoreEntries'
 import { isDecoderWorkerError } from '../types/decoder-worker'
@@ -195,7 +196,7 @@ const createSnapshotSlice = (
       for (const [key, entry] of Object.entries(entries)) {
         clonedEntries[key] = {
           ...entry,
-          value: JSON.parse(JSON.stringify(entry.value)),
+          value: deepClone(entry.value),
         }
       }
 
