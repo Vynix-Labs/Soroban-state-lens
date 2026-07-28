@@ -1,3 +1,5 @@
+import { isContractId } from '../validation/isContractId'
+
 /**
  * Parses a serialized ledger entry key back into its components.
  *
@@ -7,6 +9,7 @@
  * - Returns the three components as an object, or null if malformed.
  * - Rejects keys with extra separators (more than 3 segments).
  * - Rejects keys with blank segments after trimming.
+ * - Rejects keys whose contractId segment is not a valid contract ID shape.
  * - Rejects empty or non-string input.
  *
  * @param key The serialized ledger entry key string.
@@ -30,6 +33,10 @@ export function parseLedgerEntryKey(
   const keyPart = parts[2].trim()
 
   if (contractId === '' || entryType === '' || keyPart === '') {
+    return null
+  }
+
+  if (!isContractId(contractId)) {
     return null
   }
 

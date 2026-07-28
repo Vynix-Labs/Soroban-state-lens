@@ -1,3 +1,4 @@
+import { normalizeTimeoutMs } from '../rpc/normalizeTimeoutMs'
 import type { RpcConfig, RpcError } from './types'
 
 function isAbortError(error: unknown): boolean {
@@ -18,8 +19,9 @@ export async function callRpc<T = unknown>(
   config: RpcConfig,
   body?: unknown,
 ): Promise<T | RpcError> {
+  const normalizedTimeout = normalizeTimeoutMs(config.timeout)
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), config.timeout)
+  const timeoutId = setTimeout(() => controller.abort(), normalizedTimeout)
 
   // Link an optional caller-provided signal so route changes can abort
   // in-flight RPC calls. The internal timeout controller still drives the
@@ -79,7 +81,7 @@ export async function callRpc<T = unknown>(
       return {
         message: 'Request timeout',
         code: 'TIMEOUT',
-        details: `Request timed out after ${config.timeout}ms`,
+        details: `Request timed out after ${normalizedTimeout}ms`,
         isTimeout: true,
       }
     }

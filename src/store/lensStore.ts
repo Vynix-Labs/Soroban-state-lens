@@ -141,31 +141,45 @@ const createExpandedNodesSlice = (
 
   setExpanded: (nodeId: string, expanded: boolean) =>
     set((state) => {
+      const normalizedNodeId = nodeId.trim()
+      if (!normalizedNodeId) {
+        return state
+      }
+
       if (expanded) {
-        if (state.expandedNodes.includes(nodeId)) {
+        if (state.expandedNodes.includes(normalizedNodeId)) {
           return state
         }
-        return { expandedNodes: [...state.expandedNodes, nodeId] }
+        return { expandedNodes: [...state.expandedNodes, normalizedNodeId] }
       } else {
         return {
-          expandedNodes: state.expandedNodes.filter((id) => id !== nodeId),
+          expandedNodes: state.expandedNodes.filter((id) => id !== normalizedNodeId),
         }
       }
     }),
 
   toggleExpanded: (nodeId: string) =>
     set((state) => {
-      if (state.expandedNodes.includes(nodeId)) {
+      const normalizedNodeId = nodeId.trim()
+      if (!normalizedNodeId) {
+        return state
+      }
+
+      if (state.expandedNodes.includes(normalizedNodeId)) {
         return {
-          expandedNodes: state.expandedNodes.filter((id) => id !== nodeId),
+          expandedNodes: state.expandedNodes.filter((id) => id !== normalizedNodeId),
         }
       }
-      return { expandedNodes: [...state.expandedNodes, nodeId] }
+      return { expandedNodes: [...state.expandedNodes, normalizedNodeId] }
     }),
 
   expandAll: (nodeIds: Array<string>) =>
     set((state) => {
-      const newExpanded = new Set([...state.expandedNodes, ...nodeIds])
+      const normalizedNodeIds = nodeIds
+        .map((nodeId) => nodeId.trim())
+        .filter((nodeId) => nodeId.length > 0)
+
+      const newExpanded = new Set([...state.expandedNodes, ...normalizedNodeIds])
       return { expandedNodes: Array.from(newExpanded) }
     }),
 
@@ -275,6 +289,7 @@ const createContractLoadSlice = (
       const controller = new AbortController()
       activeController = controller
       const { signal } = controller
+      const isRequestStale = () => currentRequestId !== requestId || signal.aborted
 
       set((state) => ({
         activeContractId: contractId,
@@ -291,7 +306,7 @@ const createContractLoadSlice = (
           signal,
         })
 
-        if (currentRequestId !== requestId || signal.aborted) {
+        if (isRequestStale()) {
           return
         }
 
@@ -303,6 +318,10 @@ const createContractLoadSlice = (
           decodedValuesByKey[entry.key] = isDecoderWorkerError(result)
             ? entry.xdr
             : result
+        }
+
+        if (isRequestStale()) {
+          return
         }
 
         const mappedEntries = mapLedgerEntriesToStoreEntries({
@@ -322,7 +341,7 @@ const createContractLoadSlice = (
           contractLoadError: null,
         }))
       } catch (error) {
-        if (currentRequestId !== requestId || signal.aborted) {
+        if (isRequestStale()) {
           return
         }
 
@@ -352,10 +371,19 @@ const createWatchlistSlice = (
 
   addToWatchlist: (contractId: string, keyPath: string) =>
     set((state) => {
-      const currentItems = state.watchlist[contractId] ?? []
-      
+      const normalizedContractId = contractId.trim()
+      const normalizedKeyPath = keyPath.trim()
+
+      if (!normalizedContractId || !normalizedKeyPath) {
+        return state
+      }
+
+      const currentItems = state.watchlist[normalizedContractId] ?? []
+
       // Check if item already exists (duplicate protection)
-      const isDuplicate = currentItems.some((item) => item.keyPath === keyPath)
+      const isDuplicate = currentItems.some(
+        (item) => item.keyPath === normalizedKeyPath,
+      )
       if (isDuplicate) {
         return state
       }
@@ -363,11 +391,11 @@ const createWatchlistSlice = (
       return {
         watchlist: {
           ...state.watchlist,
-          [contractId]: [
+          [normalizedContractId]: [
             ...currentItems,
             {
-              contractId,
-              keyPath,
+              contractId: normalizedContractId,
+              keyPath: normalizedKeyPath,
               timestamp: Date.now(),
             },
           ],

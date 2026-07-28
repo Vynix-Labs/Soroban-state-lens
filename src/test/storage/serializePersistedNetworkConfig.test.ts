@@ -36,6 +36,20 @@ describe('serializePersistedNetworkConfig', () => {
     })
   })
 
+  it('serializes custom rpc configs with custom network passphrases', () => {
+    expect(
+      serializePersistedNetworkConfig({
+        networkId: 'custom',
+        networkPassphrase: 'Test SDF Network ; September 2015',
+        rpcUrl: 'https://rpc.custom.example.com',
+      }),
+    ).toEqual({
+      kind: 'custom',
+      rpcUrl: 'https://rpc.custom.example.com',
+      networkPassphrase: 'Test SDF Network ; September 2015',
+    })
+  })
+
   it('falls back safely when the rpc url cannot be normalized', () => {
     expect(
       serializePersistedNetworkConfig({
