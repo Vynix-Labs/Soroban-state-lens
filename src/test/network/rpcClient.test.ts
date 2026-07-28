@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { callRpc } from '../../lib/network/rpcClient'
 import type { RpcConfig } from '../../lib/network/types'
 
@@ -15,6 +15,10 @@ describe('callRpc', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('should handle successful responses', async () => {
@@ -85,6 +89,33 @@ describe('callRpc', () => {
       isTimeout: true,
     })
   })
+
+  it.each([
+    { input: 0, expected: 10000 },
+    { input: -123, expected: 10000 },
+    { input: 1.9, expected: 1 },
+    { input: Number.NaN, expected: 10000 },
+    { input: Number.POSITIVE_INFINITY, expected: 10000 },
+  ])(
+    'normalizes timeout $input to $expected before scheduling the abort timer',
+    async ({ input, expected }) => {
+      vi.useFakeTimers()
+      const setTimeoutSpy = vi.spyOn(global, 'setTimeout')
+      mockFetch.mockRejectedValueOnce(
+        new DOMException('The operation was aborted.', 'AbortError'),
+      )
+
+      const result = await callRpc({ ...defaultConfig, timeout: input })
+
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), expected)
+      expect(result).toMatchObject({
+        message: 'Request timeout',
+        code: 'TIMEOUT',
+        details: `Request timed out after ${expected}ms`,
+        isTimeout: true,
+      })
+    },
+  )
 
   it('should work without body parameter', async () => {
     const mockData = { status: 'ok' }
