@@ -69,6 +69,28 @@ describe('Watchlist Slice', () => {
     expect(watchlist[0].keyPath).toBe('/path/to/key2')
   })
 
+  it('removes the contract bucket when the final item is removed', () => {
+    const { addToWatchlist, removeFromWatchlist, getWatchlistForContract } =
+      useLensStore.getState()
+
+    addToWatchlist('contract-1', '/path/to/key1')
+
+    removeFromWatchlist('contract-1', '/path/to/key1')
+
+    const watchlist = getWatchlistForContract('contract-1')
+    expect(watchlist).toEqual([])
+    expect(useLensStore.getState().watchlist['contract-1']).toBeUndefined()
+  })
+
+  it('does nothing for unknown contracts or key paths', () => {
+    const { removeFromWatchlist, getWatchlistForContract } = useLensStore.getState()
+
+    removeFromWatchlist('unknown-contract', '/path/to/key')
+
+    const watchlist = getWatchlistForContract('unknown-contract')
+    expect(watchlist).toEqual([])
+  })
+
   it('should clear all watchlist items for a contract', () => {
     const { addToWatchlist, clearWatchlist, getWatchlistForContract } =
       useLensStore.getState()

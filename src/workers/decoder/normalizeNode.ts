@@ -239,7 +239,13 @@ export function normalizeNode(
   depth?: number,
 ): Node {
   const currentDepth = depth ?? 0
-  const maxDepth = options?.maxDepth ?? MAX_DEPTH_DEFAULT
+  const maxDepth =
+    typeof options?.maxDepth === 'number' &&
+    Number.isFinite(options.maxDepth) &&
+    options.maxDepth >= 0 &&
+    Number.isInteger(options.maxDepth)
+      ? options.maxDepth
+      : MAX_DEPTH_DEFAULT
 
   if (currentDepth >= maxDepth) {
     return createTruncatedNode(path, currentDepth)
@@ -510,22 +516,29 @@ export function normalizeNode(
       const entries: Array<{ key: Node; value: Node }> = []
       if (Array.isArray(scVal.value)) {
         for (const entry of scVal.value) {
-          const keyNode = normalizeNode(
-            entry.key,
-            path,
-            visited,
-            options,
-            currentDepth + 1,
-          )
-          const keyPath = appendPath(path, { type: 'key', key: keyNode })
-          const valueNode = normalizeNode(
-            entry.val,
-            keyPath,
-            visited,
-            options,
-            currentDepth + 1,
-          )
-          entries.push({ key: keyNode, value: valueNode })
+          try {
+            const keyNode = normalizeNode(
+              entry.key,
+              path,
+              visited,
+              options,
+              currentDepth + 1,
+            )
+            const keyPath = appendPath(path, { type: 'key', key: keyNode })
+            const valueNode = normalizeNode(
+              entry.val,
+              keyPath,
+              visited,
+              options,
+              currentDepth + 1,
+            )
+            entries.push({ key: keyNode, value: valueNode })
+          } catch {
+            entries.push({
+              key: createUnsupportedNode(path, 'MapEntryError', entry.key),
+              value: createUnsupportedNode(path, 'MapEntryError', entry.val),
+            })
+          }
         }
       }
       return {

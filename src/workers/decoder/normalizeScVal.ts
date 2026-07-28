@@ -279,7 +279,13 @@ export function normalizeScVal(
   currentDepth?: number,
 ): any {
   const depth = currentDepth ?? 0
-  const maxDepth = options?.maxDepth ?? MAX_DEPTH_DEFAULT
+  const maxDepth =
+    typeof options?.maxDepth === 'number' &&
+    Number.isFinite(options.maxDepth) &&
+    options.maxDepth >= 0 &&
+    Number.isInteger(options.maxDepth)
+      ? options.maxDepth
+      : MAX_DEPTH_DEFAULT
 
   if (depth >= maxDepth) {
     return createTruncatedMarker(depth)
@@ -496,12 +502,19 @@ export function normalizeScVal(
       if (Array.isArray(scVal.value)) {
         return {
           kind: 'map',
-          entries: scVal.value.map(
-            (entry: { key: ScVal; val: ScVal }): NormalizedMapEntry => ({
-              key: normalizeScVal(entry.key, visited, options, depth + 1),
-              value: normalizeScVal(entry.val, visited, options, depth + 1),
-            }),
-          ),
+          entries: scVal.value.map((entry: { key: ScVal; val: ScVal }) => {
+            try {
+              return {
+                key: normalizeScVal(entry.key, visited, options, depth + 1),
+                value: normalizeScVal(entry.val, visited, options, depth + 1),
+              } satisfies NormalizedMapEntry
+            } catch {
+              return {
+                key: createUnsupportedFallback('MapEntryKeyError', entry.key),
+                value: createUnsupportedFallback('MapEntryValueError', entry.val),
+              } satisfies NormalizedMapEntry
+            }
+          }),
         }
       }
       // null/undefined value means an empty map

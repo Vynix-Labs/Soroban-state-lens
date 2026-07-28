@@ -364,14 +364,26 @@ const createWatchlistSlice = (
     }),
 
   removeFromWatchlist: (contractId: string, keyPath: string) =>
-    set((state) => ({
-      watchlist: {
-        ...state.watchlist,
-        [contractId]: (state.watchlist[contractId] ?? []).filter(
-          (item) => item.keyPath !== keyPath,
-        ),
-      },
-    })),
+    set((state) => {
+      const currentItems = state.watchlist[contractId] ?? []
+      const filteredItems = currentItems.filter((item) => item.keyPath !== keyPath)
+
+      if (filteredItems.length === currentItems.length) {
+        return state
+      }
+
+      if (filteredItems.length === 0) {
+        const { [contractId]: _, ...rest } = state.watchlist
+        return { watchlist: rest }
+      }
+
+      return {
+        watchlist: {
+          ...state.watchlist,
+          [contractId]: filteredItems,
+        },
+      }
+    }),
 
   getWatchlistForContract: (contractId: string) => {
     return get().watchlist[contractId] ?? []

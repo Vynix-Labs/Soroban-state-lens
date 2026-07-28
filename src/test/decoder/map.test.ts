@@ -40,6 +40,39 @@ describe('normalizeScVal - Map Handling', () => {
   })
 
   describe('Output shape – normalized map object with entries array', () => {
+    it('keeps valid sibling entries when one map entry is malformed', () => {
+      const result = normalizeScVal({
+        switch: ScValType.SCV_MAP,
+        value: [
+          entry(
+            { switch: ScValType.SCV_STRING, value: 'good' },
+            { switch: ScValType.SCV_U32, value: 1 },
+          ),
+          { key: { switch: ScValType.SCV_STRING, value: 'bad' }, val: null },
+          entry(
+            { switch: ScValType.SCV_STRING, value: 'also-good' },
+            { switch: ScValType.SCV_BOOL, value: true },
+          ),
+        ],
+      }) as NormalizedMap
+
+      expect(result.entries).toHaveLength(3)
+      expect(result.entries[0].key).toEqual({
+        kind: 'primitive',
+        primitive: 'string',
+        value: 'good',
+      })
+      expect(result.entries[1].key).toEqual({
+        kind: 'primitive',
+        primitive: 'string',
+        value: 'bad',
+      })
+      expect(result.entries[2].key).toEqual({
+        kind: 'primitive',
+        primitive: 'string',
+        value: 'also-good',
+      })
+    })
     it('returns a normalized map object for a non-empty map', () => {
       const result = normalizeScVal({
         switch: ScValType.SCV_MAP,
