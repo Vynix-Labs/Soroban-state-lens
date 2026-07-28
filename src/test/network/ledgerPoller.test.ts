@@ -314,6 +314,93 @@ describe('startLedgerHeadPoll', () => {
     })
   })
 
+  describe('in-flight guard prevents overlapping polls', () => {
+    it('skips scheduled tick while a request is already in flight', async () => {
+      const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+
+      // Hold the first response unresolved so the initial tick stays in flight.
+      let resolveFirst: (value: unknown) => void
+      const firstResponse = new Promise((resolve) => {
+        resolveFirst = resolve
+      })
+
+      mockCallRpc
+        .mockReturnValueOnce(firstResponse as Promise<unknown>)
+        .mockResolvedValueOnce({ result: { sequence: 101 } })
+
+      const stop = startLedgerHeadPoll({
+        rpcConfig: defaultRpcConfig,
+        intervalMs: 1000,
+        onLedgerChange,
+      })
+
+      // Initial tick starts but hasn't resolved yet.
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mockCallRpc).toHaveBeenCalledTimes(1)
+
+      // Advance timer past the interval — the next poll should fire but be
+      // skipped because the first request is still in flight.
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(mockCallRpc).toHaveBeenCalledTimes(1)
+
+      // Resolve the first request and flush microtasks.
+      resolveFirst!({ result: { sequence: 100 } })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(onLedgerChange).toHaveBeenCalledWith(100)
+
+      // Advance past the interval again — the next poll should run normally.
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(mockCallRpc).toHaveBeenCalledTimes(2)
+      expect(onLedgerChange).toHaveBeenCalledWith(101)
+
+      stop()
+      randomSpy.mockRestore()
+    })
+
+    it('stop prevents a deferred tick from running after in-flight request settles', async () => {
+      const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+
+      // Hold the first response unresolved so the initial tick stays in flight.
+      let resolveFirst: (value: unknown) => void
+      const firstResponse = new Promise((resolve) => {
+        resolveFirst = resolve
+      })
+
+      mockCallRpc
+        .mockReturnValueOnce(firstResponse as Promise<unknown>)
+        .mockResolvedValue({ result: { sequence: 200 } })
+
+      const stop = startLedgerHeadPoll({
+        rpcConfig: defaultRpcConfig,
+        intervalMs: 1000,
+        onLedgerChange,
+      })
+
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mockCallRpc).toHaveBeenCalledTimes(1)
+
+      // Advance timer past interval — next tick is skipped (in-flight guard).
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(mockCallRpc).toHaveBeenCalledTimes(1)
+
+      // Call stop while the first request is still in flight.
+      stop()
+
+      // Resolve the first request — its result should be discarded since stopped.
+      resolveFirst!({ result: { sequence: 100 } })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(onLedgerChange).not.toHaveBeenCalled()
+
+      // Advance far past any intervals — no further calls.
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(mockCallRpc).toHaveBeenCalledTimes(1)
+
+      randomSpy.mockRestore()
+    })
+  })
+
   describe('visibility-aware pausing', () => {
     beforeEach(() => {
       // Deterministic jitter so scheduled poll timing is predictable.
