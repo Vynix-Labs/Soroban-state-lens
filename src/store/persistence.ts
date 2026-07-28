@@ -1,20 +1,16 @@
+import type { PersistStorage } from 'zustand/middleware'
 import { createJSONStorage } from 'zustand/middleware'
 import { parsePersistedNetworkConfig } from '../lib/storage/parsePersistedNetworkConfig'
+import type { PersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
 import { serializePersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
-import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
+import type { DisplayPreferences, NetworkConfig, WatchlistItem } from './types'
 import {
   BigIntDisplayMode,
   ByteDisplayMode,
   DEFAULT_NETWORKS,
   DEFAULT_PREFERENCES,
 } from './types'
-import type {
-  DisplayPreferences,
-  NetworkConfig,
-  WatchlistItem,
-} from './types'
-import type { PersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
-import type { PersistStorage } from 'zustand/middleware'
+import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
 
 /**
  * Storage key for network config persistence
@@ -82,9 +78,7 @@ export function isValidBigIntDisplayMode(
   )
 }
 
-export function validateDisplayPreferences(
-  value: unknown,
-): DisplayPreferences {
+export function validateDisplayPreferences(value: unknown): DisplayPreferences {
   if (typeof value !== 'object' || value === null) {
     return DEFAULT_PREFERENCES
   }
@@ -95,7 +89,9 @@ export function validateDisplayPreferences(
     ? candidate.byteDisplayMode
     : DEFAULT_PREFERENCES.byteDisplayMode
 
-  const bigIntDisplayMode = isValidBigIntDisplayMode(candidate.bigIntDisplayMode)
+  const bigIntDisplayMode = isValidBigIntDisplayMode(
+    candidate.bigIntDisplayMode,
+  )
     ? candidate.bigIntDisplayMode
     : DEFAULT_PREFERENCES.bigIntDisplayMode
 
@@ -176,10 +172,15 @@ export const createSafeStorage = <T>(): PersistStorage<T> | undefined =>
 export function mergeNetworkConfig(
   persistedState: unknown,
   currentState: { networkConfig: NetworkConfig },
-): { networkConfig: NetworkConfig; watchlist: Record<string, Array<WatchlistItem>> } {
+): {
+  networkConfig: NetworkConfig
+  watchlist: Record<string, Array<WatchlistItem>>
+} {
   const hydratedState = unwrapPersistedState(persistedState)
   const watchlist = sanitizeWatchlist(
-    hydratedState && typeof hydratedState === 'object' && 'watchlist' in hydratedState
+    hydratedState &&
+      typeof hydratedState === 'object' &&
+      'watchlist' in hydratedState
       ? hydratedState.watchlist
       : undefined,
   )
@@ -246,7 +247,8 @@ export function sanitizeWatchlist(
         typeof candidate.keyPath === 'string' &&
         typeof candidate.timestamp === 'number' &&
         Number.isFinite(candidate.timestamp) &&
-        candidate.timestamp <= hydrationTime
+        candidate.timestamp <= hydrationTime &&
+        candidate.contractId === contractId
       ) {
         validItems.push(item as unknown as WatchlistItem)
       }

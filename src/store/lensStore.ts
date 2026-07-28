@@ -6,12 +6,8 @@ import { getLedgerEntries } from '../lib/network/getLedgerEntries'
 import { mapLedgerEntriesToStoreEntries } from '../lib/network/mapLedgerEntriesToStoreEntries'
 import { isDecoderWorkerError } from '../types/decoder-worker'
 import { createDecoderWorkerSafe } from '../workers/createDecoderWorkerSafe'
-import {
-  ConnectionStatus,
-  ContractLoadStatus,
-  DEFAULT_NETWORKS,
-  DEFAULT_PREFERENCES,
-} from './types'
+import { createContractSlice } from './contractSlice'
+import { createContractSpecSlice } from './contractSpecSlice'
 import {
   DEFAULT_NETWORK_CONFIG,
   NETWORK_CONFIG_STORAGE_KEY,
@@ -20,9 +16,13 @@ import {
   mergePreferences,
   serializeNetworkConfigForStorage,
 } from './persistence'
-import { createContractSlice } from './contractSlice'
-import { createContractSpecSlice } from './contractSpecSlice'
 import { createPreferencesSlice } from './preferencesSlice'
+import {
+  ConnectionStatus,
+  ContractLoadStatus,
+  DEFAULT_NETWORKS,
+  DEFAULT_PREFERENCES,
+} from './types'
 
 import type { PersistedState } from './persistence'
 import type {
@@ -155,7 +155,9 @@ const createExpandedNodesSlice = (
         return { expandedNodes: [...state.expandedNodes, normalizedNodeId] }
       } else {
         return {
-          expandedNodes: state.expandedNodes.filter((id) => id !== normalizedNodeId),
+          expandedNodes: state.expandedNodes.filter(
+            (id) => id !== normalizedNodeId,
+          ),
         }
       }
     }),
@@ -169,7 +171,9 @@ const createExpandedNodesSlice = (
 
       if (state.expandedNodes.includes(normalizedNodeId)) {
         return {
-          expandedNodes: state.expandedNodes.filter((id) => id !== normalizedNodeId),
+          expandedNodes: state.expandedNodes.filter(
+            (id) => id !== normalizedNodeId,
+          ),
         }
       }
       return { expandedNodes: [...state.expandedNodes, normalizedNodeId] }
@@ -181,7 +185,10 @@ const createExpandedNodesSlice = (
         .map((nodeId) => nodeId.trim())
         .filter((nodeId) => nodeId.length > 0)
 
-      const newExpanded = new Set([...state.expandedNodes, ...normalizedNodeIds])
+      const newExpanded = new Set([
+        ...state.expandedNodes,
+        ...normalizedNodeIds,
+      ])
       return { expandedNodes: Array.from(newExpanded) }
     }),
 
@@ -291,7 +298,8 @@ const createContractLoadSlice = (
       const controller = new AbortController()
       activeController = controller
       const { signal } = controller
-      const isRequestStale = () => currentRequestId !== requestId || signal.aborted
+      const isRequestStale = () =>
+        currentRequestId !== requestId || signal.aborted
 
       set((state) => ({
         activeContractId: contractId,
@@ -436,7 +444,9 @@ const createWatchlistSlice = (
     })),
 
   getWatchlistForContract: (contractId: string) => {
-    return deduplicateWatchlistItems(get().watchlist[contractId])
+    return deduplicateWatchlistItems(get().watchlist[contractId]).filter(
+      (item) => item.contractId === contractId,
+    )
   },
 
   clearWatchlist: (contractId: string) =>
@@ -476,10 +486,10 @@ export const useLensStore = create<LensStore>()(
       storage: createSafeStorage<PersistedState>(),
       // Persist networkConfig, preferences, and the watchlist
       partialize: (state): PersistedState => ({
-          networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
-          preferences: state.preferences,
-          watchlist: state.watchlist,
-        }),
+        networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
+        preferences: state.preferences,
+        watchlist: state.watchlist,
+      }),
       // Validate and merge persisted data safely
       merge: (persistedState, currentState) => {
         const mergedNetwork = mergeNetworkConfig(persistedState, currentState)
@@ -515,7 +525,12 @@ export const useContractLoadError = () =>
 export const useSnapshots = (contractId: string) =>
   useLensStore((state) => state.snapshots[contractId] ?? EMPTY_ARRAY)
 export const useWatchlist = (contractId: string) =>
-  useLensStore((state) => state.watchlist[contractId] ?? EMPTY_ARRAY)
+  useLensStore((state) => {
+    const items = state.watchlist[contractId] ?? EMPTY_ARRAY
+    return deduplicateWatchlistItems(items).filter(
+      (item) => item.contractId === contractId,
+    )
+  })
 
 /**
  * Get store state outside of React components (for testing)
@@ -579,7 +594,8 @@ export const lensActions = {
     useLensStore.getState().setContractLoadStatus(status),
   setContractLoadError: (message: string | null) =>
     useLensStore.getState().setContractLoadError(message),
-  resetContractLoadState: () => useLensStore.getState().resetContractLoadState(),
+  resetContractLoadState: () =>
+    useLensStore.getState().resetContractLoadState(),
   loadContract: (contractId: string, keys: Array<string>) =>
     useLensStore.getState().loadContract(contractId, keys),
   addSnapshot: (
