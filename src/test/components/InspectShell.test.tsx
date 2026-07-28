@@ -21,6 +21,12 @@ vi.mock('@stellar/design-system', () => ({
   ),
 }))
 
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, ...props }: React.ComponentProps<'a'>) => (
+    <a {...props}>{children}</a>
+  ),
+}))
+
 describe('InspectShell', () => {
   it('renders contract and key path context', () => {
     useLensStore.setState({ watchlist: {} })
