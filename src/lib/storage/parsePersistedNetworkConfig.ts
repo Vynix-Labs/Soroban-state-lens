@@ -22,7 +22,10 @@ function parsePreset(networkId: unknown): NetworkConfig | null {
   return null
 }
 
-function parseCustom(rpcUrl: unknown): NetworkConfig | null {
+function parseCustom(
+  rpcUrl: unknown,
+  networkPassphrase?: unknown,
+): NetworkConfig | null {
   if (typeof rpcUrl !== 'string') {
     return null
   }
@@ -32,9 +35,14 @@ function parseCustom(rpcUrl: unknown): NetworkConfig | null {
     return null
   }
 
+  const passphrase =
+    typeof networkPassphrase === 'string' && networkPassphrase.trim().length > 0
+      ? networkPassphrase.trim()
+      : 'Custom Network'
+
   return {
     networkId: 'custom',
-    networkPassphrase: 'Custom Network',
+    networkPassphrase: passphrase,
     rpcUrl: normalizedRpcUrl,
     horizonUrl: FALLBACK.horizonUrl,
   }
@@ -48,7 +56,7 @@ function parseLegacyNetworkConfig(
     return preset
   }
 
-  return parseCustom(input.rpcUrl)
+  return parseCustom(input.rpcUrl, input.networkPassphrase)
 }
 
 export function parsePersistedNetworkConfig(input: unknown): NetworkConfig {
@@ -63,7 +71,11 @@ export function parsePersistedNetworkConfig(input: unknown): NetworkConfig {
   }
 
   if (persisted.kind === 'custom') {
-    return parseCustom(persisted.rpcUrl) ?? { ...FALLBACK }
+    return (
+      parseCustom(persisted.rpcUrl, persisted.networkPassphrase) ?? {
+        ...FALLBACK,
+      }
+    )
   }
 
   return parseLegacyNetworkConfig(input) ?? { ...FALLBACK }

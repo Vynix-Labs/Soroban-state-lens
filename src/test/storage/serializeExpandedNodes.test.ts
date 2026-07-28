@@ -32,4 +32,10 @@ describe('serializeExpandedNodes', () => {
     const result = serializeExpandedNodes(['node1', 'node2'])
     expect(result).not.toContain(' ')
   })
+
+  it('should filter out blank node IDs and preserve valid order', () => {
+    expect(
+      serializeExpandedNodes(['node1', '', '  ', 'node2', '\n\t', 'node1']),
+    ).toBe('["node1","node2"]')
+  })
 })

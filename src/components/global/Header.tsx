@@ -12,10 +12,14 @@ export default function Header({ handleToggle }: HeaderProp) {
         {/* Left: Logo + Title */}
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={handleToggle}
+            aria-label="Toggle ledger state sidebar"
             className="size-8 bg-primary/20 rounded flex items-center justify-center text-primary"
           >
-            <span className="material-symbols-outlined">view_in_ar</span>
+            <span aria-hidden="true" className="material-symbols-outlined">
+              view_in_ar
+            </span>
           </button>
           <h1 className="font-mono font-bold text-white hidden xl:text-lg tracking-tight xl:flex">
             SOROBAN STATE LENS

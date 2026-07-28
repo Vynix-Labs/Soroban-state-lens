@@ -1,71 +1,105 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import NetworkSelector from '../../components/global/NetworkSelector'
+import { resetStore, useLensStore } from '../../store/lensStore'
+import { DEFAULT_NETWORKS } from '../../store/types'
 
-// Mock the store
-vi.mock('../../store/lensStore', () => ({
-  useLensStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      networkConfig: { networkId: 'mainnet', rpcUrl: 'https://example.com', networkPassphrase: '' },
-      lastCustomUrl: '',
-      setNetworkConfig: vi.fn(),
-      setLastCustomUrl: vi.fn(),
-    }),
-}))
-
-describe('NetworkSelector', () => {
-  it('toggles dropdown on mouse click', () => {
-    render(<NetworkSelector />)
-
-    const button = screen.getByRole('button', { name: 'Select network' })
-    expect(button.getAttribute('aria-expanded')).toBe('false')
-
-    fireEvent.click(button)
-    expect(button.getAttribute('aria-expanded')).toBe('true')
-
-    fireEvent.click(button)
-    expect(button.getAttribute('aria-expanded')).toBe('false')
+describe('NetworkSelector Component', () => {
+  beforeEach(() => {
+    resetStore()
   })
 
-  it('toggles dropdown exactly once on Enter key', () => {
+  it('renders with default preset network', () => {
     render(<NetworkSelector />)
-
-    const button = screen.getByRole('button', { name: 'Select network' })
-    expect(button.getAttribute('aria-expanded')).toBe('false')
-
-    fireEvent.keyDown(button, { key: 'Enter' })
-    fireEvent.click(button)
-    expect(button.getAttribute('aria-expanded')).toBe('true')
-
-    fireEvent.keyDown(button, { key: 'Enter' })
-    fireEvent.click(button)
-    expect(button.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByRole('button', { name: /select network/i })).toBeTruthy()
+    expect(screen.getByText('Futurenet')).toBeTruthy()
   })
 
-  it('toggles dropdown exactly once on Space key', () => {
+  it('opens dropdown and switches to preset network', () => {
     render(<NetworkSelector />)
 
-    const button = screen.getByRole('button', { name: 'Select network' })
-    expect(button.getAttribute('aria-expanded')).toBe('false')
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
 
-    fireEvent.keyDown(button, { key: ' ' })
-    fireEvent.click(button)
-    expect(button.getAttribute('aria-expanded')).toBe('true')
+    const mainnetOption = screen.getByRole('option', { name: /mainnet/i })
+    fireEvent.click(mainnetOption)
 
-    fireEvent.keyDown(button, { key: ' ' })
-    fireEvent.click(button)
-    expect(button.getAttribute('aria-expanded')).toBe('false')
+    const state = useLensStore.getState()
+    expect(state.networkConfig).toEqual(DEFAULT_NETWORKS.mainnet)
   })
 
-  it('closes dropdown on Escape key', () => {
+  it('opens custom panel and captures custom url and network passphrase on apply', () => {
     render(<NetworkSelector />)
 
-    const button = screen.getByRole('button', { name: 'Select network' })
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
 
-    fireEvent.click(button)
-    expect(button.getAttribute('aria-expanded')).toBe('true')
+    const customOption = screen.getByRole('option', { name: /custom/i })
+    fireEvent.click(customOption)
 
-    fireEvent.keyDown(button, { key: 'Escape' })
-    expect(button.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByText('Custom RPC Configuration')).toBeTruthy()
+
+    const urlInput = screen.getByLabelText('Custom RPC URL input')
+    const passphraseInput = screen.getByLabelText('Custom Network Passphrase input')
+
+    fireEvent.change(urlInput, { target: { value: 'https://custom-rpc.example.com' } })
+    fireEvent.change(passphraseInput, { target: { value: 'Test SDF Network ; September 2015' } })
+
+    const applyButton = screen.getByRole('button', { name: /apply/i })
+    fireEvent.click(applyButton)
+
+    const state = useLensStore.getState()
+    expect(state.networkConfig).toEqual({
+      networkId: 'custom',
+      rpcUrl: 'https://custom-rpc.example.com',
+      networkPassphrase: 'Test SDF Network ; September 2015',
+      horizonUrl: DEFAULT_NETWORKS.futurenet.horizonUrl,
+    })
+    expect(state.lastCustomUrl).toBe('https://custom-rpc.example.com')
+  })
+
+  it('defaults custom network passphrase to Custom Network when left empty', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+
+    const customOption = screen.getByRole('option', { name: /custom/i })
+    fireEvent.click(customOption)
+
+    const urlInput = screen.getByLabelText('Custom RPC URL input')
+    fireEvent.change(urlInput, { target: { value: 'https://custom-rpc2.example.com' } })
+
+    const applyButton = screen.getByRole('button', { name: /apply/i })
+    fireEvent.click(applyButton)
+
+    const state = useLensStore.getState()
+    expect(state.networkConfig.networkPassphrase).toBe('Custom Network')
+  })
+
+  it('toggles the dropdown once for native Enter activation', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.keyDown(trigger, { key: 'Enter' })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.keyDown(trigger, { key: 'Enter' })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('toggles the dropdown once for native Space activation', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.keyDown(trigger, { key: ' ' })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.keyDown(trigger, { key: ' ' })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
   })
 })

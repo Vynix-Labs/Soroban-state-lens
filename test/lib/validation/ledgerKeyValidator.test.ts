@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { ledgerKeyValidator } from '../../../src/lib/validation/ledgerKeyValidator'
 
+const contractId = 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+
 describe('ledgerKeyValidator', () => {
   it('accepts a valid serialized ledger key', () => {
-    const res = ledgerKeyValidator('contract::type::part')
+    const res = ledgerKeyValidator(`${contractId}::type::part`)
     expect(res).toEqual({ valid: true })
   })
 
   it('accepts whitespace padded valid keys', () => {
-    const res = ledgerKeyValidator('  contract  ::  type  ::  part  ')
+    const res = ledgerKeyValidator(`  ${contractId}  ::  type  ::  part  `)
     expect(res).toEqual({ valid: true })
   })
 
@@ -37,4 +39,3 @@ describe('ledgerKeyValidator', () => {
     expect(res3.valid).toBe(false)
   })
 })
-

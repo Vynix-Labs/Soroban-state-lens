@@ -11,15 +11,23 @@ export function parentTreeNodePath(path: string): string | null {
     return null
   }
 
-  // Find all dots that are NOT preceded by a backslash
-  // We use a lookbehind assertion to ensure we only split on unescaped dots
-  const segments = path.split(/(?<!\\)\./)
+  // A dot is a separator when preceded by an even number of backslashes.
+  // An odd count means the dot is escaped; scanning from the end finds the
+  // immediate parent without rewriting the encoded path.
+  for (let index = path.length - 1; index >= 0; index -= 1) {
+    if (path[index] !== '.') {
+      continue
+    }
 
-  // If there's only one segment (or none), there is no parent
-  if (segments.length <= 1) {
-    return null
+    let backslashCount = 0
+    for (let preceding = index - 1; preceding >= 0 && path[preceding] === '\\'; preceding -= 1) {
+      backslashCount += 1
+    }
+
+    if (backslashCount % 2 === 0) {
+      return path.slice(0, index)
+    }
   }
 
-  // Re-join all segments except the last one
-  return segments.slice(0, -1).join('.')
+  return null
 }

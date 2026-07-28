@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { testRpcConnection } from '../../lib/network/testConnection'
+import { resetConnectionTestState } from '../../lib/network/connectionTestState'
 import { validateRpcUrl } from '../../lib/network/validation'
 import { useLensStore } from '../../store/lensStore'
 import { DEFAULT_NETWORKS } from '../../store/types'
@@ -26,6 +27,7 @@ export default function NetworkSelector() {
   const [isOpen, setIsOpen] = useState(false)
   const [showCustomInput, setShowCustomInput] = useState(false)
   const [customRpcUrl, setCustomRpcUrl] = useState('')
+  const [customNetworkPassphrase, setCustomNetworkPassphrase] = useState('')
   const [validationError, setValidationError] = useState('')
   const [testStatus, setTestStatus] = useState<
     'idle' | 'loading' | 'success' | 'error'
@@ -44,16 +46,22 @@ export default function NetworkSelector() {
   useEffect(() => {
     setIsHydrated(true)
 
-    // If currently on custom network and we have a last custom URL, sync it
-    if (networkConfig.networkId === 'custom' && lastCustomUrl) {
-      setCustomRpcUrl(lastCustomUrl)
-      setShowCustomInput(true)
-    } else if (networkConfig.networkId === 'custom') {
-      // If custom but no last URL, use current config URL
-      setCustomRpcUrl(networkConfig.rpcUrl || '')
+    // If currently on custom network, sync RPC URL and passphrase
+    if (networkConfig.networkId === 'custom') {
+      if (lastCustomUrl) {
+        setCustomRpcUrl(lastCustomUrl)
+      } else {
+        setCustomRpcUrl(networkConfig.rpcUrl || '')
+      }
+      setCustomNetworkPassphrase(networkConfig.networkPassphrase || '')
       setShowCustomInput(true)
     }
-  }, [networkConfig.networkId, lastCustomUrl, networkConfig.rpcUrl])
+  }, [
+    networkConfig.networkId,
+    lastCustomUrl,
+    networkConfig.rpcUrl,
+    networkConfig.networkPassphrase,
+  ])
 
   // Auto-focus the input whenever the custom panel becomes visible
   useEffect(() => {
@@ -77,7 +85,7 @@ export default function NetworkSelector() {
     NETWORK_OPTIONS.find((opt) => opt.id === networkConfig.networkId) ||
     NETWORK_OPTIONS.find((opt) => opt.id === 'custom')!
 
-  // Initialize custom URL when switching to custom mode
+  // Initialize custom URL and passphrase when switching to custom mode
   const handleSelect = (option: NetworkInfo) => {
     if (option.config) {
       // Preset network: clear any custom URL usage and close everything
@@ -85,18 +93,24 @@ export default function NetworkSelector() {
       setShowCustomInput(false)
       setValidationError('')
       setCustomRpcUrl('')
+      setCustomNetworkPassphrase('')
       setIsOpen(false)
     } else {
       // Custom: restore last custom URL or set up for new input
-      const urlToUse = lastCustomUrl || networkConfig.rpcUrl || ''
+      const urlToUse = lastCustomUrl || (networkConfig.networkId === 'custom' ? networkConfig.rpcUrl : '') || ''
+      const passphraseToUse =
+        networkConfig.networkId === 'custom'
+          ? networkConfig.networkPassphrase || ''
+          : ''
       setNetworkConfig({
         networkId: 'custom',
-        networkPassphrase: '',
+        networkPassphrase: passphraseToUse || 'Custom Network',
         rpcUrl: urlToUse,
       })
-      setCustomRpcUrl(urlToUse) // ← preserve any previously typed/saved URL
-      setShowCustomInput(true) // ← show the input panel
-      setIsOpen(false) // ← close the dropdown list
+      setCustomRpcUrl(urlToUse)
+      setCustomNetworkPassphrase(passphraseToUse)
+      setShowCustomInput(true)
+      setIsOpen(false)
     }
   }
 
@@ -115,13 +129,11 @@ export default function NetworkSelector() {
       setNetworkConfig({
         networkId: 'custom',
         rpcUrl: customRpcUrl.trim(),
-        networkPassphrase: 'Custom Network',
+        networkPassphrase: customNetworkPassphrase.trim() || 'Custom Network',
       })
       setLastCustomUrl(customRpcUrl.trim())
       setShowCustomInput(false)
       setValidationError('')
-      // NOTE: We intentionally do NOT clear customRpcUrl here so that
-      // switching back to Custom restores the last typed value.
     } else {
       setValidationError(validation.error || 'Invalid URL')
     }
@@ -161,10 +173,14 @@ export default function NetworkSelector() {
     setValidationError('')
     // Restore the last successfully applied URL so re-opening Custom shows it
     setCustomRpcUrl(lastCustomUrl || '')
+    setCustomNetworkPassphrase(networkConfig.networkPassphrase || '')
   }
 
   const handleCustomUrlChange = (url: string) => {
     setCustomRpcUrl(url)
+    const resetState = resetConnectionTestState()
+    setTestStatus(resetState.status)
+    setTestError(resetState.error)
 
     const validation = validateRpcUrl(url)
     if (validation.isValid) {
@@ -174,9 +190,23 @@ export default function NetworkSelector() {
       setNetworkConfig({
         networkId: 'custom',
         rpcUrl: url.trim(),
+        networkPassphrase: customNetworkPassphrase.trim() || 'Custom Network',
       })
     } else {
       setValidationError(validation.error || 'Invalid URL')
+    }
+  }
+
+  const handleCustomPassphraseChange = (passphrase: string) => {
+    setCustomNetworkPassphrase(passphrase)
+
+    const validation = validateRpcUrl(customRpcUrl)
+    if (validation.isValid) {
+      setNetworkConfig({
+        networkId: 'custom',
+        rpcUrl: customRpcUrl.trim(),
+        networkPassphrase: passphrase.trim() || 'Custom Network',
+      })
     }
   }
 
@@ -235,7 +265,7 @@ export default function NetworkSelector() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium text-text-main">
-                Custom RPC URL
+                Custom RPC Configuration
               </h3>
               <button
                 type="button"
@@ -249,30 +279,56 @@ export default function NetworkSelector() {
               </button>
             </div>
 
-            <div className="space-y-2">
-              <input
-                ref={inputRef}
-                type="text"
-                value={customRpcUrl}
-                onChange={(e) => handleCustomUrlChange(e.target.value)}
-                onBlur={handleCustomUrlBlur}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleApplyCustomUrl()
-                  } else if (e.key === 'Escape') {
-                    handleCancelCustom()
-                  }
-                }}
-                placeholder="https://rpc.example.com"
-                className={`w-full px-3 py-2 bg-background-dark border rounded-md text-sm text-white placeholder-text-muted transition-colors ${
-                  validationError
-                    ? 'border-red-500 focus:border-red-500'
-                    : 'border-border-dark focus:border-primary'
-                } focus:outline-none focus:ring-1 focus:ring-primary/20`}
-                aria-label="Custom RPC URL input"
-                aria-invalid={!!validationError}
-                aria-describedby={validationError ? 'rpc-error' : undefined}
-              />
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-text-muted mb-1 font-medium">
+                  RPC URL
+                </label>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={customRpcUrl}
+                  onChange={(e) => handleCustomUrlChange(e.target.value)}
+                  onBlur={handleCustomUrlBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleApplyCustomUrl()
+                    } else if (e.key === 'Escape') {
+                      handleCancelCustom()
+                    }
+                  }}
+                  placeholder="https://rpc.example.com"
+                  className={`w-full px-3 py-2 bg-background-dark border rounded-md text-sm text-white placeholder-text-muted transition-colors ${
+                    validationError
+                      ? 'border-red-500 focus:border-red-500'
+                      : 'border-border-dark focus:border-primary'
+                  } focus:outline-none focus:ring-1 focus:ring-primary/20`}
+                  aria-label="Custom RPC URL input"
+                  aria-invalid={!!validationError}
+                  aria-describedby={validationError ? 'rpc-error' : undefined}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-text-muted mb-1 font-medium">
+                  Network Passphrase
+                </label>
+                <input
+                  type="text"
+                  value={customNetworkPassphrase}
+                  onChange={(e) => handleCustomPassphraseChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleApplyCustomUrl()
+                    } else if (e.key === 'Escape') {
+                      handleCancelCustom()
+                    }
+                  }}
+                  placeholder="Test SDF Network ; September 2015"
+                  className="w-full px-3 py-2 bg-background-dark border border-border-dark focus:border-primary rounded-md text-sm text-white placeholder-text-muted transition-colors focus:outline-none focus:ring-1 focus:ring-primary/20"
+                  aria-label="Custom Network Passphrase input"
+                />
+              </div>
 
               {validationError && (
                 <p

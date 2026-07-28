@@ -11,6 +11,7 @@ export type PersistedNetworkConfig =
   | {
       kind: 'custom'
       rpcUrl: string
+      networkPassphrase?: string
     }
 
 const PRESET_NETWORK_IDS = new Set(['futurenet', 'testnet', 'mainnet'])
@@ -35,10 +36,18 @@ export function serializePersistedNetworkConfig(
 
   const rpcUrl = normalizeRpcUrl(config.rpcUrl)
   if (rpcUrl !== '') {
-    return {
+    const customConfig: PersistedNetworkConfig = {
       kind: 'custom',
       rpcUrl,
     }
+    if (
+      typeof config.networkPassphrase === 'string' &&
+      config.networkPassphrase.trim().length > 0 &&
+      config.networkPassphrase !== 'Custom Network'
+    ) {
+      customConfig.networkPassphrase = config.networkPassphrase.trim()
+    }
+    return customConfig
   }
 
   return {
