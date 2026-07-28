@@ -140,13 +140,36 @@ export async function getLedgerEntries(
     }
 
     const opResult = data.result as {
-      entries: Array<{
-        key: string
-        xdr: string
+      entries?: Array<{
+        key?: unknown
+        xdr?: unknown
         lastModifiedLedgerSeq?: number
         liveUntilLedgerSeq?: number
       }> | null
-      latestLedger: number
+      latestLedger?: unknown
+    }
+
+    if (
+      !opResult ||
+      (opResult.entries !== null && !Array.isArray(opResult.entries)) ||
+      typeof opResult.latestLedger !== 'number' ||
+      !Number.isFinite(opResult.latestLedger)
+    ) {
+      return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
+    }
+
+    if (opResult.entries !== null) {
+      const isValidEntries = opResult.entries.every((entry) => {
+        if (!entry || typeof entry !== 'object') {
+          return false
+        }
+
+        return typeof (entry as { key?: unknown }).key === 'string' && typeof (entry as { xdr?: unknown }).xdr === 'string'
+      })
+
+      if (!isValidEntries) {
+        return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
+      }
     }
 
     return {
