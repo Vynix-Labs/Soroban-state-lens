@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { callRpc } from '../../lib/network/rpcClient'
 import type { RpcConfig } from '../../lib/network/types'
 
@@ -15,6 +15,10 @@ describe('callRpc', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('should handle successful responses', async () => {
@@ -86,6 +90,33 @@ describe('callRpc', () => {
     })
   })
 
+  it.each([
+    { input: 0, expected: 10000 },
+    { input: -123, expected: 10000 },
+    { input: 1.9, expected: 1 },
+    { input: Number.NaN, expected: 10000 },
+    { input: Number.POSITIVE_INFINITY, expected: 10000 },
+  ])(
+    'normalizes timeout $input to $expected before scheduling the abort timer',
+    async ({ input, expected }) => {
+      vi.useFakeTimers()
+      const setTimeoutSpy = vi.spyOn(global, 'setTimeout')
+      mockFetch.mockRejectedValueOnce(
+        new DOMException('The operation was aborted.', 'AbortError'),
+      )
+
+      const result = await callRpc({ ...defaultConfig, timeout: input })
+
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), expected)
+      expect(result).toMatchObject({
+        message: 'Request timeout',
+        code: 'TIMEOUT',
+        details: `Request timed out after ${expected}ms`,
+        isTimeout: true,
+      })
+    },
+  )
+
   it('should work without body parameter', async () => {
     const mockData = { status: 'ok' }
     mockFetch.mockResolvedValueOnce({
@@ -129,6 +160,68 @@ describe('callRpc', () => {
       },
       body: undefined,
       signal: expect.any(AbortSignal),
+    })
+  })
+
+  it('aborts the in-flight request when a caller signal aborts', async () => {
+    const caller = new AbortController()
+    mockFetch.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          caller.signal.addEventListener('abort', () =>
+            reject(new DOMException('The operation was aborted.', 'AbortError')),
+          )
+        }),
+    )
+
+    const abortPromise = callRpc(
+      { ...defaultConfig, signal: caller.signal },
+      { method: 'test' },
+    )
+    caller.abort()
+    const result = await abortPromise
+
+    expect(result).toMatchObject({
+      message: 'Request aborted',
+      code: 'ABORTED',
+      isTimeout: false,
+    })
+  })
+
+  it('returns an aborted shape when the caller signal is already aborted', async () => {
+    const caller = new AbortController()
+    caller.abort()
+    mockFetch.mockImplementationOnce(
+      () =>
+        Promise.reject(
+          new DOMException('The operation was aborted.', 'AbortError'),
+        ),
+    )
+
+    const result = await callRpc(
+      { ...defaultConfig, signal: caller.signal },
+      { method: 'test' },
+    )
+
+    expect(result).toMatchObject({
+      message: 'Request aborted',
+      code: 'ABORTED',
+      isTimeout: false,
+    })
+  })
+
+  it('still uses the internal timeout when no caller signal is provided', async () => {
+    mockFetch.mockRejectedValueOnce(
+      new DOMException('The operation was aborted.', 'AbortError'),
+    )
+
+    const result = await callRpc({ ...defaultConfig, timeout: 1000 })
+
+    expect(result).toMatchObject({
+      message: 'Request timeout',
+      code: 'TIMEOUT',
+      details: 'Request timed out after 1000ms',
+      isTimeout: true,
     })
   })
 

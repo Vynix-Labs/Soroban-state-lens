@@ -159,4 +159,60 @@ describe('loadContract action', () => {
     expect(state.ledgerData['C_STALE::Other::new-key'].rawXdr).toBe('new-xdr')
     expect(state.ledgerData['C_STALE::Other::old-key']).toBeUndefined()
   })
+
+  it('ignores stale results that finish decoding after a newer request', async () => {
+    const { resetStore, getStoreState, useLensStore } = await import(
+      '../../store/lensStore',
+    )
+    resetStore()
+
+    let resolveFirstDecode: ((value: unknown) => void) | undefined
+    const firstDecode = new Promise<unknown>((resolve) => {
+      resolveFirstDecode = resolve
+    })
+    const firstWorker = { decodeScVal: vi.fn().mockReturnValue(firstDecode) }
+    const secondWorker = {
+      decodeScVal: vi.fn().mockResolvedValue({
+        kind: 'primitive',
+        path: [],
+        scType: 'string',
+        value: 'new',
+        raw: { switch: 'ScvString', value: 'new' },
+      }),
+    }
+
+    mockCreateDecoderWorkerSafe
+      .mockImplementationOnce(() => Promise.resolve(firstWorker))
+      .mockImplementationOnce(() => Promise.resolve(secondWorker))
+    mockGetLedgerEntries
+      .mockResolvedValueOnce({
+        entries: [{ key: 'old-key', xdr: 'old-xdr', lastModifiedLedgerSeq: 1 }],
+        latestLedger: 1,
+      })
+      .mockResolvedValueOnce({
+        entries: [{ key: 'new-key', xdr: 'new-xdr', lastModifiedLedgerSeq: 2 }],
+        latestLedger: 2,
+      })
+
+    const firstCall = useLensStore.getState().loadContract('C_DECODE_STALE', ['old'])
+    for (let attempt = 0; attempt < 10 && !firstWorker.decodeScVal.mock.calls.length; attempt += 1) {
+      await Promise.resolve()
+    }
+
+    const secondCall = useLensStore.getState().loadContract('C_DECODE_STALE', ['new'])
+    await secondCall
+    resolveFirstDecode?.({
+      kind: 'primitive',
+      path: [],
+      scType: 'string',
+      value: 'old',
+      raw: { switch: 'ScvString', value: 'old' },
+    })
+    await firstCall
+
+    const state = getStoreState()
+    expect(state.contractLoadStatus).toBe(ContractLoadStatus.SUCCESS)
+    expect(state.ledgerData['C_DECODE_STALE::Other::new-key'].rawXdr).toBe('new-xdr')
+    expect(state.ledgerData['C_DECODE_STALE::Other::old-key']).toBeUndefined()
+  })
 })

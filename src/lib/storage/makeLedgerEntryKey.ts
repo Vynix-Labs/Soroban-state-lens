@@ -29,5 +29,9 @@ function sanitize(value: string, name: string): string {
   if (typeof value !== 'string' || value.trim() === '') {
     throw new Error(`${name} must be a non-empty string`)
   }
-  return value.trim()
+  const trimmed = value.trim()
+  if (trimmed.includes('::')) {
+    throw new Error(`${name} must not contain the "::" separator`)
+  }
+  return trimmed
 }

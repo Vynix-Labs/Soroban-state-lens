@@ -1,12 +1,17 @@
 import type { FlatTreeRow } from '../../lib/tree/flatTreeRow'
+import type { KeyboardEvent, Ref } from 'react'
 
 interface TreeRowProps {
   row: FlatTreeRow
   isExpanded: boolean
   isSelected: boolean
   rowHeight: number
+  tabIndex?: number
+  rowRef?: Ref<HTMLDivElement>
   onToggleExpand?: (rowId: string) => void
   onActivate?: (row: FlatTreeRow) => void
+  onKeyNavigate?: (direction: 'up' | 'down') => void
+  onFocus?: () => void
 }
 
 function formatPreview(row: FlatTreeRow): string {
@@ -49,21 +54,41 @@ export function TreeRow({
   isExpanded,
   isSelected,
   rowHeight,
+  tabIndex = 0,
+  rowRef,
   onToggleExpand,
   onActivate,
+  onKeyNavigate,
+  onFocus,
 }: TreeRowProps) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      onKeyNavigate?.('down')
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      onKeyNavigate?.('up')
+      return
+    }
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onActivate?.(row)
+    }
+  }
+
   return (
     <div
+      ref={rowRef}
       role="button"
-      tabIndex={0}
+      tabIndex={tabIndex}
       data-testid="tree-row"
       onClick={() => onActivate?.(row)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          onActivate?.(row)
-        }
-      }}
+      onKeyDown={handleKeyDown}
+      onFocus={onFocus}
       className={`w-full flex items-center gap-2 px-3 border-b border-white/5 text-left ${
         isSelected ? 'bg-primary/10' : 'hover:bg-white/5'
       }`}

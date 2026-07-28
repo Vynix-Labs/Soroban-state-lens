@@ -62,6 +62,14 @@ describe('sanitizePersistedLensState', () => {
     expect(result.expandedNodes).toEqual(['node1'])
   })
 
+  it('should deduplicate valid expandedNodes while preserving first-seen order', () => {
+    const result = sanitizePersistedLensState({
+      expandedNodes: ['node2', 'node1', 'node2', '', 'node1', 'node3'],
+    })
+
+    expect(result.expandedNodes).toEqual(['node2', 'node1', 'node3'])
+  })
+
   it('should strip unknown top-level fields', () => {
     const input = {
       networkConfig: defaultNetworkConfig,
