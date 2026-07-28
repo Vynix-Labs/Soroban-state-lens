@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NetworkSelector from '../../components/global/NetworkSelector'
 import { resetStore, useLensStore } from '../../store/lensStore'
 import { DEFAULT_NETWORKS } from '../../store/types'
@@ -101,5 +101,42 @@ describe('NetworkSelector Component', () => {
     fireEvent.keyDown(trigger, { key: ' ' })
     fireEvent.click(trigger)
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('does not select an option on Enter or Space keydown before native activation', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+
+    const option = screen.getByRole('option', { name: /mainnet/i })
+    fireEvent.keyDown(option, { key: 'Enter' })
+    fireEvent.keyDown(option, { key: ' ' })
+
+    const state = useLensStore.getState()
+    expect(state.networkConfig).toEqual(DEFAULT_NETWORKS.futurenet)
+  })
+
+  it('focuses the custom RPC input after the panel opens and clears the timer on unmount', () => {
+    vi.useFakeTimers()
+    const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus')
+
+    const { unmount } = render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+
+    const customOption = screen.getByRole('option', { name: /custom/i })
+    fireEvent.click(customOption)
+
+    vi.advanceTimersByTime(50)
+    expect(screen.getByLabelText('Custom RPC URL input')).toHaveFocus()
+
+    unmount()
+    vi.advanceTimersByTime(100)
+    expect(focusSpy).toHaveBeenCalledTimes(1)
+
+    focusSpy.mockRestore()
+    vi.useRealTimers()
   })
 })
