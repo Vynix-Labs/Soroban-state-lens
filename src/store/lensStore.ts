@@ -34,6 +34,7 @@ import type {
   NetworkConfig,
   NetworkConfigSlice,
   SnapshotSlice,
+  WatchlistItem,
   WatchlistSlice,
 } from './types'
 
@@ -349,7 +350,7 @@ const deduplicateWatchlistItems = (
 ): Array<WatchlistItem> => {
   const seen = new Set<string>()
   return (items ?? []).filter((item) => {
-    if (typeof item?.keyPath !== 'string' || item.keyPath.length === 0) {
+    if (typeof item.keyPath !== 'string' || item.keyPath.length === 0) {
       return false
     }
     if (seen.has(item.keyPath)) {
