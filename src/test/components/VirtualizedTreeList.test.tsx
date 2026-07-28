@@ -44,6 +44,20 @@ describe('VirtualizedTreeList', () => {
     expect(screen.getByText('row-39')).toBeTruthy()
   })
 
+  it('keeps a tab stop in the mounted rows after scrolling', () => {
+    render(<VirtualizedTreeList rows={rows(120)} height={120} rowHeight={30} overscan={1} />)
+
+    const viewport = screen.getByTestId('virtualized-tree-list')
+    fireEvent.scroll(viewport, { target: { scrollTop: 1200 } })
+
+    const tabStops = screen
+      .getAllByRole('button')
+      .filter((button) => button.tabIndex === 0)
+
+    expect(tabStops).toHaveLength(1)
+    expect(tabStops[0]?.getAttribute('aria-label')).toBe('Open row-39')
+  })
+
   it('invokes row activation callback', () => {
     const onActivateRow = vi.fn()
 

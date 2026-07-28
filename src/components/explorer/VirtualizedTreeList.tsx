@@ -97,8 +97,13 @@ export function VirtualizedTreeList({
 
     if (focusedRowIndex > rows.length - 1) {
       setFocusedRowIndex(rows.length - 1)
+      return
     }
-  }, [focusedRowIndex, rows.length])
+
+    if (focusedRowIndex < startIndex || focusedRowIndex >= endIndex) {
+      setFocusedRowIndex(startIndex)
+    }
+  }, [endIndex, focusedRowIndex, rows.length, startIndex])
 
   useEffect(() => {
     if (!pendingFocusRef.current) {
