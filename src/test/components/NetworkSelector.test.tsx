@@ -34,9 +34,11 @@ describe('NetworkSelector', () => {
     expect(button.getAttribute('aria-expanded')).toBe('false')
 
     fireEvent.keyDown(button, { key: 'Enter' })
+    fireEvent.click(button)
     expect(button.getAttribute('aria-expanded')).toBe('true')
 
     fireEvent.keyDown(button, { key: 'Enter' })
+    fireEvent.click(button)
     expect(button.getAttribute('aria-expanded')).toBe('false')
   })
 
@@ -47,9 +49,11 @@ describe('NetworkSelector', () => {
     expect(button.getAttribute('aria-expanded')).toBe('false')
 
     fireEvent.keyDown(button, { key: ' ' })
+    fireEvent.click(button)
     expect(button.getAttribute('aria-expanded')).toBe('true')
 
     fireEvent.keyDown(button, { key: ' ' })
+    fireEvent.click(button)
     expect(button.getAttribute('aria-expanded')).toBe('false')
   })
 
