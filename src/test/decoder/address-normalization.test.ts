@@ -34,4 +34,17 @@ describe('normalizeScAddress - ScAddress normalization', () => {
       value: contractAddress.toString(),
     })
   })
+
+  it('returns null for malformed address-like inputs', () => {
+    expect(normalizeScAddress(undefined as any)).toBeNull()
+    expect(
+      normalizeScAddress({ switch: () => { throw new Error('boom') } } as any),
+    ).toBeNull()
+    expect(
+      normalizeScAddress({
+        switch: () => ({ value: 42 }),
+        value: { bad: true },
+      } as any),
+    ).toBeNull()
+  })
 })

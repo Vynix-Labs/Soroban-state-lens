@@ -22,7 +22,12 @@ export function withJitter(
   const min = ms * (1 - clampedRatio)
   const max = ms * (1 + clampedRatio)
 
-  const result = min + random() * (max - min)
+  const rawSample = random()
+  const normalizedSample = Number.isFinite(rawSample)
+    ? Math.max(0, Math.min(1, rawSample))
+    : 0.5
+
+  const result = min + normalizedSample * (max - min)
 
   return Math.round(result)
 }

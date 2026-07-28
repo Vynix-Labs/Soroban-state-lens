@@ -41,6 +41,16 @@ describe('withJitter', () => {
     expect(withJitter(-100)).toBe(0)
   })
 
+  it('should clamp out-of-range samples and fall back for non-finite values', () => {
+    const ms = 1000
+
+    expect(withJitter(ms, 0.2, () => -0.25)).toBe(800)
+    expect(withJitter(ms, 0.2, () => 1.5)).toBe(1200)
+    expect(withJitter(ms, 0.2, () => Number.NaN)).toBe(1000)
+    expect(withJitter(ms, 0.2, () => Number.POSITIVE_INFINITY)).toBe(1000)
+    expect(withJitter(ms, 0.2, () => Number.NEGATIVE_INFINITY)).toBe(1000)
+  })
+
   it('should round result to nearest integer', () => {
     // ms=10.5, ratio=0.2 -> range [8.4, 12.6]
     // random=0.1 -> 8.4 + 0.1 * (12.6 - 8.4) = 8.4 + 0.42 = 8.82 -> 9
