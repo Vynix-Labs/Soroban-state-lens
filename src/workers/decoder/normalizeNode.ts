@@ -120,6 +120,32 @@ function getScValValue(scVal: any): unknown {
   return scVal.value
 }
 
+/**
+ * Coerces an ScvString / ScvSymbol value to its string representation.
+ * Directly-constructed ScVal values expose the value as a `string`, but
+ * values decoded from XDR arrive as a `Buffer`/`Uint8Array`, so both shapes
+ * are supported here.
+ */
+function stringLikeToString(value: unknown): string {
+  if (typeof value === 'string') {
+    return value
+  }
+  if (value === null || value === undefined) {
+    return ''
+  }
+  if (typeof value === 'object' && typeof (value as any).toString === 'function') {
+    try {
+      const str = (value as any).toString()
+      if (typeof str === 'string') {
+        return str
+      }
+    } catch {
+      // fall through to empty string
+    }
+  }
+  return ''
+}
+
 function bigIntLikeToString(value: unknown): string | null {
   if (typeof value === 'bigint') {
     return value.toString()
@@ -502,7 +528,7 @@ export function normalizeNode(
         kind: 'primitive',
         path,
         scType: 'string',
-        value: typeof normalizedScVal.value === 'string' ? normalizedScVal.value : '',
+        value: stringLikeToString(normalizedScVal.value),
         raw: toRaw(scVal),
       } satisfies PrimitiveNode
     }
@@ -512,7 +538,7 @@ export function normalizeNode(
         kind: 'primitive',
         path,
         scType: 'symbol',
-        value: typeof normalizedScVal.value === 'string' ? normalizedScVal.value : '',
+        value: stringLikeToString(normalizedScVal.value),
         raw: toRaw(scVal),
       } satisfies PrimitiveNode
     }
@@ -600,8 +626,16 @@ export function normalizeNode(
       const entries: Array<{ key: Node; value: Node }> = []
       if (Array.isArray(normalizedScVal.value)) {
         for (const entry of normalizedScVal.value) {
+          // js-xdr exposes struct fields via accessor methods (e.g.
+          // `entry.key()`), while plain test fixtures use `entry.key`.
+          // Read both shapes so map decoding works for XDR-originated
+          // ScMapEntry instances as well as inline fixtures.
+          const entryKey =
+            entry && typeof entry.key === 'function' ? entry.key() : entry.key
+          const entryVal =
+            entry && typeof entry.val === 'function' ? entry.val() : entry.val
           const keyNode = normalizeNode(
-            entry.key,
+            entryKey,
             path,
             visited,
             options,
@@ -609,7 +643,7 @@ export function normalizeNode(
           )
           const keyPath = appendPath(path, { type: 'key', key: keyNode })
           const valueNode = normalizeNode(
-            entry.val,
+            entryVal,
             keyPath,
             visited,
             options,
