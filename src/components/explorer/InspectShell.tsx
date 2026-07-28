@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
 import { Link } from '@tanstack/react-router'
 import { useLensStore } from '../../store/lensStore'
@@ -23,6 +24,8 @@ export function InspectShell({
   keyPathError,
 }: InspectShellProps) {
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
+  const [copied, setCopied] = useState(false)
+  const copiedResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const metadata: KeyMetadata = {
     durability: 'Persistent',
@@ -30,15 +33,33 @@ export function InspectShell({
     expirationLedger: 1235000,
   }
 
+  useEffect(() => {
+    return () => {
+      if (copiedResetTimeout.current !== null) {
+        clearTimeout(copiedResetTimeout.current)
+      }
+    }
+  }, [])
+
   const handlePinKey = () => {
     if (keyPath) {
       addToWatchlist(contractId, keyPath)
     }
   }
 
-  const handleCopyXDR = () => {
+  const handleCopyXDR = async () => {
     const mockXDR = 'AAAAEgAAAAEAAAABAAAABQAAADEAA...'
-    navigator.clipboard.writeText(mockXDR)
+    await navigator.clipboard.writeText(mockXDR)
+    setCopied(true)
+
+    if (copiedResetTimeout.current !== null) {
+      clearTimeout(copiedResetTimeout.current)
+    }
+
+    copiedResetTimeout.current = setTimeout(() => {
+      setCopied(false)
+      copiedResetTimeout.current = null
+    }, 1500)
   }
 
   const breadcrumb = buildInspectBreadcrumb(contractId, keyPath)
@@ -161,7 +182,7 @@ export function InspectShell({
               Raw XDR
             </Heading>
             <Button variant="secondary" size="sm" onClick={handleCopyXDR}>
-              Copy
+              {copied ? 'Copied!' : 'Copy'}
             </Button>
           </div>
           <div className="bg-surface-dark rounded p-3 max-h-48 overflow-auto">

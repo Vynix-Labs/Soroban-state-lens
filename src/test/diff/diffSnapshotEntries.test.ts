@@ -112,4 +112,18 @@ describe('diffSnapshotEntries', () => {
 
     expect(diff.map((item) => item.key)).toEqual(['key-1', 'key-2'])
   })
+
+  it('uses deterministic code-unit ordering for mixed-case and punctuation keys', () => {
+    const diff = diffSnapshotEntries(
+      { 'a-key': 1, 'A-key': 1, 'a.key': 1 },
+      { 'a-key': 1, 'A-key': 2, 'a.key': 3 },
+    )
+
+    expect(diff.map((item) => item.key)).toEqual(['A-key', 'a-key', 'a.key'])
+    expect(diff.map((item) => item.status)).toEqual([
+      'modified',
+      'unchanged',
+      'modified',
+    ])
+  })
 })

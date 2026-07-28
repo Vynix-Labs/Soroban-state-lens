@@ -144,6 +144,31 @@ describe('resolveDiffStatus', () => {
     })
   })
 
+  describe('objects and arrays', () => {
+    it('returns "unchanged" when both arguments are the same object reference', () => {
+      const obj = { a: 1, b: 'hello' }
+      expect(resolveDiffStatus(obj, obj)).toBe('unchanged')
+    })
+
+    it('returns "changed" for two distinct objects with the same shape', () => {
+      expect(resolveDiffStatus({ a: 1, b: 'hello' }, { a: 1, b: 'hello' })).toBe('changed')
+    })
+
+    it('returns "unchanged" when both arguments are the same array reference', () => {
+      const arr = [1, 2, 3]
+      expect(resolveDiffStatus(arr, arr)).toBe('unchanged')
+    })
+
+    it('returns "changed" for two distinct arrays with the same elements', () => {
+      expect(resolveDiffStatus([1, 2, 3], [1, 2, 3])).toBe('changed')
+    })
+
+    it('returns "changed" for arrays of different lengths', () => {
+      expect(resolveDiffStatus([1, 2], [1, 2, 3])).toBe('changed')
+      expect(resolveDiffStatus([1, 2, 3], [1])).toBe('changed')
+    })
+  })
+
   describe('invalid input', () => {
     it('handles function values', () => {
       const fn1 = () => {}

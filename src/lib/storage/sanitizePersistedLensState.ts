@@ -28,9 +28,13 @@ export function sanitizePersistedLensState(input: unknown): {
   // Sanitize expandedNodes
   let expandedNodes: Array<string> = []
   if (Array.isArray(raw.expandedNodes)) {
-    expandedNodes = raw.expandedNodes.filter(
-      (nodeId): nodeId is string =>
-        typeof nodeId === 'string' && nodeId.trim().length > 0,
+    expandedNodes = Array.from(
+      new Set(
+        raw.expandedNodes.filter(
+          (nodeId): nodeId is string =>
+            typeof nodeId === 'string' && nodeId.trim().length > 0,
+        ),
+      ),
     )
   }
 
