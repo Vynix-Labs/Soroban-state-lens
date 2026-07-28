@@ -105,7 +105,7 @@ describe('callRpc', () => {
         new DOMException('The operation was aborted.', 'AbortError'),
       )
 
-      const result = await callRpc({ ...defaultConfig, timeout: input as number })
+      const result = await callRpc({ ...defaultConfig, timeout: input })
 
       expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), expected)
       expect(result).toMatchObject({
