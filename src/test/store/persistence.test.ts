@@ -5,6 +5,7 @@ import {
   clearPersistedNetworkConfig,
   isValidNetworkConfig,
   mergeNetworkConfig,
+  sanitizeWatchlist,
   serializeNetworkConfigForStorage,
 } from '../../store/persistence'
 import { DEFAULT_NETWORKS } from '../../store/types'
@@ -193,6 +194,90 @@ describe('persistence', () => {
       const persistedState = 'not an object'
       const result = mergeNetworkConfig(persistedState, currentState)
       expect(result.networkConfig).toEqual(DEFAULT_NETWORK_CONFIG)
+    })
+
+    it('hydrates a sanitized watchlist alongside a valid networkConfig', () => {
+      const watchlist = {
+        'C1': [
+          {
+            contractId: 'C1',
+            keyPath: 'counter',
+            timestamp: 1,
+          },
+        ],
+      }
+      const persistedState = {
+        networkConfig: {
+          kind: 'preset',
+          networkId: 'testnet',
+        },
+        watchlist,
+      }
+      const result = mergeNetworkConfig(persistedState, currentState)
+      expect(result.networkConfig).toEqual(DEFAULT_NETWORKS.testnet)
+      expect(result.watchlist).toEqual(watchlist)
+    })
+
+    it('drops invalid watchlist entries on hydration without crashing', () => {
+      const persistedState = {
+        networkConfig: {
+          kind: 'preset',
+          networkId: 'testnet',
+        },
+        watchlist: {
+          'C1': [
+            { contractId: 'C1', keyPath: 'ok', timestamp: 1 },
+            { contractId: 'C1', keyPath: 'bad' },
+            'not-an-item',
+            null,
+            { contractId: 2, keyPath: 'bad', timestamp: 1 },
+          ],
+          '': [{ contractId: 'C1', keyPath: 'x', timestamp: 1 }],
+          'C2': 'not-an-array',
+        },
+      }
+      const result = mergeNetworkConfig(persistedState, currentState)
+      expect(result.watchlist).toEqual({
+        C1: [{ contractId: 'C1', keyPath: 'ok', timestamp: 1 }],
+      })
+    })
+  })
+
+  describe('sanitizeWatchlist', () => {
+    it('returns an empty record for non-object input', () => {
+      expect(sanitizeWatchlist(null)).toEqual({})
+      expect(sanitizeWatchlist('x')).toEqual({})
+      expect(sanitizeWatchlist(undefined)).toEqual({})
+    })
+
+    it('drops contracts with empty keys or non-array items', () => {
+      const result = sanitizeWatchlist({
+        'C1': [{ contractId: 'C1', keyPath: 'k', timestamp: 1 }],
+        '': [{ contractId: 'C1', keyPath: 'k', timestamp: 1 }],
+        'C2': 'nope',
+      })
+      expect(result).toEqual({
+        C1: [{ contractId: 'C1', keyPath: 'k', timestamp: 1 }],
+      })
+    })
+
+    it('drops individual malformed items and keeps valid ones', () => {
+      const result = sanitizeWatchlist({
+        C1: [
+          { contractId: 'C1', keyPath: 'k', timestamp: 1 },
+          { contractId: 'C1', keyPath: 'k', timestamp: NaN },
+          { contractId: 'C1' },
+          { keyPath: 'k', timestamp: 1 },
+          { contractId: 'C1', keyPath: 1, timestamp: 1 },
+        ],
+      })
+      expect(result.C1).toHaveLength(1)
+      expect(result.C1[0].keyPath).toBe('k')
+    })
+
+    it('omits contracts whose items all failed validation', () => {
+      const result = sanitizeWatchlist({ C1: [{ bad: true }] })
+      expect(result).toEqual({})
     })
   })
 

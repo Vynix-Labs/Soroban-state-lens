@@ -39,6 +39,7 @@ export default function AppShell({ children }: AppShellProps) {
           open={desktopSidebarOpen}
           onClose={() => setDesktopSidebarOpen(false)}
           variant="pinned"
+          activeNavItem={activeNavItem}
         />
 
         {/* Mobile Sidebar - Tree Explorer (overlay) */}
@@ -46,6 +47,7 @@ export default function AppShell({ children }: AppShellProps) {
           open={mobileMenuOpen}
           onClose={() => setMobileMenuOpen(false)}
           variant="overlay"
+          activeNavItem={activeNavItem}
         />
 
         {/* Main Content - empty for now */}
