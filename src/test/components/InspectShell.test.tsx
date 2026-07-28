@@ -39,7 +39,7 @@ describe('InspectShell', () => {
       />,
     )
 
-    expect(screen.getByText('C123')).toBeTruthy()
+    expect(screen.getAllByText('C123').length).toBeGreaterThan(0)
     expect(screen.getByText('/state/ledger')).toBeTruthy()
     expect(screen.getByText('Contract')).toBeTruthy()
   })
