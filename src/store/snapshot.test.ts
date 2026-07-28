@@ -64,6 +64,26 @@ describe('Snapshot Slice', () => {
     })
   })
 
+  it('should clone cyclic snapshot values without overflowing', () => {
+    const { addSnapshot, getSnapshots } = useLensStore.getState()
+    const value: Record<string, unknown> = { label: 'cycle' }
+    value.self = value
+
+    addSnapshot('contract-1', {
+      'key-1': {
+        key: 'key-1',
+        contractId: 'contract-1',
+        type: 'ContractData',
+        value,
+        lastModifiedLedger: 100,
+      },
+    })
+
+    const snapshotValue = getSnapshots('contract-1')[0].ledgerData['key-1'].value as Record<string, unknown>
+    expect(snapshotValue).not.toBe(value)
+    expect(snapshotValue.self).toBe(snapshotValue)
+  })
+
   it('should preserve snapshots when live state changes', () => {
     const {
       addSnapshot,

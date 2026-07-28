@@ -9,6 +9,22 @@ import * as testConnection from '../../lib/network/testConnection'
 vi.mock('../../lib/network/validation')
 vi.mock('../../lib/network/testConnection')
 
+const getRpcInput = async () => {
+  const input = await screen.findByPlaceholderText(/rpc.example.com|rpc/i)
+  if (!(input instanceof HTMLInputElement)) {
+    throw new Error('Expected custom RPC input')
+  }
+  return input
+}
+
+const getApplyButton = () => {
+  const button = screen.getByRole('button', { name: /Apply/i })
+  if (!(button instanceof HTMLButtonElement)) {
+    throw new Error('Expected Apply button')
+  }
+  return button
+}
+
 describe('NetworkSelector', () => {
   beforeEach(() => {
     resetStore()
@@ -56,7 +72,7 @@ describe('NetworkSelector', () => {
     const customOption = screen.getByRole('option', { name: /Custom/i })
     fireEvent.click(customOption)
 
-    const urlInput = (await screen.findByPlaceholderText(/rpc.example.com|rpc/i)) as HTMLInputElement
+    const urlInput = await getRpcInput()
     fireEvent.change(urlInput, { target: { value: 'https://test1.com' } })
     expect(urlInput.value).toBe('https://test1.com')
 
@@ -74,11 +90,11 @@ describe('NetworkSelector', () => {
     const customOption = screen.getByRole('option', { name: /Custom/i })
     fireEvent.click(customOption)
 
-    const urlInput = (await screen.findByPlaceholderText(/rpc.example.com|rpc/i)) as HTMLInputElement
+    const urlInput = await getRpcInput()
     fireEvent.change(urlInput, { target: { value: 'invalid-url' } })
 
     await waitFor(() => {
-      const applyButton = screen.getByRole('button', { name: /Apply/i }) as HTMLButtonElement
+      const applyButton = getApplyButton()
       expect(applyButton.disabled).toBe(true)
     })
 
@@ -87,7 +103,7 @@ describe('NetworkSelector', () => {
     fireEvent.change(urlInput, { target: { value: 'https://valid.rpc' } })
 
     await waitFor(() => {
-      const applyButton = screen.getByRole('button', { name: /Apply/i }) as HTMLButtonElement
+      const applyButton = getApplyButton()
       expect(applyButton.disabled).toBe(false)
     })
   })
@@ -102,7 +118,7 @@ describe('NetworkSelector', () => {
     const customOption = screen.getByRole('option', { name: /Custom/i })
     fireEvent.click(customOption)
 
-    const urlInput = (await screen.findByPlaceholderText(/rpc.example.com|rpc/i)) as HTMLInputElement
+    const urlInput = await getRpcInput()
     fireEvent.change(urlInput, { target: { value: 'https://valid.rpc' } })
 
     const testButton = screen.getByRole('button', { name: /Test Connection/i })
@@ -128,10 +144,10 @@ describe('NetworkSelector', () => {
     fireEvent.click(button)
     fireEvent.click(screen.getByRole('option', { name: /Custom/i }))
 
-    const urlInput = (await screen.findByPlaceholderText(/rpc.example.com|rpc/i)) as HTMLInputElement
+    const urlInput = await getRpcInput()
     fireEvent.change(urlInput, { target: { value: 'https://persistent.rpc.url' } })
 
-    const applyButton = screen.getByRole('button', { name: /Apply/i })
+    const applyButton = getApplyButton()
     fireEvent.click(applyButton)
 
     // close custom panel
@@ -146,8 +162,8 @@ describe('NetworkSelector', () => {
     fireEvent.click(button)
     fireEvent.click(screen.getByText(/Custom/i))
 
-    await waitFor(() => {
-      const restoredInput = screen.getByPlaceholderText(/rpc.example.com|rpc/i) as HTMLInputElement
+    await waitFor(async () => {
+      const restoredInput = await getRpcInput()
       expect(restoredInput.value).toBe('https://persistent.rpc.url')
     })
   })

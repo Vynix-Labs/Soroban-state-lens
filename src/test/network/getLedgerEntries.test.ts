@@ -323,7 +323,11 @@ describe('getLedgerEntries', () => {
 
       // Verify the request only included deduplicated keys in order
       const callArgs = vi.mocked(fetch).mock.calls[0]
-      const requestBody = JSON.parse(callArgs[1].body as string)
+      const requestInit = callArgs[1]
+      if (!requestInit) {
+        throw new Error('Expected fetch request options')
+      }
+      const requestBody = JSON.parse(requestInit.body as string)
       expect(requestBody.params[0]).toEqual(['key1', 'key2', 'key3'])
 
       expect(result).toEqual({
@@ -353,7 +357,11 @@ describe('getLedgerEntries', () => {
       })
 
       const callArgs = vi.mocked(fetch).mock.calls[0]
-      const requestBody = JSON.parse(callArgs[1].body as string)
+      const requestInit = callArgs[1]
+      if (!requestInit) {
+        throw new Error('Expected fetch request options')
+      }
+      const requestBody = JSON.parse(requestInit.body as string)
       expect(requestBody.params[0]).toEqual(['key1'])
     })
 

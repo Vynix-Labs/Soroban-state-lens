@@ -8,6 +8,14 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
 }))
 
+const getInput = () => {
+  const input = screen.getByPlaceholderText(/search ledger keys/i)
+  if (!(input instanceof HTMLInputElement)) {
+    throw new Error('Expected contract lookup input')
+  }
+  return input
+}
+
 describe('ContractLookUpInput', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -30,7 +38,7 @@ describe('ContractLookUpInput', () => {
   it('updates input value when user types', () => {
     render(<ContractLookUpInput />)
 
-    const input = screen.getByPlaceholderText(/search ledger keys/i) as HTMLInputElement
+    const input = getInput()
 
     fireEvent.change(input, { target: { value: 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4' } })
 
@@ -40,7 +48,7 @@ describe('ContractLookUpInput', () => {
   it('maintains input as controlled component', () => {
     render(<ContractLookUpInput />)
 
-    const input = screen.getByPlaceholderText(/search ledger keys/i) as HTMLInputElement
+    const input = getInput()
 
     fireEvent.change(input, { target: { value: 'test' } })
     expect(input.value).toBe('test')
@@ -52,7 +60,7 @@ describe('ContractLookUpInput', () => {
   it('focuses input on Ctrl+K', () => {
     render(<ContractLookUpInput />)
 
-    const input = screen.getByPlaceholderText(/search ledger keys/i)
+    const input = getInput()
 
     fireEvent.keyDown(document, { key: 'k', ctrlKey: true })
 
@@ -62,7 +70,7 @@ describe('ContractLookUpInput', () => {
   it('focuses input on Meta+K', () => {
     render(<ContractLookUpInput />)
 
-    const input = screen.getByPlaceholderText(/search ledger keys/i)
+    const input = getInput()
 
     fireEvent.keyDown(document, { key: 'k', metaKey: true })
 
@@ -72,7 +80,7 @@ describe('ContractLookUpInput', () => {
   it('does not focus input on other key combinations', () => {
     render(<ContractLookUpInput />)
 
-    const input = screen.getByPlaceholderText(/search ledger keys/i)
+    const input = getInput()
 
     fireEvent.keyDown(document, { key: 'k' })
     expect(document.activeElement).not.toBe(input)
@@ -91,7 +99,7 @@ describe('ContractLookUpInput', () => {
   it('has input with proper attributes', () => {
     render(<ContractLookUpInput />)
 
-    const input = screen.getByPlaceholderText(/search ledger keys/i) as HTMLInputElement
+    const input = getInput()
     
     expect(input.type).toBe('text')
     expect(input.getAttribute('placeholder')).toMatch(/search ledger keys/i)
@@ -100,7 +108,7 @@ describe('ContractLookUpInput', () => {
   it('clears input value when user deletes text', () => {
     render(<ContractLookUpInput />)
 
-    const input = screen.getByPlaceholderText(/search ledger keys/i) as HTMLInputElement
+    const input = getInput()
 
     fireEvent.change(input, { target: { value: 'test' } })
     expect(input.value).toBe('test')
@@ -112,16 +120,16 @@ describe('ContractLookUpInput', () => {
   it('accepts keyboard focus', () => {
     render(<ContractLookUpInput />)
 
-    const input = screen.getByPlaceholderText(/search ledger keys/i) as HTMLInputElement
+    const input = getInput()
 
-    ;(input as HTMLElement).focus()
-    expect((input as HTMLInputElement).disabled).toBe(false)
+    input.focus()
+    expect(input.disabled).toBe(false)
   })
 
   it('handles multi-character input', () => {
     render(<ContractLookUpInput />)
 
-    const input = screen.getByPlaceholderText(/search ledger keys/i) as HTMLInputElement
+    const input = getInput()
 
     fireEvent.change(input, { target: { value: 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4' } })
 
