@@ -213,8 +213,6 @@ export default function NetworkSelector() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setIsOpen(false)
-    } else if (e.key === 'Enter' || e.key === ' ') {
-      setIsOpen(!isOpen)
     }
   }
 

@@ -76,4 +76,30 @@ describe('NetworkSelector Component', () => {
     const state = useLensStore.getState()
     expect(state.networkConfig.networkPassphrase).toBe('Custom Network')
   })
+
+  it('toggles the dropdown once for native Enter activation', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.keyDown(trigger, { key: 'Enter' })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.keyDown(trigger, { key: 'Enter' })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('toggles the dropdown once for native Space activation', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.keyDown(trigger, { key: ' ' })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.keyDown(trigger, { key: ' ' })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
 })

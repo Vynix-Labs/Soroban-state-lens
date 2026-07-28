@@ -102,4 +102,40 @@ describe('Watchlist Slice', () => {
     // Should still be only one item due to duplicate protection
     expect(watchlist).toHaveLength(1)
   })
+
+  it('should deduplicate hydrated watchlist buckets by key path', () => {
+    useLensStore.setState({
+      watchlist: {
+        'contract-1': [
+          {
+            contractId: 'contract-1',
+            keyPath: '/state/key1',
+            timestamp: 1,
+          },
+          {
+            contractId: 'contract-1',
+            keyPath: '/state/key1',
+            timestamp: 2,
+          },
+          {
+            contractId: 'contract-1',
+            keyPath: '/state/key2',
+            timestamp: 3,
+          },
+        ],
+      },
+    })
+
+    const watchlist = useLensStore.getState().getWatchlistForContract('contract-1')
+
+    expect(watchlist).toHaveLength(2)
+    expect(watchlist[0]).toMatchObject({
+      keyPath: '/state/key1',
+      timestamp: 1,
+    })
+    expect(watchlist[1]).toMatchObject({
+      keyPath: '/state/key2',
+      timestamp: 3,
+    })
+  })
 })
