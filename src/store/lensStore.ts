@@ -525,12 +525,7 @@ export const useContractLoadError = () =>
 export const useSnapshots = (contractId: string) =>
   useLensStore((state) => state.snapshots[contractId] ?? EMPTY_ARRAY)
 export const useWatchlist = (contractId: string) =>
-  useLensStore((state) => {
-    const items = state.watchlist[contractId] ?? EMPTY_ARRAY
-    return deduplicateWatchlistItems(items).filter(
-      (item) => item.contractId === contractId,
-    )
-  })
+  useLensStore((state) => state.getWatchlistForContract(contractId))
 
 /**
  * Get store state outside of React components (for testing)

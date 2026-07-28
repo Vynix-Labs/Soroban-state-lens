@@ -1,9 +1,6 @@
-import type { PersistStorage } from 'zustand/middleware'
 import { createJSONStorage } from 'zustand/middleware'
 import { parsePersistedNetworkConfig } from '../lib/storage/parsePersistedNetworkConfig'
-import type { PersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
 import { serializePersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
-import type { DisplayPreferences, NetworkConfig, WatchlistItem } from './types'
 import {
   BigIntDisplayMode,
   ByteDisplayMode,
@@ -11,6 +8,9 @@ import {
   DEFAULT_PREFERENCES,
 } from './types'
 import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
+import type { DisplayPreferences, NetworkConfig, WatchlistItem } from './types'
+import type { PersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
+import type { PersistStorage } from 'zustand/middleware'
 
 /**
  * Storage key for network config persistence
