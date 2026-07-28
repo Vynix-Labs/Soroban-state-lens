@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
+import { InspectShell } from '../../components/explorer/InspectShell'
+import { useLensStore } from '../../store/lensStore'
+
 vi.mock('@stellar/design-system', () => ({
   Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
     <button {...props}>{children}</button>
@@ -17,9 +20,6 @@ vi.mock('@stellar/design-system', () => ({
     <button aria-label={altText} onClick={onClick} {...props} />
   ),
 }))
-
-import { InspectShell } from '../../components/explorer/InspectShell'
-import { useLensStore } from '../../store/lensStore'
 
 describe('InspectShell', () => {
   it('renders contract and key path context', () => {
