@@ -155,6 +155,13 @@ export interface NormalizedAddress {
   value: string
 }
 
+// Cycle marker for detecting repeated object references
+export interface NormalizedCycle {
+  kind: 'cycle'
+  depth?: number
+}
+
+// Truncated marker for max-depth cutoff
 export interface NormalizedTruncated {
   kind: 'truncated'
   depth?: number
@@ -171,6 +178,7 @@ export type NormalizedValue =
   | NormalizedVec
   | NormalizedMap
   | NormalizedAddress
+  | NormalizedCycle
   | NormalizedTruncated
   | NormalizedError
   | NormalizedUnsupported

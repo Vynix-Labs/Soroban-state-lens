@@ -6,8 +6,8 @@ import {
 } from '../../lib/format/bytesToHex'
 import { VisitedTracker, createVisitedTracker } from './guards'
 import type {
-  CycleMarker,
   NormalizedAddress,
+  NormalizedCycle,
   NormalizedError,
   NormalizedMap,
   NormalizedMapEntry,
@@ -23,6 +23,7 @@ export { VisitedTracker, createVisitedTracker }
 
 // Re-export normalized types so consumers can import from a single location
 export type {
+  NormalizedCycle,
   NormalizedError,
   NormalizedMapEntry,
   NormalizedTruncated,
@@ -81,7 +82,7 @@ export type NormalizedValue =
   | number
   | string
   | null
-  | CycleMarker
+  | NormalizedCycle
   | NormalizedTruncated
   | NormalizedError
   | NormalizedUnsupported
@@ -265,7 +266,14 @@ function parts256ToString(value: unknown, signed: boolean): string | null {
     if (hiHi < minI64 || hiHi > maxI64) {
       return null
     }
-    if (hiLo < 0n || hiLo > maxU64 || loHi < 0n || loHi > maxU64 || loLo < 0n || loLo > maxU64) {
+    if (
+      hiLo < 0n ||
+      hiLo > maxU64 ||
+      loHi < 0n ||
+      loHi > maxU64 ||
+      loLo < 0n ||
+      loLo > maxU64
+    ) {
       return null
     }
 
