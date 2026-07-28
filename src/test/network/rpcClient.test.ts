@@ -239,4 +239,30 @@ describe('callRpc', () => {
       isTimeout: false,
     })
   })
+
+  it('should timeout while waiting for response.json()', async () => {
+    vi.useFakeTimers()
+    mockFetch.mockImplementationOnce((_url, init) =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new DOMException('The operation was aborted.', 'AbortError')),
+            )
+          }),
+      } as unknown as Response),
+    )
+
+    const promise = callRpc({ ...defaultConfig, timeout: 1000 })
+    await vi.runAllTimersAsync()
+
+    const result = await promise
+    expect(result).toMatchObject({
+      message: 'Request timeout',
+      code: 'TIMEOUT',
+      isTimeout: true,
+    })
+    vi.useRealTimers()
+  })
 })

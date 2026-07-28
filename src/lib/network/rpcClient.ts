@@ -52,8 +52,6 @@ export async function callRpc<T = unknown>(
       signal: controller.signal,
     })
 
-    clearTimeout(timeoutId)
-
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error')
       return {
@@ -67,8 +65,6 @@ export async function callRpc<T = unknown>(
     const data = await response.json()
     return data as T
   } catch (error) {
-    clearTimeout(timeoutId)
-
     if (isAbortError(error)) {
       if (callerAborted) {
         return {
@@ -102,6 +98,7 @@ export async function callRpc<T = unknown>(
       isTimeout: false,
     }
   } finally {
+    clearTimeout(timeoutId)
     if (callerSignal) {
       callerSignal.removeEventListener('abort', onCallerAbort)
     }

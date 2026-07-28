@@ -120,6 +120,15 @@ describe('extractFootprintKeys', () => {
     expect(result2.readOnly).toEqual([])
     expect(result2.readWrite).toEqual(['key1'])
   })
+
+  it('should trim whitespace, drop blanks, and deduplicate legacy keys', () => {
+    const result = extractFootprintKeys({
+      readOnly: [' key1 ', 'key1', '   '],
+      readWrite: [' key2', 'key2 ', '', 'key2'],
+    })
+    expect(result.readOnly).toEqual(['key1'])
+    expect(result.readWrite).toEqual(['key2'])
+  })
 })
 
 describe('simulateTransaction request helper', () => {

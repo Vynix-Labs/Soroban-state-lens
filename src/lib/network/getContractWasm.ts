@@ -7,6 +7,7 @@ import type { RpcError } from './types'
 export interface GetContractWasmParams {
   rpcUrl: string
   contractId: string
+  signal?: AbortSignal
 }
 
 export interface GetContractWasmSuccess {
@@ -70,6 +71,7 @@ export async function getContractWasm(
       {
         url: params.rpcUrl,
         timeout: 10000,
+        signal: params.signal,
       },
       buildJsonRpcRequest(
         'getContractCode',

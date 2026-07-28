@@ -56,4 +56,25 @@ describe('getContractWasm', () => {
       error: 'Network error',
     })
   })
+
+  it('returns a failure result when the caller signal aborts', async () => {
+    const controller = new AbortController()
+    vi.mocked(fetch).mockImplementationOnce(() =>
+      Promise.reject(
+        new DOMException('The operation was aborted.', 'AbortError'),
+      ),
+    )
+
+    controller.abort()
+    const result = await getContractWasm({
+      rpcUrl: mockRpcUrl,
+      contractId: mockContractId,
+      signal: controller.signal,
+    })
+
+    expect(result).toEqual({
+      success: false,
+      error: 'Request aborted',
+    })
+  })
 })
