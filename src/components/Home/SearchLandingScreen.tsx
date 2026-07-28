@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { validateContractRouteParam } from '../../routes/contracts/$contractId/-validateContractRouteParam'
-import WatermarkBg from './WatermarkBg'
 import { useLensStore } from '../../store/lensStore'
 import { ConnectionStatus } from '../../store/types'
+import WatermarkBg from './WatermarkBg'
 
 const SearchLandingScreen = () => {
   const navigate = useNavigate()
