@@ -41,7 +41,7 @@ describe('InspectShell', () => {
 
     expect(screen.getAllByText('C123').length).toBeGreaterThan(0)
     expect(screen.getByText('/state/ledger')).toBeTruthy()
-    expect(screen.getByText('Contract')).toBeTruthy()
+    expect(screen.getByText('Metadata')).toBeTruthy()
   })
 
   it('pins the current key path to the watchlist', () => {
