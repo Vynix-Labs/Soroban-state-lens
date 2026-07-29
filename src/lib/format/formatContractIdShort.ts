@@ -8,7 +8,12 @@
  * @returns Shortened string or "-" if invalid/blank
  */
 function normalizeLength(value: unknown, fallback: number): number {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+  if (
+    typeof value !== 'number' ||
+    !Number.isFinite(value) ||
+    !Number.isInteger(value) ||
+    value < 0
+  ) {
     return fallback
   }
 

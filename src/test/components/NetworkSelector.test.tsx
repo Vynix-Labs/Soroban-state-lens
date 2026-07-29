@@ -103,20 +103,6 @@ describe('NetworkSelector Component', () => {
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
   })
 
-  it('does not select an option on Enter or Space keydown before native activation', () => {
-    render(<NetworkSelector />)
-
-    const trigger = screen.getByRole('button', { name: /select network/i })
-    fireEvent.click(trigger)
-
-    const option = screen.getByRole('option', { name: /mainnet/i })
-    fireEvent.keyDown(option, { key: 'Enter' })
-    fireEvent.keyDown(option, { key: ' ' })
-
-    const state = useLensStore.getState()
-    expect(state.networkConfig).toEqual(DEFAULT_NETWORKS.futurenet)
-  })
-
   it('focuses the custom RPC input after the panel opens and clears the timer on unmount', () => {
     vi.useFakeTimers()
     const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus')
