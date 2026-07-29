@@ -320,13 +320,13 @@ describe('startLedgerHeadPoll', () => {
       const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
 
       // Hold the first response unresolved so the initial tick stays in flight.
-      let resolveFirst: (value: unknown) => void
+      let resolveFirst: (value: unknown) => void = () => {}
       const firstResponse = new Promise((resolve) => {
         resolveFirst = resolve
       })
 
       mockCallRpc
-        .mockReturnValueOnce(firstResponse as Promise<unknown>)
+        .mockReturnValueOnce(firstResponse)
         .mockResolvedValueOnce({ result: { sequence: 101 } })
 
       const stop = startLedgerHeadPoll({
@@ -345,7 +345,7 @@ describe('startLedgerHeadPoll', () => {
       expect(mockCallRpc).toHaveBeenCalledTimes(1)
 
       // Resolve the first request and flush microtasks.
-      resolveFirst!({ result: { sequence: 100 } })
+      resolveFirst({ result: { sequence: 100 } })
       await vi.advanceTimersByTimeAsync(0)
       expect(onLedgerChange).toHaveBeenCalledWith(100)
 
@@ -363,13 +363,13 @@ describe('startLedgerHeadPoll', () => {
       const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
 
       // Hold the first response unresolved so the initial tick stays in flight.
-      let resolveFirst: (value: unknown) => void
+      let resolveFirst: (value: unknown) => void = () => {}
       const firstResponse = new Promise((resolve) => {
         resolveFirst = resolve
       })
 
       mockCallRpc
-        .mockReturnValueOnce(firstResponse as Promise<unknown>)
+        .mockReturnValueOnce(firstResponse)
         .mockResolvedValue({ result: { sequence: 200 } })
 
       const stop = startLedgerHeadPoll({
@@ -389,7 +389,7 @@ describe('startLedgerHeadPoll', () => {
       stop()
 
       // Resolve the first request — its result should be discarded since stopped.
-      resolveFirst!({ result: { sequence: 100 } })
+      resolveFirst({ result: { sequence: 100 } })
       await vi.advanceTimersByTimeAsync(0)
       expect(onLedgerChange).not.toHaveBeenCalled()
 
