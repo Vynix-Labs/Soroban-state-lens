@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useShallow } from 'zustand/react/shallow'
 
 import { deepClone } from '../lib/deepClone'
 import { getLedgerEntries } from '../lib/network/getLedgerEntries'
@@ -526,16 +526,12 @@ export const useContractLoadError = () =>
 export const useSnapshots = (contractId: string) =>
   useLensStore((state) => state.snapshots[contractId] ?? EMPTY_ARRAY)
 export const useWatchlist = (contractId: string) => {
-  const items = useLensStore(
-    (state) => state.watchlist[contractId] ?? EMPTY_ARRAY,
-  )
-
-  return useMemo(
-    () =>
-      deduplicateWatchlistItems(items).filter(
+  return useLensStore(
+    useShallow((state) =>
+      deduplicateWatchlistItems(state.watchlist[contractId]).filter(
         (item) => item.contractId === contractId,
       ),
-    [contractId, items],
+    ),
   )
 }
 
