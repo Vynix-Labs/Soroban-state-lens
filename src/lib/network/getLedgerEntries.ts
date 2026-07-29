@@ -139,32 +139,35 @@ export async function getLedgerEntries(
       return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
     }
 
-    const opResult = data.result as {
-      entries?: Array<{
-        key?: unknown
-        xdr?: unknown
-        lastModifiedLedgerSeq?: number
-        liveUntilLedgerSeq?: number
-      }> | null
+    const rawResult = data.result
+    if (typeof rawResult !== 'object' || rawResult === null) {
+      return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
+    }
+
+    const opResult = rawResult as {
+      entries?: unknown
       latestLedger?: unknown
     }
 
     if (
-      !opResult ||
-      (opResult.entries !== null && !Array.isArray(opResult.entries)) ||
+      !('entries' in opResult) ||
+      !(opResult.entries === null || Array.isArray(opResult.entries)) ||
       typeof opResult.latestLedger !== 'number' ||
       !Number.isFinite(opResult.latestLedger)
     ) {
       return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
     }
 
-    if (opResult.entries !== null) {
-      const isValidEntries = opResult.entries.every((entry) => {
+    if (Array.isArray(opResult.entries)) {
+      const isValidEntries = opResult.entries.every((entry: unknown) => {
         if (!entry || typeof entry !== 'object') {
           return false
         }
 
-        return typeof (entry as { key?: unknown }).key === 'string' && typeof (entry as { xdr?: unknown }).xdr === 'string'
+        return (
+          typeof (entry as { key?: unknown }).key === 'string' &&
+          typeof (entry as { xdr?: unknown }).xdr === 'string'
+        )
       })
 
       if (!isValidEntries) {
