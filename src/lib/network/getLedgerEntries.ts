@@ -3,6 +3,7 @@ import { isJsonRpcErrorResponse } from '../rpc/isJsonRpcErrorResponse'
 import { isJsonRpcSuccessResponse } from '../rpc/isJsonRpcSuccessResponse'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
 import { withRpcRetries } from '../rpc/withRpcRetries'
+import { deduplicateKeys } from './deduplicateKeys'
 
 export interface GetLedgerEntriesParams {
   rpcUrl: string
@@ -65,7 +66,10 @@ function isRpcError(
 export async function getLedgerEntries(
   params: GetLedgerEntriesParams,
 ): Promise<GetLedgerEntriesResult> {
-  const { rpcUrl, keys, signal } = params
+  const { rpcUrl, keys: inputKeys, signal } = params
+
+  // Deduplicate keys while preserving first-seen order
+  const keys = deduplicateKeys(inputKeys)
 
   // Stable guard: an empty keys array never reaches the RPC endpoint and
   // resolves to a handled empty result instead of an untyped request error.

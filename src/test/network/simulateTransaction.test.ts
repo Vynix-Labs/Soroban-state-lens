@@ -53,6 +53,20 @@ describe('simulateTransactionAdapter', () => {
     expect(result.success).toBe(true)
     expect(result.results).toEqual([])
   })
+
+  it('should sanitize malformed footprint sections to empty arrays', () => {
+    const result = simulateTransactionAdapter({
+      latestLedger: 50,
+      footprint: {
+        readOnly: 'not-an-array' as unknown as Array<string>,
+        readWrite: ['key1', 2, 'key2'] as unknown as Array<string>,
+      },
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.footprint?.readOnly).toEqual([])
+    expect(result.footprint?.readWrite).toEqual([])
+  })
 })
 
 describe('extractFootprintKeys', () => {

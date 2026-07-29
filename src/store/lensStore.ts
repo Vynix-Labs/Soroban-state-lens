@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+import { deepClone } from '../lib/deepClone'
 import { getLedgerEntries } from '../lib/network/getLedgerEntries'
 import { mapLedgerEntriesToStoreEntries } from '../lib/network/mapLedgerEntriesToStoreEntries'
 import { isDecoderWorkerError } from '../types/decoder-worker'
@@ -34,6 +35,7 @@ import type {
   NetworkConfig,
   NetworkConfigSlice,
   SnapshotSlice,
+  WatchlistItem,
   WatchlistSlice,
 } from './types'
 
@@ -141,31 +143,45 @@ const createExpandedNodesSlice = (
 
   setExpanded: (nodeId: string, expanded: boolean) =>
     set((state) => {
+      const normalizedNodeId = nodeId.trim()
+      if (!normalizedNodeId) {
+        return state
+      }
+
       if (expanded) {
-        if (state.expandedNodes.includes(nodeId)) {
+        if (state.expandedNodes.includes(normalizedNodeId)) {
           return state
         }
-        return { expandedNodes: [...state.expandedNodes, nodeId] }
+        return { expandedNodes: [...state.expandedNodes, normalizedNodeId] }
       } else {
         return {
-          expandedNodes: state.expandedNodes.filter((id) => id !== nodeId),
+          expandedNodes: state.expandedNodes.filter((id) => id !== normalizedNodeId),
         }
       }
     }),
 
   toggleExpanded: (nodeId: string) =>
     set((state) => {
-      if (state.expandedNodes.includes(nodeId)) {
+      const normalizedNodeId = nodeId.trim()
+      if (!normalizedNodeId) {
+        return state
+      }
+
+      if (state.expandedNodes.includes(normalizedNodeId)) {
         return {
-          expandedNodes: state.expandedNodes.filter((id) => id !== nodeId),
+          expandedNodes: state.expandedNodes.filter((id) => id !== normalizedNodeId),
         }
       }
-      return { expandedNodes: [...state.expandedNodes, nodeId] }
+      return { expandedNodes: [...state.expandedNodes, normalizedNodeId] }
     }),
 
   expandAll: (nodeIds: Array<string>) =>
     set((state) => {
-      const newExpanded = new Set([...state.expandedNodes, ...nodeIds])
+      const normalizedNodeIds = nodeIds
+        .map((nodeId) => nodeId.trim())
+        .filter((nodeId) => nodeId.length > 0)
+
+      const newExpanded = new Set([...state.expandedNodes, ...normalizedNodeIds])
       return { expandedNodes: Array.from(newExpanded) }
     }),
 
@@ -195,7 +211,7 @@ const createSnapshotSlice = (
       for (const [key, entry] of Object.entries(entries)) {
         clonedEntries[key] = {
           ...entry,
-          value: JSON.parse(JSON.stringify(entry.value)),
+          value: deepClone(entry.value),
         }
       }
 
@@ -275,6 +291,7 @@ const createContractLoadSlice = (
       const controller = new AbortController()
       activeController = controller
       const { signal } = controller
+      const isRequestStale = () => currentRequestId !== requestId || signal.aborted
 
       set((state) => ({
         activeContractId: contractId,
@@ -291,7 +308,7 @@ const createContractLoadSlice = (
           signal,
         })
 
-        if (currentRequestId !== requestId || signal.aborted) {
+        if (isRequestStale()) {
           return
         }
 
@@ -303,6 +320,10 @@ const createContractLoadSlice = (
           decodedValuesByKey[entry.key] = isDecoderWorkerError(result)
             ? entry.xdr
             : result
+        }
+
+        if (isRequestStale()) {
+          return
         }
 
         const mappedEntries = mapLedgerEntriesToStoreEntries({
@@ -322,7 +343,7 @@ const createContractLoadSlice = (
           contractLoadError: null,
         }))
       } catch (error) {
-        if (currentRequestId !== requestId || signal.aborted) {
+        if (isRequestStale()) {
           return
         }
 
@@ -344,6 +365,22 @@ const createContractLoadSlice = (
  * Watchlist slice creator
  * Manages pinned keys for quick access across routes
  */
+const deduplicateWatchlistItems = (
+  items: Array<WatchlistItem> | undefined,
+): Array<WatchlistItem> => {
+  const seen = new Set<string>()
+  return (items ?? []).filter((item) => {
+    if (typeof item.keyPath !== 'string' || item.keyPath.length === 0) {
+      return false
+    }
+    if (seen.has(item.keyPath)) {
+      return false
+    }
+    seen.add(item.keyPath)
+    return true
+  })
+}
+
 const createWatchlistSlice = (
   set: (fn: (state: LensStore) => Partial<LensStore>) => void,
   get: () => LensStore,
@@ -352,10 +389,21 @@ const createWatchlistSlice = (
 
   addToWatchlist: (contractId: string, keyPath: string) =>
     set((state) => {
-      const currentItems = state.watchlist[contractId] ?? []
-      
+      const normalizedContractId = contractId.trim()
+      const normalizedKeyPath = keyPath.trim()
+
+      if (!normalizedContractId || !normalizedKeyPath) {
+        return state
+      }
+
+      const currentItems = deduplicateWatchlistItems(
+        state.watchlist[normalizedContractId],
+      )
+
       // Check if item already exists (duplicate protection)
-      const isDuplicate = currentItems.some((item) => item.keyPath === keyPath)
+      const isDuplicate = currentItems.some(
+        (item) => item.keyPath === normalizedKeyPath,
+      )
       if (isDuplicate) {
         return state
       }
@@ -363,11 +411,11 @@ const createWatchlistSlice = (
       return {
         watchlist: {
           ...state.watchlist,
-          [contractId]: [
+          [normalizedContractId]: [
             ...currentItems,
             {
-              contractId,
-              keyPath,
+              contractId: normalizedContractId,
+              keyPath: normalizedKeyPath,
               timestamp: Date.now(),
             },
           ],
@@ -379,14 +427,16 @@ const createWatchlistSlice = (
     set((state) => ({
       watchlist: {
         ...state.watchlist,
-        [contractId]: (state.watchlist[contractId] ?? []).filter(
-          (item) => item.keyPath !== keyPath,
+        [contractId]: deduplicateWatchlistItems(
+          (state.watchlist[contractId] ?? []).filter(
+            (item) => item.keyPath !== keyPath,
+          ),
         ),
       },
     })),
 
   getWatchlistForContract: (contractId: string) => {
-    return get().watchlist[contractId] ?? []
+    return deduplicateWatchlistItems(get().watchlist[contractId])
   },
 
   clearWatchlist: (contractId: string) =>
@@ -426,9 +476,10 @@ export const useLensStore = create<LensStore>()(
       storage: createSafeStorage<PersistedState>(),
       // Persist networkConfig, preferences, and the watchlist
       partialize: (state): PersistedState => ({
-        networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
-        preferences: state.preferences,
-      }),
+          networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
+          preferences: state.preferences,
+          watchlist: state.watchlist,
+        }),
       // Validate and merge persisted data safely
       merge: (persistedState, currentState) => {
         const mergedNetwork = mergeNetworkConfig(persistedState, currentState)

@@ -6,8 +6,8 @@ import {
 } from '../../lib/format/bytesToHex'
 import { VisitedTracker, createVisitedTracker } from './guards'
 import type {
-  CycleMarker,
   NormalizedAddress,
+  NormalizedCycle,
   NormalizedError,
   NormalizedMap,
   NormalizedMapEntry,
@@ -23,6 +23,7 @@ export { VisitedTracker, createVisitedTracker }
 
 // Re-export normalized types so consumers can import from a single location
 export type {
+  NormalizedCycle,
   NormalizedError,
   NormalizedMapEntry,
   NormalizedTruncated,
@@ -81,7 +82,7 @@ export type NormalizedValue =
   | number
   | string
   | null
-  | CycleMarker
+  | NormalizedCycle
   | NormalizedTruncated
   | NormalizedError
   | NormalizedUnsupported
@@ -157,6 +158,22 @@ function parts128ToString(value: unknown, signed: boolean): string | null {
 
   const hi = BigInt(hiStr)
   const lo = BigInt(loStr)
+  const minSigned64 = -(1n << 63n)
+  const maxSigned64 = (1n << 63n) - 1n
+  const minUnsigned64 = 0n
+  const maxUnsigned64 = (1n << 64n) - 1n
+
+  if (signed) {
+    if (hi < minSigned64 || hi > maxSigned64) {
+      return null
+    }
+  } else if (hi < minUnsigned64 || hi > maxUnsigned64) {
+    return null
+  }
+
+  if (lo < minUnsigned64 || lo > maxUnsigned64) {
+    return null
+  }
 
   // lo is always treated as unsigned 64-bit
   const uLo = lo < 0n ? lo + (1n << 64n) : lo
@@ -214,37 +231,82 @@ function parts256ToString(value: unknown, signed: boolean): string | null {
     return null
   }
 
+  const maxU64 = (1n << 64n) - 1n
+  const minI64 = -(1n << 63n)
+  const maxI64 = (1n << 63n) - 1n
+
   const hiHi = BigInt(hiHiStr)
   const hiLo = BigInt(hiLoStr)
   const loHi = BigInt(loHiStr)
   const loLo = BigInt(loLoStr)
-
-  // loLo, loHi, hiLo are always treated as unsigned 64-bit
-  const uLoLo = loLo < 0n ? loLo + (1n << 64n) : loLo
-  const uLoHi = loHi < 0n ? loHi + (1n << 64n) : loHi
-  const uHiLo = hiLo < 0n ? hiLo + (1n << 64n) : hiLo
+  const minSigned64 = -(1n << 63n)
+  const maxSigned64 = (1n << 63n) - 1n
+  const minUnsigned64 = 0n
+  const maxUnsigned64 = (1n << 64n) - 1n
 
   if (signed) {
-    // hiHi is signed 64-bit
+    if (hiHi < minSigned64 || hiHi > maxSigned64) {
+      return null
+    }
+  } else if (hiHi < minUnsigned64 || hiHi > maxUnsigned64) {
+    return null
+  }
+
+  if (hiLo < minUnsigned64 || hiLo > maxUnsigned64) {
+    return null
+  }
+  if (loHi < minUnsigned64 || loHi > maxUnsigned64) {
+    return null
+  }
+  if (loLo < minUnsigned64 || loLo > maxUnsigned64) {
+    return null
+  }
+
+  if (signed) {
+    if (hiHi < minI64 || hiHi > maxI64) {
+      return null
+    }
+    if (
+      hiLo < 0n ||
+      hiLo > maxU64 ||
+      loHi < 0n ||
+      loHi > maxU64 ||
+      loLo < 0n ||
+      loLo > maxU64
+    ) {
+      return null
+    }
+
     const combined =
-      hiHi * (1n << 192n) + uHiLo * (1n << 128n) + uLoHi * (1n << 64n) + uLoLo
+      hiHi * (1n << 192n) + hiLo * (1n << 128n) + loHi * (1n << 64n) + loLo
     const min = -(1n << 255n)
     const max = (1n << 255n) - 1n
     if (combined < min || combined > max) {
       return null
     }
     return combined.toString()
-  } else {
-    // All parts treated as unsigned
-    const uHiHi = hiHi < 0n ? hiHi + (1n << 64n) : hiHi
-    const combined =
-      uHiHi * (1n << 192n) + uHiLo * (1n << 128n) + uLoHi * (1n << 64n) + uLoLo
-    const max = (1n << 256n) - 1n
-    if (combined < 0n || combined > max) {
-      return null
-    }
-    return combined.toString()
   }
+
+  if (
+    hiHi < 0n ||
+    hiHi > maxU64 ||
+    hiLo < 0n ||
+    hiLo > maxU64 ||
+    loHi < 0n ||
+    loHi > maxU64 ||
+    loLo < 0n ||
+    loLo > maxU64
+  ) {
+    return null
+  }
+
+  const combined =
+    hiHi * (1n << 192n) + hiLo * (1n << 128n) + loHi * (1n << 64n) + loLo
+  const max = (1n << 256n) - 1n
+  if (combined < 0n || combined > max) {
+    return null
+  }
+  return combined.toString()
 }
 
 /**
@@ -549,16 +611,30 @@ export type { NormalizedAddress } from '../../types/normalized'
 export function normalizeScAddress(
   scVal: any | null | undefined,
 ): NormalizedAddress | null {
-  if (!scVal) {
+  if (!scVal || typeof scVal.switch !== 'function') {
     return null
   }
 
-  if (scVal.switch().value !== xdr.ScValType.scvAddress().value) {
+  let switchValue: { value?: number } | null = null
+  try {
+    switchValue = scVal.switch()
+  } catch {
     return null
   }
 
-  const address = Address.fromScVal(scVal)
-  const value = address.toString()
+  if (switchValue?.value !== xdr.ScValType.scvAddress().value) {
+    return null
+  }
+
+  let address: Address
+  let value: string
+
+  try {
+    address = Address.fromScVal(scVal)
+    value = address.toString()
+  } catch {
+    return null
+  }
 
   let addressType: any
   const prefix = value[0]

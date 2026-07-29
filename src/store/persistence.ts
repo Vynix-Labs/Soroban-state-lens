@@ -219,6 +219,7 @@ export function sanitizeWatchlist(
     return {}
   }
 
+  const hydrationTime = Date.now()
   const source = value as Record<string, unknown>
   const sanitized: Record<string, Array<WatchlistItem>> = {}
 
@@ -226,22 +227,26 @@ export function sanitizeWatchlist(
     if (typeof contractId !== 'string' || contractId.length === 0) {
       continue
     }
+
     if (!Array.isArray(items)) {
       continue
     }
 
     const validItems: Array<WatchlistItem> = []
+
     for (const item of items) {
+      if (typeof item !== 'object' || item === null) {
+        continue
+      }
+
+      const candidate = item as Record<string, unknown>
+
       if (
-        typeof item === 'object' &&
-        item !== null &&
-        'contractId' in item &&
-        'keyPath' in item &&
-        'timestamp' in item &&
-        typeof (item as Record<string, unknown>).contractId === 'string' &&
-        typeof (item as Record<string, unknown>).keyPath === 'string' &&
-        typeof (item as Record<string, unknown>).timestamp === 'number' &&
-        Number.isFinite((item as Record<string, unknown>).timestamp as number)
+        typeof candidate.contractId === 'string' &&
+        typeof candidate.keyPath === 'string' &&
+        typeof candidate.timestamp === 'number' &&
+        Number.isFinite(candidate.timestamp) &&
+        candidate.timestamp <= hydrationTime
       ) {
         validItems.push(item as unknown as WatchlistItem)
       }

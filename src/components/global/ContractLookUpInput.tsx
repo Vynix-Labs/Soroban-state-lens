@@ -81,6 +81,10 @@ function ContractLookUpInput() {
           }`}
           placeholder="Search ledger keys / contract IDs..."
           type="text"
+          aria-invalid={validationError !== null}
+          aria-describedby={
+            validationError ? 'contract-lookup-error' : undefined
+          }
           onBlur={async () => {
             const value = inputValue.trim()
             if (!value) return
@@ -111,7 +115,12 @@ function ContractLookUpInput() {
         </div>
       </div>
       {validationError && (
-        <p className="mt-2 text-sm text-red-500">{validationError}</p>
+        <p
+          id="contract-lookup-error"
+          className="mt-2 text-sm text-red-500"
+        >
+          {validationError}
+        </p>
       )}
     </form>
   )

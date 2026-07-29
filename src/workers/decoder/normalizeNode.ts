@@ -233,34 +233,53 @@ function parts256ToString(value: unknown, signed: boolean): string | null {
     return null
   }
 
+  const maxU64 = (1n << 64n) - 1n
+  const minI64 = -(1n << 63n)
+  const maxI64 = (1n << 63n) - 1n
+
   const hiHi = BigInt(hiHiStr)
   const hiLo = BigInt(hiLoStr)
   const loHi = BigInt(loHiStr)
   const loLo = BigInt(loLoStr)
 
-  const uLoLo = loLo < 0n ? loLo + (1n << 64n) : loLo
-  const uLoHi = loHi < 0n ? loHi + (1n << 64n) : loHi
-  const uHiLo = hiLo < 0n ? hiLo + (1n << 64n) : hiLo
-
   if (signed) {
+    if (hiHi < minI64 || hiHi > maxI64) {
+      return null
+    }
+    if (hiLo < 0n || hiLo > maxU64 || loHi < 0n || loHi > maxU64 || loLo < 0n || loLo > maxU64) {
+      return null
+    }
+
     const combined =
-      hiHi * (1n << 192n) + uHiLo * (1n << 128n) + uLoHi * (1n << 64n) + uLoLo
+      hiHi * (1n << 192n) + hiLo * (1n << 128n) + loHi * (1n << 64n) + loLo
     const min = -(1n << 255n)
     const max = (1n << 255n) - 1n
     if (combined < min || combined > max) {
       return null
     }
     return combined.toString()
-  } else {
-    const uHiHi = hiHi < 0n ? hiHi + (1n << 64n) : hiHi
-    const combined =
-      uHiHi * (1n << 192n) + uHiLo * (1n << 128n) + uLoHi * (1n << 64n) + uLoLo
-    const max = (1n << 256n) - 1n
-    if (combined < 0n || combined > max) {
-      return null
-    }
-    return combined.toString()
   }
+
+  if (
+    hiHi < 0n ||
+    hiHi > maxU64 ||
+    hiLo < 0n ||
+    hiLo > maxU64 ||
+    loHi < 0n ||
+    loHi > maxU64 ||
+    loLo < 0n ||
+    loLo > maxU64
+  ) {
+    return null
+  }
+
+  const combined =
+    hiHi * (1n << 192n) + hiLo * (1n << 128n) + loHi * (1n << 64n) + loLo
+  const max = (1n << 256n) - 1n
+  if (combined < 0n || combined > max) {
+    return null
+  }
+  return combined.toString()
 }
 
 function createCycleNode(path: Path, depth: number): CycleNode {

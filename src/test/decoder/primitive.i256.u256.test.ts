@@ -72,6 +72,21 @@ describe('normalizeScVal - i256 / u256', () => {
       expect(result.value).toBe('18446744073709551616')
     })
 
+    it('should reject u256 limbs outside the unsigned 64-bit range', () => {
+      const scVal: ScVal = {
+        switch: ScValType.SCV_U256,
+        value: {
+          hiHi: BigInt('-1'),
+          hiLo: BigInt('0'),
+          loHi: BigInt('0'),
+          loLo: BigInt('0'),
+        },
+      }
+      const result = normalizeScVal(scVal)
+      expect(result.kind).toBe('unsupported')
+      expect(result.variant).toBe(ScValType.SCV_U256)
+    })
+
     it('should return fallback for invalid u256 values', () => {
       const invalidCases = [
         null,
@@ -197,6 +212,21 @@ describe('normalizeScVal - i256 / u256', () => {
       const result = normalizeScVal(scVal)
       expect(result).toHaveProperty('kind', 'primitive')
       expect(result.value).toBe('-1')
+    })
+
+    it('should reject i256 limbs outside the signed/unsigned 64-bit range', () => {
+      const scVal: ScVal = {
+        switch: ScValType.SCV_I256,
+        value: {
+          hiHi: BigInt('0'),
+          hiLo: BigInt('0'),
+          loHi: BigInt('0'),
+          loLo: BigInt('-1'),
+        },
+      }
+      const result = normalizeScVal(scVal)
+      expect(result.kind).toBe('unsupported')
+      expect(result.variant).toBe(ScValType.SCV_I256)
     })
 
     it('should return fallback for invalid i256 values', () => {
