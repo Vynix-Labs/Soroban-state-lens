@@ -130,7 +130,9 @@ describe('NetworkSelector Component', () => {
     fireEvent.click(customOption)
 
     vi.advanceTimersByTime(50)
-    expect(screen.getByLabelText('Custom RPC URL input')).toHaveFocus()
+    expect(document.activeElement).toBe(
+      screen.getByLabelText('Custom RPC URL input'),
+    )
 
     unmount()
     vi.advanceTimersByTime(100)

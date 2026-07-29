@@ -70,9 +70,7 @@ export default function NetworkSelector() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      if (showCustomInput) {
-        inputRef.current?.focus()
-      }
+      inputRef.current?.focus()
     }, 50)
 
     return () => window.clearTimeout(timeoutId)

@@ -130,7 +130,7 @@ describe('VirtualizedTreeList', () => {
       <VirtualizedTreeList rows={rows(100)} height={120} rowHeight={30} overscan={1} />,
     )
 
-    const viewport = screen.getByTestId('virtualized-tree-list') as HTMLDivElement
+    const viewport = screen.getByTestId('virtualized-tree-list')
     viewport.scrollTop = 2880
     fireEvent.scroll(viewport)
 
