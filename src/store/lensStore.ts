@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
@@ -524,8 +525,19 @@ export const useContractLoadError = () =>
   useLensStore((state) => state.contractLoadError)
 export const useSnapshots = (contractId: string) =>
   useLensStore((state) => state.snapshots[contractId] ?? EMPTY_ARRAY)
-export const useWatchlist = (contractId: string) =>
-  useLensStore((state) => state.getWatchlistForContract(contractId))
+export const useWatchlist = (contractId: string) => {
+  const items = useLensStore(
+    (state) => state.watchlist[contractId] ?? EMPTY_ARRAY,
+  )
+
+  return useMemo(
+    () =>
+      deduplicateWatchlistItems(items).filter(
+        (item) => item.contractId === contractId,
+      ),
+    [contractId, items],
+  )
+}
 
 /**
  * Get store state outside of React components (for testing)
