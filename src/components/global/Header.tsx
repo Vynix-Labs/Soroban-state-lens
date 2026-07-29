@@ -21,6 +21,11 @@ export default function Header({ handleToggle }: HeaderProp) {
               view_in_ar
             </span>
           </button>
+          {/* Compact logo: visible below xl */}
+          <h1 className="font-mono font-bold text-white tracking-tight flex xl:hidden">
+            SSL
+          </h1>
+          {/* Full title: visible on xl and above */}
           <h1 className="font-mono font-bold text-white hidden xl:text-lg tracking-tight xl:flex">
             SOROBAN STATE LENS
           </h1>

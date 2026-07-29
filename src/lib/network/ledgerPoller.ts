@@ -35,7 +35,6 @@ export function startLedgerHeadPoll(
   const inFlightRef = { current: false }
 
   const tick = async (): Promise<void> => {
-    // Skip when already stopped, hidden, or a request is already in flight.
     if (stoppedRef.current) return
     if (inFlightRef.current) return
     // Skip RPC call while the tab is hidden; lastSequence is preserved so the
@@ -45,10 +44,16 @@ export function startLedgerHeadPoll(
     inFlightRef.current = true
     try {
       const body = buildJsonRpcRequest('getLatestLedger', {}, toRpcRequestId())
-      const response = await callRpc<{ result?: LatestLedgerResult }>(
-        rpcConfig,
-        body,
-      )
+      let response: { result?: LatestLedgerResult } | RpcError
+      try {
+        response = await callRpc<{ result?: LatestLedgerResult }>(
+          rpcConfig,
+          body,
+        )
+      } catch {
+        // A transient RPC failure must not terminate the polling loop.
+        return
+      }
 
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- stop() can run during await
       if (stoppedRef.current) return
