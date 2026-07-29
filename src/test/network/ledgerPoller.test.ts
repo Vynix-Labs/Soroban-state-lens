@@ -160,6 +160,30 @@ describe('startLedgerHeadPoll', () => {
       stop()
       randomSpy.mockRestore()
     })
+
+    it('continues polling after an RPC request rejects', async () => {
+      const onLedgerChange = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+      mockCallRpc
+        .mockRejectedValueOnce(new Error('RPC unavailable'))
+        .mockResolvedValueOnce({ result: { sequence: 100 } })
+
+      const stop = startLedgerHeadPoll({
+        rpcConfig: defaultRpcConfig,
+        intervalMs: 1000,
+        onLedgerChange,
+      })
+
+      await vi.advanceTimersByTimeAsync(0)
+      expect(onLedgerChange).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(onLedgerChange).toHaveBeenCalledTimes(1)
+      expect(onLedgerChange).toHaveBeenCalledWith(100)
+
+      stop()
+      randomSpy.mockRestore()
+    })
   })
 
   describe('stop function', () => {
