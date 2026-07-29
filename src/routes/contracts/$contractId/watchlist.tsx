@@ -23,9 +23,7 @@ function WatchlistRoute() {
   const { normalizedContractId } = Route.useRouteContext()
   const navigate = Route.useNavigate()
   const watchlistItems = useWatchlist(contractId)
-  const { removeFromWatchlist } = useLensStore((state) => ({
-    removeFromWatchlist: state.removeFromWatchlist,
-  }))
+  const removeFromWatchlist = useLensStore((state) => state.removeFromWatchlist)
 
   const handleInspect = (keyPath: string) => {
     void navigate({
