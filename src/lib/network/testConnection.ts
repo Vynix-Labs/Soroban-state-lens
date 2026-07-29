@@ -1,7 +1,5 @@
-import {
-  getLatestLedgerConnectionCheck,
-  type LatestLedgerConnectionCheckOptions,
-} from './getLatestLedger'
+import { getLatestLedgerConnectionCheck } from './getLatestLedger'
+import type { LatestLedgerConnectionCheckOptions } from './getLatestLedger'
 
 export interface TestConnectionResult {
   success: boolean
