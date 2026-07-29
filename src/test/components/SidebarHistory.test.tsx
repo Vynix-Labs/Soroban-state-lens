@@ -2,8 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Sidebar from '../../components/global/Sidebar'
 import { resetStore, useLensStore } from '../../store/lensStore'
-import type { LedgerEntry } from '../../store/types'
 import { formatContractIdShort } from '../../lib/format/formatContractIdShort'
+import type { LedgerEntry } from '../../store/types'
 
 const makeEntry = (key: string, contractId: string, value: unknown = 'value'): LedgerEntry => ({
   key,
