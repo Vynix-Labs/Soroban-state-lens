@@ -578,19 +578,27 @@ export function normalizeScVal(
       if (Array.isArray(scVal.value)) {
         return {
           kind: 'map',
-          entries: scVal.value.map((entry: { key: ScVal; val: ScVal }) => {
-            try {
-              return {
-                key: normalizeScVal(entry.key, visited, options, depth + 1),
-                value: normalizeScVal(entry.val, visited, options, depth + 1),
-              } satisfies NormalizedMapEntry
-            } catch {
-              return {
-                key: createUnsupportedFallback('MapEntryKeyError', entry.key),
-                value: createUnsupportedFallback('MapEntryValueError', entry.val),
-              } satisfies NormalizedMapEntry
-            }
-          }),
+          entries: scVal.value.map(
+            (entry: { key: ScVal; val: ScVal } | null | undefined) => {
+              const rawKey = entry?.key
+              const rawValue = entry?.val
+
+              try {
+                return {
+                  key: normalizeScVal(rawKey, visited, options, depth + 1),
+                  value: normalizeScVal(rawValue, visited, options, depth + 1),
+                } satisfies NormalizedMapEntry
+              } catch {
+                return {
+                  key: createUnsupportedFallback('MapEntryKeyError', rawKey),
+                  value: createUnsupportedFallback(
+                    'MapEntryValueError',
+                    rawValue,
+                  ),
+                } satisfies NormalizedMapEntry
+              }
+            },
+          ),
         }
       }
       // null/undefined value means an empty map

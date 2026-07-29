@@ -73,6 +73,30 @@ describe('normalizeScVal - Map Handling', () => {
         value: 'also-good',
       })
     })
+
+    it('normalizes null map entries without dropping sibling entries', () => {
+      const result = normalizeScVal({
+        switch: ScValType.SCV_MAP,
+        value: [
+          null,
+          entry(
+            { switch: ScValType.SCV_STRING, value: 'good' },
+            { switch: ScValType.SCV_U32, value: 1 },
+          ),
+        ],
+      }) as NormalizedMap
+
+      expect(result.entries).toHaveLength(2)
+      expect(result.entries[0].key).toMatchObject({
+        kind: 'unsupported',
+        variant: 'Invalid',
+      })
+      expect(result.entries[1].key).toMatchObject({
+        kind: 'primitive',
+        primitive: 'string',
+        value: 'good',
+      })
+    })
     it('returns a normalized map object for a non-empty map', () => {
       const result = normalizeScVal({
         switch: ScValType.SCV_MAP,

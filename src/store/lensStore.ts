@@ -424,16 +424,25 @@ const createWatchlistSlice = (
     }),
 
   removeFromWatchlist: (contractId: string, keyPath: string) =>
-    set((state) => ({
-      watchlist: {
-        ...state.watchlist,
-        [contractId]: deduplicateWatchlistItems(
-          (state.watchlist[contractId] ?? []).filter(
-            (item) => item.keyPath !== keyPath,
-          ),
+    set((state) => {
+      const remainingItems = deduplicateWatchlistItems(
+        (state.watchlist[contractId] ?? []).filter(
+          (item) => item.keyPath !== keyPath,
         ),
-      },
-    })),
+      )
+
+      if (remainingItems.length === 0) {
+        const { [contractId]: _, ...rest } = state.watchlist
+        return { watchlist: rest }
+      }
+
+      return {
+        watchlist: {
+          ...state.watchlist,
+          [contractId]: remainingItems,
+        },
+      }
+    }),
 
   getWatchlistForContract: (contractId: string) => {
     return deduplicateWatchlistItems(get().watchlist[contractId])
