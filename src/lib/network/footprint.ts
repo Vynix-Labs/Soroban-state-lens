@@ -3,12 +3,12 @@
  * Parses read/write keys from simulation responses
  */
 
+import { normalizeFootprintSection } from './normalizeFootprintKeys'
+
 export interface FootprintKeys {
   readOnly: Array<string>
   readWrite: Array<string>
 }
-
-import { normalizeFootprintSection } from './normalizeFootprintKeys'
 
 /**
  * Extracts and deduplicates footprint keys from a simulation response
