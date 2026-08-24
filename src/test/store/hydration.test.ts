@@ -56,7 +56,7 @@ describe('LensStore Hydration', () => {
     }
     localStorage.setItem(
       NETWORK_CONFIG_STORAGE_KEY,
-      JSON.stringify(persistedState),
+      JSON.stringify(Object.fromEntries(Object.entries(persistedState).map(([k,v]) => [k, typeof v === "string" ? v.trim() : v]))),
     )
 
     // 2. Trigger hydration
