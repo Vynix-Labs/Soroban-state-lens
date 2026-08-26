@@ -163,6 +163,63 @@ describe('callRpc', () => {
     })
   })
 
+  it('should ignore caller Content-Type that is incompatible', async () => {
+    const configWithBadContentType: RpcConfig = {
+      url: 'https://api.example.com/rpc',
+      timeout: 5000,
+      headers: { 'Content-Type': 'text/plain', 'X-Custom': 'test' },
+    }
+
+    const mockData = { result: 'ok' }
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockData),
+    })
+
+    const result = await callRpc(configWithBadContentType)
+
+    expect(result).toEqual(mockData)
+    expect(mockFetch).toHaveBeenCalledWith(configWithBadContentType.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Custom': 'test',
+      },
+      body: undefined,
+      signal: expect.any(AbortSignal),
+    })
+  })
+
+  it('should ignore caller Content-Type regardless of casing', async () => {
+    const configWithLowercaseContentType: RpcConfig = {
+      url: 'https://api.example.com/rpc',
+      timeout: 5000,
+      headers: { 'content-type': 'text/plain', 'X-Custom': 'test' } as any,
+    }
+
+    const mockData = { result: 'ok' }
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockData),
+    })
+
+    const result = await callRpc(configWithLowercaseContentType)
+
+    expect(result).toEqual(mockData)
+    expect(mockFetch).toHaveBeenCalledWith(
+      configWithLowercaseContentType.url,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Custom': 'test',
+        },
+        body: undefined,
+        signal: expect.any(AbortSignal),
+      },
+    )
+  })
+
   it('aborts the in-flight request when a caller signal aborts', async () => {
     const caller = new AbortController()
     mockFetch.mockImplementationOnce(

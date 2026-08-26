@@ -42,12 +42,34 @@ export async function callRpc<T = unknown>(
   }
 
   try {
+    // Merge headers while ensuring the required JSON content type cannot
+    // be replaced by a caller-provided value (case-insensitive).
+    const mergedHeaders: Record<string, string> = {}
+
+    // Copy caller headers first (normalized as provided) so we can include
+    // other custom values, but we will enforce Content-Type below.
+    if (config.headers) {
+      for (const [k, v] of Object.entries(config.headers)) {
+        mergedHeaders[k] = v
+      }
+    }
+
+    // Ensure Content-Type header is set to application/json and cannot be
+    // overridden by callers. Respect existing casing for other headers.
+    // Detect any existing Content-Type key in caller headers (case-insensitive)
+    // and remove it so we can set the canonical value.
+    for (const key of Object.keys(mergedHeaders)) {
+      if (key.toLowerCase() === 'content-type') {
+        delete mergedHeaders[key]
+      }
+    }
+
+    // Set the required content type.
+    mergedHeaders['Content-Type'] = 'application/json'
+
     const response = await fetch(config.url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...config.headers,
-      },
+      headers: mergedHeaders,
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     })
