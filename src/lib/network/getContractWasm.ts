@@ -67,17 +67,14 @@ export async function getContractWasm(
   params: GetContractWasmParams,
 ): Promise<GetContractWasmResult> {
   try {
+    const requestId = toRpcRequestId()
     const response = await callRpc(
       {
         url: params.rpcUrl,
         timeout: 10000,
         signal: params.signal,
       },
-      buildJsonRpcRequest(
-        'getContractCode',
-        [params.contractId],
-        toRpcRequestId(),
-      ),
+      buildJsonRpcRequest('getContractCode', [params.contractId], requestId),
     )
 
     if (isRpcError(response)) {
@@ -87,7 +84,7 @@ export async function getContractWasm(
       }
     }
 
-    if (!isJsonRpcSuccessResponse(response)) {
+    if (!isJsonRpcSuccessResponse(response, requestId)) {
       return {
         success: false,
         error: 'Invalid response from RPC server',

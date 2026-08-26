@@ -84,13 +84,14 @@ export async function getLatestLedgerConnectionCheck(
   }
 
   try {
+    const requestId = toRpcRequestId()
     const response = await callRpc(
       {
         url,
         timeout: resolvedOptions?.timeout ?? 5000,
         signal: resolvedOptions?.signal ?? signal,
       },
-      buildJsonRpcRequest('getLatestLedger', {}, toRpcRequestId()),
+      buildJsonRpcRequest('getLatestLedger', {}, requestId),
     )
 
     if (isRpcError(response)) {
@@ -100,7 +101,7 @@ export async function getLatestLedgerConnectionCheck(
       }
     }
 
-    if (!isJsonRpcSuccessResponse(response)) {
+    if (!isJsonRpcSuccessResponse(response, requestId)) {
       return {
         success: false,
         error: 'Invalid response from RPC server',
@@ -122,11 +123,12 @@ export async function getLatestLedgerConnectionCheck(
   } catch (error) {
     return {
       success: false,
-      error: resolvedOptions?.signal?.aborted || signal?.aborted
-        ? 'Connection check aborted'
-        : error instanceof Error
-          ? error.message
-          : 'Connection failed',
+      error:
+        resolvedOptions?.signal?.aborted || signal?.aborted
+          ? 'Connection check aborted'
+          : error instanceof Error
+            ? error.message
+            : 'Connection failed',
     }
   }
 }

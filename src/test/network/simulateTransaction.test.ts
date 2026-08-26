@@ -5,6 +5,11 @@ import {
 } from '../../lib/network/simulateTransaction'
 import { extractFootprintKeys } from '../../lib/network/footprint'
 
+// Allow vi.mock to hoist before imports
+vi.mock('../../lib/rpc/toRpcRequestId', () => ({
+  toRpcRequestId: vi.fn(() => 1),
+}))
+
 describe('simulateTransactionAdapter', () => {
   it('should return success false when response is null', () => {
     const result = simulateTransactionAdapter(null)
@@ -266,5 +271,45 @@ describe('simulateTransaction request helper', () => {
 
     expect(result.success).toBe(false)
     expect(result.error).toBe('Failed to fetch')
+  })
+
+  it('returns a handled error when success response id does not match request id', async () => {
+    // toRpcRequestId is mocked to return 1; response carries id: 9999
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        jsonrpc: '2.0',
+        id: 9999,
+        result: { latestLedger: 100, results: [] },
+      }),
+    } as Response)
+
+    const result = await simulateTransaction({
+      rpcUrl: mockRpcUrl,
+      transaction: 'base64-xdr',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Invalid JSON-RPC')
+  })
+
+  it('returns a handled error when error response id does not match request id', async () => {
+    // toRpcRequestId is mocked to return 1; response carries id: 9999
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        jsonrpc: '2.0',
+        id: 9999,
+        error: { code: -32600, message: 'Invalid Request' },
+      }),
+    } as Response)
+
+    const result = await simulateTransaction({
+      rpcUrl: mockRpcUrl,
+      transaction: 'base64-xdr',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Invalid JSON-RPC')
   })
 })

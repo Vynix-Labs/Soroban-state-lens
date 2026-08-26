@@ -7,6 +7,11 @@ import {
 
 import type { GetLedgerEntriesParams } from '../../lib/network/getLedgerEntries'
 
+// Allow vi.mock to hoist before imports
+vi.mock('../../lib/rpc/toRpcRequestId', () => ({
+  toRpcRequestId: vi.fn(() => 1),
+}))
+
 describe('getLedgerEntries', () => {
   const mockRpcUrl = 'https://test.rpc.url'
   const mockKeys = ['key1', 'key2']
@@ -222,6 +227,41 @@ describe('getLedgerEntries', () => {
           rpcUrl: mockRpcUrl,
           keys: mockKeys,
         }),
+      ).rejects.toThrow('Invalid JSON-RPC response format')
+    })
+
+    it('throws error when success response id does not match request id', async () => {
+      // toRpcRequestId is mocked to return 1; response carries id: 9999
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          jsonrpc: '2.0',
+          id: 9999,
+          result: {
+            entries: [{ key: 'key1', xdr: 'xdr1' }],
+            latestLedger: 100,
+          },
+        }),
+      } as Response)
+
+      await expect(
+        getLedgerEntries({ rpcUrl: mockRpcUrl, keys: mockKeys }),
+      ).rejects.toThrow('Invalid JSON-RPC response format')
+    })
+
+    it('throws error when error response id does not match request id', async () => {
+      // toRpcRequestId is mocked to return 1; response carries id: 9999
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          jsonrpc: '2.0',
+          id: 9999,
+          error: { code: -32600, message: 'Invalid Request' },
+        }),
+      } as Response)
+
+      await expect(
+        getLedgerEntries({ rpcUrl: mockRpcUrl, keys: mockKeys }),
       ).rejects.toThrow('Invalid JSON-RPC response format')
     })
   })

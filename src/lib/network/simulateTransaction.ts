@@ -110,7 +110,12 @@ export async function simulateTransaction(
     // Detect aborts by the canonical `name` rather than `instanceof Error`,
     // since DOMException is not an Error subclass and fetch implementations
     // surface aborts as DOMException('AbortError') / plain objects.
-    if (error != null && typeof error === 'object' && 'name' in error && (error as { name: unknown }).name === 'AbortError') {
+    if (
+      error != null &&
+      typeof error === 'object' &&
+      'name' in error &&
+      (error as { name: unknown }).name === 'AbortError'
+    ) {
       return { success: false, error: 'Request aborted' }
     }
     return {
@@ -136,14 +141,14 @@ export async function simulateTransaction(
     }
   }
 
-  if (isJsonRpcErrorResponse(data)) {
+  if (isJsonRpcErrorResponse(data, requestId)) {
     return {
       success: false,
       error: `RPC Error (${data.error.code}): ${data.error.message}`,
     }
   }
 
-  if (!isJsonRpcSuccessResponse(data)) {
+  if (!isJsonRpcSuccessResponse(data, requestId)) {
     return { success: false, error: 'Invalid JSON-RPC response format' }
   }
 
