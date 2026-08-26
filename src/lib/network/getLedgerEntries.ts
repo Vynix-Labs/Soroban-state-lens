@@ -97,10 +97,7 @@ export async function getLedgerEntries(
         signal,
       })
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.name === 'AbortError'
-      ) {
+      if (error instanceof Error && error.name === 'AbortError') {
         throw new AbortError()
       }
       // Surfaced as a retryable network error to the retry classifier.
@@ -153,7 +150,9 @@ export async function getLedgerEntries(
       !('entries' in opResult) ||
       !(opResult.entries === null || Array.isArray(opResult.entries)) ||
       typeof opResult.latestLedger !== 'number' ||
-      !Number.isFinite(opResult.latestLedger)
+      !Number.isFinite(opResult.latestLedger) ||
+      !Number.isInteger(opResult.latestLedger) ||
+      opResult.latestLedger < 0
     ) {
       return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
     }

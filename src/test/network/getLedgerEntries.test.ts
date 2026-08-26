@@ -224,6 +224,58 @@ describe('getLedgerEntries', () => {
         }),
       ).rejects.toThrow('Invalid JSON-RPC response format')
     })
+
+    it.each([
+      { latestLedger: 1.5, description: 'fractional' },
+      { latestLedger: -1, description: 'negative' },
+      { latestLedger: Number.NaN, description: 'NaN' },
+      { latestLedger: Number.POSITIVE_INFINITY, description: 'Infinity' },
+    ])(
+      'throws error when latestLedger is $description ($latestLedger)',
+      async ({ latestLedger }) => {
+        vi.mocked(fetch).mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            jsonrpc: '2.0',
+            id: 1,
+            result: {
+              entries: [{ key: 'key1', xdr: 'xdr1' }],
+              latestLedger,
+            },
+          }),
+        } as Response)
+
+        await expect(
+          getLedgerEntries({
+            rpcUrl: mockRpcUrl,
+            keys: mockKeys,
+          }),
+        ).rejects.toThrow('Invalid JSON-RPC response format')
+      },
+    )
+
+    it('accepts zero and large integer latestLedger values', async () => {
+      const mockRpcResponse = {
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          entries: [{ key: 'key1', xdr: 'xdr1' }],
+          latestLedger: Number.MAX_SAFE_INTEGER,
+        },
+      }
+
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => mockRpcResponse,
+      } as Response)
+
+      const result = await getLedgerEntries({
+        rpcUrl: mockRpcUrl,
+        keys: mockKeys,
+      })
+
+      expect(result.latestLedger).toBe(Number.MAX_SAFE_INTEGER)
+    })
   })
 
   describe('abort scenarios', () => {

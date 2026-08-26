@@ -54,6 +54,31 @@ describe('simulateTransactionAdapter', () => {
     expect(result.results).toEqual([])
   })
 
+  it.each([
+    { latestLedger: 1.5, description: 'fractional' },
+    { latestLedger: -1, description: 'negative' },
+    { latestLedger: Number.NaN, description: 'NaN' },
+    { latestLedger: Number.POSITIVE_INFINITY, description: 'Infinity' },
+  ])(
+    'should drop $description latestLedger ($latestLedger)',
+    ({ latestLedger }) => {
+      const result = simulateTransactionAdapter({ latestLedger })
+      expect(result.success).toBe(true)
+      expect(result.latestLedger).toBeUndefined()
+    },
+  )
+
+  it('should preserve valid latestLedger values including zero', () => {
+    expect(simulateTransactionAdapter({ latestLedger: 0 }).latestLedger).toBe(0)
+    expect(simulateTransactionAdapter({ latestLedger: 100 }).latestLedger).toBe(
+      100,
+    )
+    expect(
+      simulateTransactionAdapter({ latestLedger: Number.MAX_SAFE_INTEGER })
+        .latestLedger,
+    ).toBe(Number.MAX_SAFE_INTEGER)
+  })
+
   it('should sanitize malformed footprint sections to empty arrays', () => {
     const result = simulateTransactionAdapter({
       latestLedger: 50,
