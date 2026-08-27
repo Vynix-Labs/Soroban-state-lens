@@ -117,6 +117,41 @@ function shouldRetry(errorObj: unknown): boolean {
   return shouldRetryRpcError({ status, code })
 }
 
+// Normalization helpers for retry option bounds.
+function normalizeMaxAttempts(value: number | undefined): number {
+  if (value === undefined) {
+    return 3
+  }
+  // Ensure at least one attempt; replace invalid values (NaN Infinity <=0) with 1.
+  if (!Number.isFinite(value) || value < 1) {
+    return 1
+  }
+  // Keep integer attempt counts to avoid surprising fractional comparisons.
+  return Math.floor(value)
+}
+
+function normalizeDelay(value: number | undefined, defaultValue: number): number {
+  if (value === undefined) {
+    return defaultValue
+  }
+  // Clamp to non-negative finite values; invalid values become 0.
+  if (!Number.isFinite(value) || value < 0) {
+    return 0
+  }
+  return value
+}
+
+function normalizeJitterRatio(value: number | undefined): number {
+  if (value === undefined) {
+    return 0.2
+  }
+  // Invalid values become 0 (no jitter); valid values are clamped to [0, 1].
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+  return Math.min(1, Math.max(0, value))
+}
+
 /**
  * A reusable wrapper that executes an asynchronous operation and applies
  * bounded exponential backoff for transient RPC or Network failures.
@@ -129,10 +164,10 @@ export async function withRpcRetries<T>(
   operation: () => Promise<T>,
   options: RpcRetryOptions = {},
 ): Promise<T> {
-  const maxAttempts = options.maxAttempts ?? 3
-  const baseDelayMs = options.baseDelayMs ?? 250
-  const maxDelayMs = options.maxDelayMs ?? 5000
-  const jitterRatio = options.jitterRatio ?? 0.2
+  const maxAttempts = normalizeMaxAttempts(options.maxAttempts)
+  const baseDelayMs = normalizeDelay(options.baseDelayMs, 250)
+  const maxDelayMs = normalizeDelay(options.maxDelayMs, 5000)
+  const jitterRatio = normalizeJitterRatio(options.jitterRatio)
 
   let attempt = 1
 
