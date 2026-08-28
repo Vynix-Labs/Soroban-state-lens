@@ -169,7 +169,9 @@ describe('callRpc', () => {
       () =>
         new Promise((_resolve, reject) => {
           caller.signal.addEventListener('abort', () =>
-            reject(new DOMException('The operation was aborted.', 'AbortError')),
+            reject(
+              new DOMException('The operation was aborted.', 'AbortError'),
+            ),
           )
         }),
     )
@@ -191,11 +193,10 @@ describe('callRpc', () => {
   it('returns an aborted shape when the caller signal is already aborted', async () => {
     const caller = new AbortController()
     caller.abort()
-    mockFetch.mockImplementationOnce(
-      () =>
-        Promise.reject(
-          new DOMException('The operation was aborted.', 'AbortError'),
-        ),
+    mockFetch.mockImplementationOnce(() =>
+      Promise.reject(
+        new DOMException('The operation was aborted.', 'AbortError'),
+      ),
     )
 
     const result = await callRpc(
@@ -225,17 +226,21 @@ describe('callRpc', () => {
     })
   })
 
-  it('should handle JSON parsing errors', async () => {
+  it('maps JSON parsing failures to a structured INVALID_JSON error', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.reject(new Error('Invalid JSON')),
+      json: () =>
+        Promise.reject(
+          new SyntaxError('Unexpected token < in JSON at position 0'),
+        ),
     })
 
     const result = await callRpc(defaultConfig)
 
     expect(result).toMatchObject({
-      message: 'Invalid JSON',
-      code: 'UNKNOWN_ERROR',
+      message: 'Invalid JSON response',
+      code: 'INVALID_JSON',
+      details: 'Unexpected token < in JSON at position 0',
       isTimeout: false,
     })
   })
@@ -248,7 +253,9 @@ describe('callRpc', () => {
         json: () =>
           new Promise((_resolve, reject) => {
             init?.signal?.addEventListener('abort', () =>
-              reject(new DOMException('The operation was aborted.', 'AbortError')),
+              reject(
+                new DOMException('The operation was aborted.', 'AbortError'),
+              ),
             )
           }),
       } as unknown as Response),
