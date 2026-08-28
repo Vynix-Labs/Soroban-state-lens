@@ -12,13 +12,15 @@ export function buildJsonRpcRequest(
   params: unknown,
   id: number,
 ): { jsonrpc: '2.0'; method: string; params: unknown; id: number } {
-  if (!method || method.trim().length === 0) {
+  const normalized = typeof method === 'string' ? method.trim() : ''
+
+  if (normalized.length === 0) {
     throw new Error('JSON-RPC method name cannot be empty')
   }
 
   return {
     jsonrpc: '2.0',
-    method,
+    method: normalized,
     params,
     id,
   }
