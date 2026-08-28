@@ -1,17 +1,47 @@
+import { normalizeTimeoutMs } from '../rpc/normalizeTimeoutMs'
 import type { RpcConfig, RpcError } from './types'
 import { normalizeRpcUrl } from '../validation/normalizeRpcUrl'
+
+function isAbortError(error: unknown): boolean {
+  if (error instanceof Error && error.name === 'AbortError') {
+    return true
+  }
+  if (
+    typeof DOMException !== 'undefined' &&
+    error instanceof DOMException &&
+    error.name === 'AbortError'
+  ) {
+    return true
+  }
+  return false
+}
 
 export async function callRpc<T = unknown>(
   config: RpcConfig,
   body?: unknown,
 ): Promise<T | RpcError> {
+  const normalizedTimeout = normalizeTimeoutMs(config.timeout)
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), config.timeout)
-  const normalized = normalizeRpcUrl(config.url)
-  if (normalized === '') {
-    clearTimeout(timeoutId)
-    throw new Error('Invalid RPC URL')
+  const timeoutId = setTimeout(() => controller.abort(), normalizedTimeout)
+
+  // Link an optional caller-provided signal so route changes can abort
+  // in-flight RPC calls. The internal timeout controller still drives the
+  // fetch signal; the caller signal only fans its abort into that controller.
+  let callerAborted = false
+  const callerSignal = config.signal
+  const onCallerAbort = () => {
+    callerAborted = true
+    controller.abort()
   }
+  if (callerSignal) {
+    if (callerSignal.aborted) {
+      callerAborted = true
+      controller.abort()
+    } else {
+      callerSignal.addEventListener('abort', onCallerAbort, { once: true })
+    }
+  }
+
   try {
     const response = await fetch(normalized, {
       method: 'POST',
@@ -22,8 +52,6 @@ export async function callRpc<T = unknown>(
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     })
-
-    clearTimeout(timeoutId)
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error')
@@ -38,16 +66,19 @@ export async function callRpc<T = unknown>(
     const data = await response.json()
     return data as T
   } catch (error) {
-    clearTimeout(timeoutId)
-
-    if (
-      (error instanceof Error && error.name === 'AbortError') ||
-      (error instanceof DOMException && error.name === 'AbortError')
-    ) {
+    if (isAbortError(error)) {
+      if (callerAborted) {
+        return {
+          message: 'Request aborted',
+          code: 'ABORTED',
+          details: 'Caller aborted the request',
+          isTimeout: false,
+        }
+      }
       return {
         message: 'Request timeout',
         code: 'TIMEOUT',
-        details: `Request timed out after ${config.timeout}ms`,
+        details: `Request timed out after ${normalizedTimeout}ms`,
         isTimeout: true,
       }
     }
@@ -66,6 +97,11 @@ export async function callRpc<T = unknown>(
       code: 'UNKNOWN_ERROR',
       details: error,
       isTimeout: false,
+    }
+  } finally {
+    clearTimeout(timeoutId)
+    if (callerSignal) {
+      callerSignal.removeEventListener('abort', onCallerAbort)
     }
   }
 }

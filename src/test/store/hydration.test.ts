@@ -147,4 +147,17 @@ describe('LensStore Hydration', () => {
     // Validation should fail because of unknown key, thus falling back to default
     expect(state.networkConfig).toEqual(DEFAULT_NETWORKS.futurenet)
   })
+
+  it('preserves watchlist state after removing the final item', async () => {
+    const { addToWatchlist, removeFromWatchlist } = useLensStore.getState()
+
+    addToWatchlist('contract-1', '/path/to/key1')
+    removeFromWatchlist('contract-1', '/path/to/key1')
+
+    const state = useLensStore.getState()
+    expect(state.watchlist).toEqual({})
+
+    await useLensStore.persist.rehydrate()
+    expect(useLensStore.getState().watchlist).toEqual({})
+  })
 })

@@ -33,6 +33,11 @@ describe('parentTreeNodePath', () => {
     expect(parentTreeNodePath('a.b\\.c\\.d')).toBe('a')
   })
 
+  it('should distinguish even and odd backslash counts before a dot', () => {
+    expect(parentTreeNodePath('root\\\\.child\\\\.leaf')).toBe('root\\\\.child\\\\')
+    expect(parentTreeNodePath('root\\\\.child\\.leaf')).toBe('root\\\\')
+  })
+
   it('should handle paths with special characters', () => {
     expect(parentTreeNodePath('node-1.node_2.node$3')).toBe('node-1.node_2')
   })

@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
+import { InspectShell } from '../../components/explorer/InspectShell'
+import { useLensStore } from '../../store/lensStore'
+
 vi.mock('@stellar/design-system', () => ({
   Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
     <button {...props}>{children}</button>
@@ -18,8 +21,11 @@ vi.mock('@stellar/design-system', () => ({
   ),
 }))
 
-import { InspectShell } from '../../components/explorer/InspectShell'
-import { useLensStore } from '../../store/lensStore'
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, ...props }: React.ComponentProps<'a'>) => (
+    <a {...props}>{children}</a>
+  ),
+}))
 
 describe('InspectShell', () => {
   it('renders contract and key path context', () => {
@@ -33,9 +39,9 @@ describe('InspectShell', () => {
       />,
     )
 
-    expect(screen.getByText('C123')).toBeTruthy()
+    expect(screen.getAllByText('C123').length).toBeGreaterThan(0)
     expect(screen.getByText('/state/ledger')).toBeTruthy()
-    expect(screen.getByText('Contract')).toBeTruthy()
+    expect(screen.getByText('Metadata')).toBeTruthy()
   })
 
   it('pins the current key path to the watchlist', () => {

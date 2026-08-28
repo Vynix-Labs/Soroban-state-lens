@@ -13,13 +13,13 @@ const WatermarkBg = () => {
           d="M24 4L6 14V34L24 44L42 34V14L24 4Z"
           fill="none"
           stroke="currentColor"
-          stroke-width="0.5"
+          strokeWidth="0.5"
         ></path>
         <path
           d="M24 10L10 18V30L24 38L38 30V18L24 10Z"
           fill="none"
           stroke="currentColor"
-          stroke-width="0.5"
+          strokeWidth="0.5"
         ></path>
         <path
           className="text-primary"

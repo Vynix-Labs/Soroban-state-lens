@@ -94,6 +94,23 @@ describe('withRpcRetries', () => {
     expect(fn).toHaveBeenCalledTimes(2)
   })
 
+  it('should abort retry backoff when caller signal aborts', async () => {
+    const controller = new AbortController()
+    const fn = vi.fn().mockRejectedValueOnce({ code: 'TIMEOUT', message: 'timeout' })
+
+    const promise = withRpcRetries(fn, {
+      maxAttempts: 3,
+      baseDelayMs: 100,
+      jitterRatio: 0,
+      signal: controller.signal,
+    })
+
+    controller.abort()
+
+    await expect(promise).rejects.toEqual({ code: 'TIMEOUT', message: 'timeout' })
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
   it('should not retry a non-retryable returned Network RpcError (e.g. 400)', async () => {
     const networkError = { message: 'HTTP 400', code: 400, isTimeout: false }
     const fn = vi.fn().mockResolvedValue(networkError)

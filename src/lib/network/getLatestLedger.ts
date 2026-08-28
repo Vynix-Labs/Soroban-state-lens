@@ -10,6 +10,11 @@ export interface GetLatestLedgerConnectionResult {
   error?: string
 }
 
+export interface LatestLedgerConnectionCheckOptions {
+  timeout?: number
+  signal?: AbortSignal
+}
+
 function isRpcError(value: unknown): value is RpcError {
   return (
     typeof value === 'object' &&
@@ -25,7 +30,12 @@ function parseLatestLedgerResult(value: unknown): LatestLedgerResult | null {
   }
 
   const candidate = value as Record<string, unknown>
-  if (typeof candidate.sequence !== 'number') {
+  if (
+    typeof candidate.sequence !== 'number' ||
+    !Number.isFinite(candidate.sequence) ||
+    !Number.isInteger(candidate.sequence) ||
+    candidate.sequence < 0
+  ) {
     return null
   }
 
@@ -46,12 +56,39 @@ function parseLatestLedgerResult(value: unknown): LatestLedgerResult | null {
 
 export async function getLatestLedgerConnectionCheck(
   url: string,
+): Promise<GetLatestLedgerConnectionResult>
+export async function getLatestLedgerConnectionCheck(
+  url: string,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<GetLatestLedgerConnectionResult>
+export async function getLatestLedgerConnectionCheck(
+  url: string,
+  options?: LatestLedgerConnectionCheckOptions,
+): Promise<GetLatestLedgerConnectionResult>
+export async function getLatestLedgerConnectionCheck(
+  url: string,
+  timeoutOrOptions?: number | LatestLedgerConnectionCheckOptions,
+  signal?: AbortSignal,
 ): Promise<GetLatestLedgerConnectionResult> {
+  const resolvedOptions =
+    typeof timeoutOrOptions === 'number'
+      ? { timeout: timeoutOrOptions, signal }
+      : timeoutOrOptions
+
+  if (resolvedOptions?.signal?.aborted || signal?.aborted) {
+    return {
+      success: false,
+      error: 'Connection check aborted',
+    }
+  }
+
   try {
     const response = await callRpc(
       {
         url,
-        timeout: 5000,
+        timeout: resolvedOptions?.timeout ?? 5000,
+        signal: resolvedOptions?.signal ?? signal,
       },
       buildJsonRpcRequest('getLatestLedger', {}, toRpcRequestId()),
     )
@@ -85,7 +122,11 @@ export async function getLatestLedgerConnectionCheck(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Connection failed',
+      error: resolvedOptions?.signal?.aborted || signal?.aborted
+        ? 'Connection check aborted'
+        : error instanceof Error
+          ? error.message
+          : 'Connection failed',
     }
   }
 }

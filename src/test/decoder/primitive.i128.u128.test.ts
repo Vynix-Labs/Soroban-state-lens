@@ -53,6 +53,26 @@ describe('normalizeScVal - i128 / u128', () => {
       expect(result.value).toBe('18446744073709551616') // 1 << 64
     })
 
+    it('should reject u128 values whose hi limb is out of range', () => {
+      const scVal: ScVal = {
+        switch: ScValType.SCV_U128,
+        value: { hi: BigInt('18446744073709551616'), lo: BigInt('0') },
+      }
+      const result = normalizeScVal(scVal)
+      expect(result.kind).toBe('unsupported')
+      expect(result.variant).toBe(ScValType.SCV_U128)
+    })
+
+    it('should reject u128 values whose lo limb is out of range', () => {
+      const scVal: ScVal = {
+        switch: ScValType.SCV_U128,
+        value: { hi: BigInt('0'), lo: BigInt('-1') },
+      }
+      const result = normalizeScVal(scVal)
+      expect(result.kind).toBe('unsupported')
+      expect(result.variant).toBe(ScValType.SCV_U128)
+    })
+
     it('should return fallback for invalid u128 values', () => {
       const invalidCases = [
         null,
@@ -146,6 +166,26 @@ describe('normalizeScVal - i128 / u128', () => {
       const result = normalizeScVal(scVal)
       expect(result).toHaveProperty('kind', 'primitive')
       expect(result.value).toBe('-1')
+    })
+
+    it('should reject i128 values whose hi limb is out of range', () => {
+      const scVal: ScVal = {
+        switch: ScValType.SCV_I128,
+        value: { hi: BigInt('9223372036854775808'), lo: BigInt('0') },
+      }
+      const result = normalizeScVal(scVal)
+      expect(result.kind).toBe('unsupported')
+      expect(result.variant).toBe(ScValType.SCV_I128)
+    })
+
+    it('should reject i128 values whose lo limb is out of range', () => {
+      const scVal: ScVal = {
+        switch: ScValType.SCV_I128,
+        value: { hi: BigInt('0'), lo: BigInt('18446744073709551616') },
+      }
+      const result = normalizeScVal(scVal)
+      expect(result.kind).toBe('unsupported')
+      expect(result.variant).toBe(ScValType.SCV_I128)
     })
 
     it('should return fallback for invalid i128 values', () => {

@@ -3,6 +3,22 @@ import { computeRetryDelayMs } from './computeRetryDelayMs'
 import { withJitter } from './withJitter'
 import { isJsonRpcErrorResponse } from './isJsonRpcErrorResponse'
 
+function isAbortError(error: unknown): boolean {
+  if (error instanceof Error && error.name === 'AbortError') {
+    return true
+  }
+
+  if (
+    typeof DOMException !== 'undefined' &&
+    error instanceof DOMException &&
+    error.name === 'AbortError'
+  ) {
+    return true
+  }
+
+  return false
+}
+
 export interface RpcRetryOptions {
   maxAttempts?: number
   baseDelayMs?: number
@@ -11,33 +27,40 @@ export interface RpcRetryOptions {
   signal?: AbortSignal
 }
 
-function delayWithSignal(ms: number, signal?: AbortSignal) {
-  return new Promise<void>((resolve, reject) => {
-    const id = setTimeout(() => {
+function createAbortError(): Error {
+  if (typeof DOMException !== 'undefined') {
+    return new DOMException('The operation was aborted.', 'AbortError')
+  }
+
+  const error = new Error('The operation was aborted.')
+  error.name = 'AbortError'
+  return error
+}
+
+const delay = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(createAbortError())
+      return
+    }
+
+    const timeoutId = setTimeout(() => {
       cleanup()
       resolve()
     }, ms)
 
-    function onAbort() {
-      clearTimeout(id)
+    const onAbort = () => {
       cleanup()
-      const err = new Error('The operation was aborted')
-      err.name = 'AbortError'
-      reject(err)
+      reject(createAbortError())
     }
 
-    function cleanup() {
+    const cleanup = () => {
+      clearTimeout(timeoutId)
       signal?.removeEventListener('abort', onAbort)
-    }
-
-    if (signal?.aborted) {
-      onAbort()
-      return
     }
 
     signal?.addEventListener('abort', onAbort, { once: true })
   })
-}
 
 function isRpcClientError(value: unknown): boolean {
   if (typeof value !== 'object' || value === null) {
@@ -151,7 +174,18 @@ export async function withRpcRetries<T>(
 
     const delayMs = computeRetryDelayMs(attempt - 1, baseDelayMs, maxDelayMs)
     const jitteredMs = withJitter(delayMs, jitterRatio)
-    await delayWithSignal(jitteredMs, signal)
+
+    try {
+      await delay(jitteredMs, options.signal)
+    } catch (error) {
+      if (isAbortError(error)) {
+        if (didThrow) {
+          throw errorObj
+        }
+        return errorObj as T
+      }
+      throw error
+    }
 
     attempt++
   }

@@ -50,4 +50,13 @@ describe('buildJsonRpcRequest', () => {
     const resultUndefined = buildJsonRpcRequest('someMethod', undefined, 1)
     expect(resultUndefined.params).toBeUndefined()
   })
+
+  it.each([0, -1, 1.5, NaN, Infinity, -Infinity])(
+    'should reject invalid request ids: %p',
+    (invalidId) => {
+      expect(() =>
+        buildJsonRpcRequest('someMethod', {}, invalidId),
+      ).toThrow('JSON-RPC request ID must be a finite positive integer')
+    },
+  )
 })
