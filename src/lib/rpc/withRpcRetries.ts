@@ -8,9 +8,36 @@ export interface RpcRetryOptions {
   baseDelayMs?: number
   maxDelayMs?: number
   jitterRatio?: number
+  signal?: AbortSignal
 }
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+function delayWithSignal(ms: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const id = setTimeout(() => {
+      cleanup()
+      resolve()
+    }, ms)
+
+    function onAbort() {
+      clearTimeout(id)
+      cleanup()
+      const err = new Error('The operation was aborted')
+      err.name = 'AbortError'
+      reject(err)
+    }
+
+    function cleanup() {
+      signal?.removeEventListener('abort', onAbort)
+    }
+
+    if (signal?.aborted) {
+      onAbort()
+      return
+    }
+
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
+}
 
 function isRpcClientError(value: unknown): boolean {
   if (typeof value !== 'object' || value === null) {
@@ -83,10 +110,16 @@ export async function withRpcRetries<T>(
   const baseDelayMs = options.baseDelayMs ?? 250
   const maxDelayMs = options.maxDelayMs ?? 5000
   const jitterRatio = options.jitterRatio ?? 0.2
+  const signal = options.signal
 
   let attempt = 1
 
   for (;;) {
+    if (signal?.aborted) {
+      const err = new Error('The operation was aborted')
+      err.name = 'AbortError'
+      throw err
+    }
     let result: T | undefined
     let errorObj: unknown = null
     let didThrow = false
@@ -118,7 +151,7 @@ export async function withRpcRetries<T>(
 
     const delayMs = computeRetryDelayMs(attempt - 1, baseDelayMs, maxDelayMs)
     const jitteredMs = withJitter(delayMs, jitterRatio)
-    await delay(jitteredMs)
+    await delayWithSignal(jitteredMs, signal)
 
     attempt++
   }

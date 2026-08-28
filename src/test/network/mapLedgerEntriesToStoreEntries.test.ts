@@ -63,4 +63,45 @@ describe('mapLedgerEntriesToStoreEntries', () => {
     expect(result[0]?.key).toBe('CONTRACT_3::Other::a')
     expect(result[1]?.key).toBe('CONTRACT_3::Other::b')
   })
+
+  it('rejects negative or non-integer ledger metadata and preserves valid values', () => {
+    const result = mapLedgerEntriesToStoreEntries({
+      contractId: 'CONTRACT_4',
+      entries: [
+        { key: 'n', xdr: 'xdr-n', lastModifiedLedgerSeq: -5, liveUntilLedgerSeq: -1 },
+        { key: 'f', xdr: 'xdr-f', lastModifiedLedgerSeq: 3.14, liveUntilLedgerSeq: 200.5 },
+        { key: 'v', xdr: 'xdr-v', lastModifiedLedgerSeq: 10, liveUntilLedgerSeq: 20 },
+      ],
+    })
+
+    expect(result).toEqual([
+      {
+        key: 'CONTRACT_4::Other::n',
+        contractId: 'CONTRACT_4',
+        type: 'Other',
+        value: 'xdr-n',
+        lastModifiedLedger: 0,
+        expirationLedger: undefined,
+        rawXdr: 'xdr-n',
+      },
+      {
+        key: 'CONTRACT_4::Other::f',
+        contractId: 'CONTRACT_4',
+        type: 'Other',
+        value: 'xdr-f',
+        lastModifiedLedger: 0,
+        expirationLedger: undefined,
+        rawXdr: 'xdr-f',
+      },
+      {
+        key: 'CONTRACT_4::Other::v',
+        contractId: 'CONTRACT_4',
+        type: 'Other',
+        value: 'xdr-v',
+        lastModifiedLedger: 10,
+        expirationLedger: 20,
+        rawXdr: 'xdr-v',
+      },
+    ])
+  })
 })

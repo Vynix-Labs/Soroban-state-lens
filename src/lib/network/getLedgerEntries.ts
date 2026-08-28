@@ -2,6 +2,7 @@ import { buildJsonRpcRequest } from '../rpc/buildJsonRpcRequest'
 import { isJsonRpcErrorResponse } from '../rpc/isJsonRpcErrorResponse'
 import { isJsonRpcSuccessResponse } from '../rpc/isJsonRpcSuccessResponse'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
+import { normalizeRpcUrl } from '../validation/normalizeRpcUrl'
 
 export interface GetLedgerEntriesParams {
   rpcUrl: string
@@ -45,12 +46,15 @@ export async function getLedgerEntries(
   if (signal?.aborted) {
     throw new AbortError()
   }
-
+  const normalized = normalizeRpcUrl(rpcUrl)
+  if (normalized === '') {
+    throw new Error('Invalid RPC URL')
+  }
   const requestId = toRpcRequestId()
   const payload = buildJsonRpcRequest('getLedgerEntries', [keys], requestId)
 
   try {
-    const response = await fetch(rpcUrl, {
+    const response = await fetch(normalized, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -91,13 +95,29 @@ export async function getLedgerEntries(
       latestLedger: number
     }
 
+    // Deduplicate by key, keep first-seen records
+    const seen = new Set<string>()
+    const deduped = [] as Array<{
+      key: string
+      xdr: string
+      lastModifiedLedgerSeq?: number
+      liveUntilLedgerSeq?: number
+    }>
+
+    for (const entry of result.entries || []) {
+      if (!seen.has(entry.key)) {
+        seen.add(entry.key)
+        deduped.push({
+          key: entry.key,
+          xdr: entry.xdr,
+          lastModifiedLedgerSeq: entry.lastModifiedLedgerSeq,
+          liveUntilLedgerSeq: entry.liveUntilLedgerSeq,
+        })
+      }
+    }
+
     return {
-      entries: (result.entries || []).map((entry) => ({
-        key: entry.key,
-        xdr: entry.xdr,
-        lastModifiedLedgerSeq: entry.lastModifiedLedgerSeq,
-        liveUntilLedgerSeq: entry.liveUntilLedgerSeq,
-      })),
+      entries: deduped,
       latestLedger: result.latestLedger,
     }
   } catch (error) {

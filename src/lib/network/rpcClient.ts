@@ -1,4 +1,5 @@
 import type { RpcConfig, RpcError } from './types'
+import { normalizeRpcUrl } from '../validation/normalizeRpcUrl'
 
 export async function callRpc<T = unknown>(
   config: RpcConfig,
@@ -6,9 +7,13 @@ export async function callRpc<T = unknown>(
 ): Promise<T | RpcError> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), config.timeout)
-
+  const normalized = normalizeRpcUrl(config.url)
+  if (normalized === '') {
+    clearTimeout(timeoutId)
+    throw new Error('Invalid RPC URL')
+  }
   try {
-    const response = await fetch(config.url, {
+    const response = await fetch(normalized, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
