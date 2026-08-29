@@ -302,6 +302,88 @@ describe('callRpc', () => {
     })
   })
 
+  it('should treat an empty 200 response body as an invalid RPC response', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      clone: function (this: unknown) {
+        return this
+      },
+      text: () => Promise.resolve(''),
+      json: () => Promise.reject(new Error('Unexpected end of JSON input')),
+    })
+
+    const result = await callRpc(defaultConfig)
+
+    expect(result).toMatchObject({
+      message: 'Empty RPC response body',
+      code: 'INVALID_RESPONSE',
+      details: 'Received HTTP 200 with an empty response body',
+      isTimeout: false,
+    })
+  })
+
+  it('should treat a 204 No Content response as an invalid RPC response', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 204,
+      statusText: 'No Content',
+      clone: function (this: unknown) {
+        return this
+      },
+      text: () => Promise.resolve(''),
+      json: () => Promise.reject(new Error('Unexpected end of JSON input')),
+    })
+
+    const result = await callRpc(defaultConfig)
+
+    expect(result).toMatchObject({
+      message: 'Empty RPC response body',
+      code: 'INVALID_RESPONSE',
+      details: 'Received HTTP 204 with an empty response body',
+      isTimeout: false,
+    })
+  })
+
+  it('should treat a whitespace-only body as an invalid RPC response', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      clone: function (this: unknown) {
+        return this
+      },
+      text: () => Promise.resolve('   \n  '),
+      json: () => Promise.reject(new Error('Unexpected end of JSON input')),
+    })
+
+    const result = await callRpc(defaultConfig)
+
+    expect(result).toMatchObject({
+      message: 'Empty RPC response body',
+      code: 'INVALID_RESPONSE',
+    })
+  })
+
+  it('should still parse a valid non-empty JSON body when clone/text succeed', async () => {
+    const mockData = { result: 'success' }
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      clone: function (this: unknown) {
+        return this
+      },
+      text: () => Promise.resolve(JSON.stringify(mockData)),
+      json: () => Promise.resolve(mockData),
+    })
+
+    const result = await callRpc<typeof mockData>(defaultConfig)
+
+    expect(result).toEqual(mockData)
+  })
+
   it('should timeout while waiting for response.json()', async () => {
     vi.useFakeTimers()
     mockFetch.mockImplementationOnce((_url, init) =>
