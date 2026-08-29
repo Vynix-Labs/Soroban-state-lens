@@ -27,6 +27,24 @@ export interface RpcRetryOptions {
   signal?: AbortSignal
 }
 
+function normalizeMaxAttempts(value: number | undefined): number {
+  if (value === undefined) return 3
+  if (!Number.isFinite(value) || value < 1) return 1
+  return Math.floor(value)
+}
+
+function normalizeDelay(value: number | undefined, defaultValue: number): number {
+  if (value === undefined) return defaultValue
+  if (!Number.isFinite(value) || value < 0) return 0
+  return value
+}
+
+function normalizeJitterRatio(value: number | undefined): number {
+  if (value === undefined) return 0.2
+  if (!Number.isFinite(value)) return 0
+  return Math.min(1, Math.max(0, value))
+}
+
 function createAbortError(): Error {
   if (typeof DOMException !== 'undefined') {
     return new DOMException('The operation was aborted.', 'AbortError')
@@ -117,41 +135,6 @@ function shouldRetry(errorObj: unknown): boolean {
   return shouldRetryRpcError({ status, code })
 }
 
-// Normalization helpers for retry option bounds.
-function normalizeMaxAttempts(value: number | undefined): number {
-  if (value === undefined) {
-    return 3
-  }
-  // Ensure at least one attempt; replace invalid values (NaN Infinity <=0) with 1.
-  if (!Number.isFinite(value) || value < 1) {
-    return 1
-  }
-  // Keep integer attempt counts to avoid surprising fractional comparisons.
-  return Math.floor(value)
-}
-
-function normalizeDelay(value: number | undefined, defaultValue: number): number {
-  if (value === undefined) {
-    return defaultValue
-  }
-  // Clamp to non-negative finite values; invalid values become 0.
-  if (!Number.isFinite(value) || value < 0) {
-    return 0
-  }
-  return value
-}
-
-function normalizeJitterRatio(value: number | undefined): number {
-  if (value === undefined) {
-    return 0.2
-  }
-  // Invalid values become 0 (no jitter); valid values are clamped to [0, 1].
-  if (!Number.isFinite(value)) {
-    return 0
-  }
-  return Math.min(1, Math.max(0, value))
-}
-
 /**
  * A reusable wrapper that executes an asynchronous operation and applies
  * bounded exponential backoff for transient RPC or Network failures.
@@ -168,10 +151,12 @@ export async function withRpcRetries<T>(
   const baseDelayMs = normalizeDelay(options.baseDelayMs, 250)
   const maxDelayMs = normalizeDelay(options.maxDelayMs, 5000)
   const jitterRatio = normalizeJitterRatio(options.jitterRatio)
+  const signal = options.signal
 
   let attempt = 1
 
   for (;;) {
+    if (signal?.aborted) throw createAbortError()
     let result: T | undefined
     let errorObj: unknown = null
     let didThrow = false
@@ -208,10 +193,7 @@ export async function withRpcRetries<T>(
       await delay(jitteredMs, options.signal)
     } catch (error) {
       if (isAbortError(error)) {
-        if (didThrow) {
-          throw errorObj
-        }
-        return errorObj as T
+        throw error
       }
       throw error
     }
