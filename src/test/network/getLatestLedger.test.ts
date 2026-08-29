@@ -8,7 +8,7 @@ describe('getLatestLedgerConnectionCheck', () => {
       .spyOn(rpcClient, 'callRpc')
       .mockImplementation(async (_config, body) => ({
         jsonrpc: '2.0',
-        id: (body as { id?: number })?.id ?? 1,
+        id: (body as { id?: number }).id ?? 1,
         result: {
           id: 'abc123',
           protocolVersion: 23,
@@ -42,7 +42,7 @@ describe('getLatestLedgerConnectionCheck', () => {
       .spyOn(rpcClient, 'callRpc')
       .mockImplementation(async (_config, body) => ({
         jsonrpc: '2.0',
-        id: (body as { id?: number })?.id ?? 1,
+        id: (body as { id?: number }).id ?? 1,
         result: {
           sequence: 123456,
         },
@@ -88,7 +88,7 @@ describe('getLatestLedgerConnectionCheck', () => {
       async (_config, body) =>
         ({
           jsonrpc: '2.0',
-          id: (body as { id?: number })?.id ?? 1,
+        id: (body as { id?: number }).id ?? 1,
           result: {
             protocolVersion: 23,
           },
@@ -113,7 +113,7 @@ describe('getLatestLedgerConnectionCheck', () => {
       async (_config, body) =>
         ({
           jsonrpc: '2.0',
-          id: (body as { id?: number })?.id ?? 1,
+        id: (body as { id?: number }).id ?? 1,
           result: {
             sequence,
           },
@@ -161,7 +161,7 @@ describe('getLatestLedgerConnectionCheck', () => {
     // We spy on callRpc to return a response whose id differs from the request id
     // captured by the adapter, verifying that the ID mismatch is rejected.
     vi.spyOn(rpcClient, 'callRpc').mockImplementation(async (_config, body) => {
-      const requestId = (body as { id?: number })?.id
+      const requestId = (body as { id?: number }).id
       // Return a response with a different id
       return {
         jsonrpc: '2.0',

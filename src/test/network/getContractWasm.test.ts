@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getContractWasm } from '../../lib/network/getContractWasm'
-import type { GetContractWasmParams } from '../../lib/network/getContractWasm'
 import * as rpcClient from '../../lib/network/rpcClient'
+import type { GetContractWasmParams } from '../../lib/network/getContractWasm'
 
 // Hoist before imports: pin toRpcRequestId to 1 so fetch-level mocks can use id: 1
 vi.mock('../../lib/rpc/toRpcRequestId', () => ({
@@ -89,7 +89,7 @@ describe('getContractWasm', () => {
     // is intentionally offset from the request id, verifying that
     // the adapter rejects the ID mismatch.
     vi.spyOn(rpcClient, 'callRpc').mockImplementation(async (_config, body) => {
-      const requestId = (body as { id?: number })?.id
+      const requestId = (body as { id?: number }).id
       return {
         jsonrpc: '2.0',
         id: (requestId ?? 0) + 1000,
