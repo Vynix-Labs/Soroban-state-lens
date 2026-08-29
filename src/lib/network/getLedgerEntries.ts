@@ -158,22 +158,32 @@ export async function getLedgerEntries(
       return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
     }
 
-    if (opResult.entries !== null) {
-      const isValidEntries = opResult.entries.every((entry) => {
-        if (!entry || typeof entry !== 'object') {
-          return false
-        }
+    const filteredEntries =
+      opResult.entries === null
+        ? []
+        : opResult.entries.filter((entry): entry is {
+            key: string
+            xdr: string
+            lastModifiedLedgerSeq?: number
+            liveUntilLedgerSeq?: number
+          } => {
+            if (!entry || typeof entry !== 'object') {
+              return false
+            }
 
-        return typeof (entry as { key?: unknown }).key === 'string' && typeof (entry as { xdr?: unknown }).xdr === 'string'
-      })
+            const key = (entry as { key?: unknown }).key
+            const xdr = (entry as { xdr?: unknown }).xdr
 
-      if (!isValidEntries) {
-        return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
-      }
-    }
+            return (
+              typeof key === 'string' &&
+              key.trim() !== '' &&
+              typeof xdr === 'string' &&
+              xdr.trim() !== ''
+            )
+          })
 
     return {
-      entries: (opResult.entries ?? []).map((entry) => ({
+      entries: filteredEntries.map((entry) => ({
         key: entry.key,
         xdr: entry.xdr,
         lastModifiedLedgerSeq: entry.lastModifiedLedgerSeq,

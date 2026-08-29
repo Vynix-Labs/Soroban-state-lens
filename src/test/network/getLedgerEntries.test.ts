@@ -183,14 +183,21 @@ describe('getLedgerEntries', () => {
       ).rejects.toThrow('Invalid JSON-RPC response format')
     })
 
-    it('throws error when ledger result entries are malformed', async () => {
+    it('filters malformed ledger records individually while preserving latestLedger', async () => {
       vi.mocked(fetch).mockResolvedValue({
         ok: true,
         json: async () => ({
           jsonrpc: '2.0',
           id: 1,
           result: {
-            entries: [{ key: 'key1' }],
+            entries: [
+              { key: 'key1', xdr: 'xdr1' },
+              { key: '', xdr: 'bad-xdr' },
+              { key: 'key2', xdr: '' },
+              { key: 'key3' },
+              null,
+              { key: 'key4', xdr: 'xdr4' },
+            ],
             latestLedger: 100,
           },
         }),
@@ -201,7 +208,13 @@ describe('getLedgerEntries', () => {
           rpcUrl: mockRpcUrl,
           keys: mockKeys,
         }),
-      ).rejects.toThrow('Invalid JSON-RPC response format')
+      ).resolves.toEqual({
+        entries: [
+          { key: 'key1', xdr: 'xdr1' },
+          { key: 'key4', xdr: 'xdr4' },
+        ],
+        latestLedger: 100,
+      })
     })
 
     it('throws error when latestLedger is not a finite number', async () => {
