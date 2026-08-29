@@ -1,4 +1,5 @@
 import { normalizeTimeoutMs } from '../rpc/normalizeTimeoutMs'
+import { normalizeRpcUrl } from '../validation/normalizeRpcUrl'
 import type { RpcConfig, RpcError } from './types'
 
 function isAbortError(error: unknown): boolean {
@@ -19,6 +20,7 @@ export async function callRpc<T = unknown>(
   config: RpcConfig,
   body?: unknown,
 ): Promise<T | RpcError> {
+  const normalized = normalizeRpcUrl(config.url)
   const normalizedTimeout = normalizeTimeoutMs(config.timeout)
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), normalizedTimeout)
@@ -42,34 +44,17 @@ export async function callRpc<T = unknown>(
   }
 
   try {
-    // Merge headers while ensuring the required JSON content type cannot
-    // be replaced by a caller-provided value (case-insensitive).
-    const mergedHeaders: Record<string, string> = {}
-
-    // Copy caller headers first (normalized as provided) so we can include
-    // other custom values, but we will enforce Content-Type below.
-    if (config.headers) {
-      for (const [k, v] of Object.entries(config.headers)) {
-        mergedHeaders[k] = v
+    const headers: Record<string, string> = {}
+    for (const [key, value] of Object.entries(config.headers ?? {})) {
+      if (key.toLowerCase() !== 'content-type') {
+        headers[key] = value
       }
     }
+    headers['Content-Type'] = 'application/json'
 
-    // Ensure Content-Type header is set to application/json and cannot be
-    // overridden by callers. Respect existing casing for other headers.
-    // Detect any existing Content-Type key in caller headers (case-insensitive)
-    // and remove it so we can set the canonical value.
-    for (const key of Object.keys(mergedHeaders)) {
-      if (key.toLowerCase() === 'content-type') {
-        delete mergedHeaders[key]
-      }
-    }
-
-    // Set the required content type.
-    mergedHeaders['Content-Type'] = 'application/json'
-
-    const response = await fetch(config.url, {
+    const response = await fetch(normalized, {
       method: 'POST',
-      headers: mergedHeaders,
+      headers,
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     })
@@ -104,6 +89,20 @@ export async function callRpc<T = unknown>(
       }
     }
 
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error'
+    if (
+      error instanceof SyntaxError ||
+      (typeof errorMessage === 'string' && /JSON/i.test(errorMessage))
+    ) {
+      return {
+        message: 'Invalid JSON response',
+        code: 'INVALID_JSON',
+        details: errorMessage,
+        isTimeout: false,
+      }
+    }
+
     if (error instanceof TypeError) {
       return {
         message: 'Network error',
@@ -114,7 +113,7 @@ export async function callRpc<T = unknown>(
     }
 
     return {
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: errorMessage,
       code: 'UNKNOWN_ERROR',
       details: error,
       isTimeout: false,
