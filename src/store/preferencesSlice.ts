@@ -1,3 +1,4 @@
+import { isValidBigIntDisplayMode, isValidByteDisplayMode } from './persistence'
 import { DEFAULT_PREFERENCES } from './types'
 import type { BigIntDisplayMode, ByteDisplayMode, LensStore, PreferencesSlice } from './types'
 
@@ -7,14 +8,26 @@ export const createPreferencesSlice = (
   preferences: DEFAULT_PREFERENCES,
 
   setByteDisplayMode: (mode: ByteDisplayMode) =>
-    set((state) => ({
-      preferences: { ...state.preferences, byteDisplayMode: mode },
-    })),
+    set((state) => {
+      if (!isValidByteDisplayMode(mode)) {
+        return state
+      }
+
+      return {
+        preferences: { ...state.preferences, byteDisplayMode: mode },
+      }
+    }),
 
   setBigIntDisplayMode: (mode: BigIntDisplayMode) =>
-    set((state) => ({
-      preferences: { ...state.preferences, bigIntDisplayMode: mode },
-    })),
+    set((state) => {
+      if (!isValidBigIntDisplayMode(mode)) {
+        return state
+      }
+
+      return {
+        preferences: { ...state.preferences, bigIntDisplayMode: mode },
+      }
+    }),
 
   resetPreferences: () =>
     set(() => ({

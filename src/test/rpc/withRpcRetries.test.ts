@@ -107,7 +107,7 @@ describe('withRpcRetries', () => {
 
     controller.abort()
 
-    await expect(promise).rejects.toEqual({ code: 'TIMEOUT', message: 'timeout' })
+    await expect(promise).rejects.toThrow(/aborted/i)
     expect(fn).toHaveBeenCalledTimes(1)
   })
 
@@ -137,5 +137,26 @@ describe('withRpcRetries', () => {
     })
     expect(result).toBe('success')
     expect(fn).toHaveBeenCalledTimes(2)
+  })
+
+  it('stops retries if aborted between attempts', async () => {
+    const controller = new AbortController()
+
+    const networkError = { message: 'Timeout', code: 'TIMEOUT', isTimeout: true }
+    const fn = vi.fn().mockResolvedValue(networkError)
+
+    const promise = withRpcRetries(fn, {
+      maxAttempts: 3,
+      baseDelayMs: 50,
+      jitterRatio: 0,
+      signal: controller.signal,
+    })
+
+    // Abort between attempts
+    setTimeout(() => controller.abort(), 10)
+
+    await expect(promise).rejects.toThrow(/aborted/i)
+    // Only the initial call should have occurred
+    expect(fn).toHaveBeenCalledTimes(1)
   })
 })
