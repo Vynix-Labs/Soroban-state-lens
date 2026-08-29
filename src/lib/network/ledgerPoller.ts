@@ -63,7 +63,10 @@ export function startLedgerHeadPoll(
       if (
         result == null ||
         typeof result !== 'object' ||
-        typeof result.sequence !== 'number'
+        typeof result.sequence !== 'number' ||
+        !Number.isFinite(result.sequence) ||
+        !Number.isInteger(result.sequence) ||
+        result.sequence < 0
       ) {
         return
       }

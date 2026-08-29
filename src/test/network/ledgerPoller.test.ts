@@ -140,6 +140,36 @@ describe('startLedgerHeadPoll', () => {
       randomSpy.mockRestore()
     })
 
+    it.each([
+      { sequence: 1.5, description: 'fractional' },
+      { sequence: -1, description: 'negative' },
+      { sequence: Number.NaN, description: 'NaN' },
+      { sequence: Number.POSITIVE_INFINITY, description: 'Infinity' },
+    ])(
+      'skips onLedgerChange when sequence is $description ($sequence)',
+      async ({ sequence }) => {
+        const onLedgerChange = vi.fn()
+        const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+        mockCallRpc
+          .mockResolvedValueOnce({ result: { sequence } })
+          .mockResolvedValueOnce({ result: { sequence: 100 } })
+
+        const stop = startLedgerHeadPoll({
+          rpcConfig: defaultRpcConfig,
+          intervalMs: 1000,
+          onLedgerChange,
+        })
+
+        await vi.advanceTimersByTimeAsync(0)
+        expect(onLedgerChange).not.toHaveBeenCalled()
+        await vi.advanceTimersByTimeAsync(1000)
+        expect(onLedgerChange).toHaveBeenCalledTimes(1)
+        expect(onLedgerChange).toHaveBeenCalledWith(100)
+        stop()
+        randomSpy.mockRestore()
+      },
+    )
+
     it('does not call onLedgerChange when RPC returns error', async () => {
       const onLedgerChange = vi.fn()
       const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
