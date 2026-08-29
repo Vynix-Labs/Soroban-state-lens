@@ -177,7 +177,12 @@ function ContractExplorer() {
 
         <div className="flex items-center gap-3 shrink-0">
           {contractLoadStatus === ContractLoadStatus.SUCCESS && (
-            <Button variant="primary" size="sm" onClick={handleCaptureSnapshot}>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleCaptureSnapshot}
+              disabled={ledgerEntries.length === 0}
+            >
               Capture Snapshot
             </Button>
           )}

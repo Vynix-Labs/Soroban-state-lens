@@ -16,6 +16,7 @@ import type { PersistStorage } from 'zustand/middleware'
  * Storage key for network config persistence
  */
 export const NETWORK_CONFIG_STORAGE_KEY = 'ssl.network-config.v1'
+export const PERSISTED_STATE_VERSION = 1
 
 /**
  * Storage key for preferences persistence
@@ -101,6 +102,19 @@ export function validateDisplayPreferences(value: unknown): DisplayPreferences {
   }
 }
 
+function getPersistedStateVersion(persistedState: unknown): number | null {
+  if (typeof persistedState !== 'object' || persistedState === null) {
+    return null
+  }
+
+  const persisted = persistedState as Record<string, unknown>
+  const version = persisted.version
+
+  return typeof version === 'number' && Number.isFinite(version)
+    ? version
+    : null
+}
+
 function unwrapPersistedState(
   persistedState: unknown,
 ): Record<string, unknown> | null {
@@ -109,6 +123,11 @@ function unwrapPersistedState(
   }
 
   const persisted = persistedState as Record<string, unknown>
+  const version = getPersistedStateVersion(persistedState)
+
+  if (version !== null && version !== 0 && version !== PERSISTED_STATE_VERSION) {
+    return null
+  }
 
   if (
     'state' in persisted &&

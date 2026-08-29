@@ -494,6 +494,23 @@ export const useLensStore = create<LensStore>()(
     {
       name: NETWORK_CONFIG_STORAGE_KEY,
       storage: createSafeStorage<PersistedState>(),
+      version: 1,
+      migrate: (persistedState, version) => {
+        if (
+          typeof persistedState !== 'object' ||
+          persistedState === null ||
+          version === 0 ||
+          version === 1
+        ) {
+          return persistedState as PersistedState
+        }
+
+        return {
+          networkConfig: serializeNetworkConfigForStorage(DEFAULT_NETWORK_CONFIG),
+          preferences: DEFAULT_PREFERENCES,
+          watchlist: {},
+        }
+      },
       // Persist networkConfig, preferences, and the watchlist
       partialize: (state): PersistedState => ({
         networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
