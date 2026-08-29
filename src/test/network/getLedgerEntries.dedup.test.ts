@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
-import { getLedgerEntries, AbortError } from '../../lib/network/getLedgerEntries'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { AbortError, getLedgerEntries } from '../../lib/network/getLedgerEntries'
 
 describe('getLedgerEntries deduplication and RPC URL normalization', () => {
   const mockRpcUrl = 'https://test.rpc.url/'
@@ -27,9 +27,20 @@ describe('getLedgerEntries deduplication and RPC URL normalization', () => {
       },
     }
 
-    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => mockRpcResponse } as Response)
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => mockRpcResponse,
+    } as Response)
 
-    const res = await getLedgerEntries({ rpcUrl: mockRpcUrl, keys: [] })
+    const res = await getLedgerEntries({
+      rpcUrl: mockRpcUrl,
+      keys: ['k1', 'k2'],
+    })
+
+    expect(fetch).toHaveBeenCalledWith(
+      'https://test.rpc.url',
+      expect.objectContaining({ method: 'POST' }),
+    )
 
     expect(res.latestLedger).toBe(5)
     expect(res.entries).toEqual([
@@ -42,6 +53,12 @@ describe('getLedgerEntries deduplication and RPC URL normalization', () => {
     const controller = new AbortController()
     controller.abort()
 
-    await expect(getLedgerEntries({ rpcUrl: mockRpcUrl, keys: [], signal: controller.signal })).rejects.toThrow(AbortError)
+    await expect(
+      getLedgerEntries({
+        rpcUrl: mockRpcUrl,
+        keys: [],
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow(AbortError)
   })
 })

@@ -3,6 +3,7 @@ import { isJsonRpcErrorResponse } from '../rpc/isJsonRpcErrorResponse'
 import { isJsonRpcSuccessResponse } from '../rpc/isJsonRpcSuccessResponse'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
 import { withRpcRetries } from '../rpc/withRpcRetries'
+import { normalizeRpcUrl } from '../validation/normalizeRpcUrl'
 import { deduplicateKeys } from './deduplicateKeys'
 
 export interface GetLedgerEntriesParams {
@@ -71,14 +72,14 @@ export async function getLedgerEntries(
   // Deduplicate keys while preserving first-seen order
   const keys = deduplicateKeys(inputKeys)
 
+  if (signal?.aborted) {
+    throw new AbortError()
+  }
+
   // Stable guard: an empty keys array never reaches the RPC endpoint and
   // resolves to a handled empty result instead of an untyped request error.
   if (keys.length === 0) {
     return { entries: [], latestLedger: 0 }
-  }
-
-  if (signal?.aborted) {
-    throw new AbortError()
   }
   const normalized = normalizeRpcUrl(rpcUrl)
   if (normalized === '') {
@@ -91,7 +92,7 @@ export async function getLedgerEntries(
 
     let response: Response
     try {
-      response = await fetch(rpcUrl, {
+      response = await fetch(normalized, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -187,7 +188,7 @@ export async function getLedgerEntries(
       liveUntilLedgerSeq?: number
     }>
 
-    for (const entry of result.entries || []) {
+    for (const entry of opResult.entries || []) {
       if (!seen.has(entry.key)) {
         seen.add(entry.key)
         deduped.push({
@@ -200,12 +201,7 @@ export async function getLedgerEntries(
     }
 
     return {
-      entries: (opResult.entries ?? []).map((entry) => ({
-        key: entry.key,
-        xdr: entry.xdr,
-        lastModifiedLedgerSeq: entry.lastModifiedLedgerSeq,
-        liveUntilLedgerSeq: entry.liveUntilLedgerSeq,
-      })),
+      entries: deduped,
       latestLedger: opResult.latestLedger,
     }
   })

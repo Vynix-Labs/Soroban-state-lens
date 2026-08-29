@@ -1,6 +1,6 @@
 import { normalizeTimeoutMs } from '../rpc/normalizeTimeoutMs'
-import type { RpcConfig, RpcError } from './types'
 import { normalizeRpcUrl } from '../validation/normalizeRpcUrl'
+import type { RpcConfig, RpcError } from './types'
 
 function isAbortError(error: unknown): boolean {
   if (error instanceof Error && error.name === 'AbortError') {
@@ -20,6 +20,7 @@ export async function callRpc<T = unknown>(
   config: RpcConfig,
   body?: unknown,
 ): Promise<T | RpcError> {
+  const normalized = normalizeRpcUrl(config.url)
   const normalizedTimeout = normalizeTimeoutMs(config.timeout)
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), normalizedTimeout)

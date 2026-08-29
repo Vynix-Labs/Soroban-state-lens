@@ -138,11 +138,7 @@ export async function withRpcRetries<T>(
   let attempt = 1
 
   for (;;) {
-    if (signal?.aborted) {
-      const err = new Error('The operation was aborted')
-      err.name = 'AbortError'
-      throw err
-    }
+    if (signal?.aborted) throw createAbortError()
     let result: T | undefined
     let errorObj: unknown = null
     let didThrow = false
@@ -179,10 +175,7 @@ export async function withRpcRetries<T>(
       await delay(jitteredMs, options.signal)
     } catch (error) {
       if (isAbortError(error)) {
-        if (didThrow) {
-          throw errorObj
-        }
-        return errorObj as T
+        throw error
       }
       throw error
     }

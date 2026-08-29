@@ -107,7 +107,7 @@ describe('withRpcRetries', () => {
 
     controller.abort()
 
-    await expect(promise).rejects.toEqual({ code: 'TIMEOUT', message: 'timeout' })
+    await expect(promise).rejects.toThrow(/aborted/i)
     expect(fn).toHaveBeenCalledTimes(1)
   })
 
