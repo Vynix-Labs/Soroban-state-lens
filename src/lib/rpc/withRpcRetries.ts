@@ -133,10 +133,12 @@ export async function withRpcRetries<T>(
   const baseDelayMs = options.baseDelayMs ?? 250
   const maxDelayMs = options.maxDelayMs ?? 5000
   const jitterRatio = options.jitterRatio ?? 0.2
+  const signal = options.signal
 
   let attempt = 1
 
   for (;;) {
+    if (signal?.aborted) throw createAbortError()
     let result: T | undefined
     let errorObj: unknown = null
     let didThrow = false
@@ -173,10 +175,7 @@ export async function withRpcRetries<T>(
       await delay(jitteredMs, options.signal)
     } catch (error) {
       if (isAbortError(error)) {
-        if (didThrow) {
-          throw errorObj
-        }
-        return errorObj as T
+        throw error
       }
       throw error
     }
