@@ -187,8 +187,12 @@ const createSnapshotSlice = (
     contractId: string,
     entries: Record<string, LedgerEntry>,
     label?: string,
-  ) =>
-    set((state) => ({
+  ) => {
+    const trimmedLabel = typeof label === 'string' ? label.trim() : undefined
+    const normalizedLabel =
+      trimmedLabel && trimmedLabel.length > 0 ? trimmedLabel : undefined
+
+    return set((state) => ({
       snapshots: {
         ...state.snapshots,
         [contractId]: [
@@ -198,11 +202,12 @@ const createSnapshotSlice = (
             contractId,
             timestamp: Date.now(),
             ledgerData: { ...entries },
-            label,
+            label: normalizedLabel,
           },
         ],
       },
-    })),
+    }))
+  },
 
   getSnapshots: (contractId: string) => {
     return get().snapshots[contractId] ?? []
@@ -341,7 +346,7 @@ const createWatchlistSlice = (
   addToWatchlist: (contractId: string, keyPath: string) =>
     set((state) => {
       const currentItems = state.watchlist[contractId] ?? []
-      
+
       // Check if item already exists (duplicate protection)
       const isDuplicate = currentItems.some((item) => item.keyPath === keyPath)
       if (isDuplicate) {
@@ -366,7 +371,9 @@ const createWatchlistSlice = (
   removeFromWatchlist: (contractId: string, keyPath: string) =>
     set((state) => {
       const currentItems = state.watchlist[contractId] ?? []
-      const filteredItems = currentItems.filter((item) => item.keyPath !== keyPath)
+      const filteredItems = currentItems.filter(
+        (item) => item.keyPath !== keyPath,
+      )
 
       if (filteredItems.length === currentItems.length) {
         return state
@@ -524,7 +531,8 @@ export const lensActions = {
     useLensStore.getState().setContractLoadStatus(status),
   setContractLoadError: (message: string | null) =>
     useLensStore.getState().setContractLoadError(message),
-  resetContractLoadState: () => useLensStore.getState().resetContractLoadState(),
+  resetContractLoadState: () =>
+    useLensStore.getState().resetContractLoadState(),
   loadContract: (contractId: string, keys: Array<string>) =>
     useLensStore.getState().loadContract(contractId, keys),
 }

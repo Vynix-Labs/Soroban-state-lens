@@ -60,6 +60,8 @@ export interface ScVal {
 export interface NormalizeOptions {
   /** When set, nodes at this depth or deeper are replaced with a truncated marker. */
   maxDepth?: number
+  /** When set, vec/map children beyond this count are replaced with a truncated marker. */
+  maxChildren?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -205,13 +207,27 @@ function createUnsupportedNode(
   path: Path,
   variant: string,
   scVal: ScVal | null | undefined,
+  sourceType?: string,
 ): UnsupportedNode {
   return {
     kind: 'unsupported',
     path,
     variant,
+    sourceType: sourceType ?? variant,
     raw: toRaw(scVal),
   }
+}
+
+function normalizeMaxChildren(value: unknown): number | undefined {
+  if (
+    typeof value !== 'number' ||
+    !Number.isFinite(value) ||
+    !Number.isInteger(value) ||
+    value < 0
+  ) {
+    return undefined
+  }
+  return value
 }
 
 // ---------------------------------------------------------------------------
@@ -480,26 +496,39 @@ export function normalizeNode(
         } satisfies VecNode
       }
 
-      // Pre-allocate array with known size for better performance
-      const items: Array<Node> = new Array(scVal.value.length)
+      const maxChildren = normalizeMaxChildren(options?.maxChildren)
+      const items: Array<Node> = []
 
-      // Use for loop with better error handling for large arrays
       for (let i = 0; i < scVal.value.length; i++) {
+        if (maxChildren !== undefined && i >= maxChildren) {
+          items.push(
+            createTruncatedNode(
+              appendPath(path, { type: 'index', index: i }),
+              currentDepth + 1,
+            ),
+          )
+          break
+        }
+
         try {
           const childPath = appendPath(path, { type: 'index', index: i })
-          items[i] = normalizeNode(
-            scVal.value[i],
-            childPath,
-            visited,
-            options,
-            currentDepth + 1,
+          items.push(
+            normalizeNode(
+              scVal.value[i],
+              childPath,
+              visited,
+              options,
+              currentDepth + 1,
+            ),
           )
         } catch (error) {
-          // Handle individual item errors gracefully
-          items[i] = createUnsupportedNode(
-            appendPath(path, { type: 'index', index: i }),
-            'VectorItemError',
-            scVal.value[i],
+          items.push(
+            createUnsupportedNode(
+              appendPath(path, { type: 'index', index: i }),
+              'VectorItemError',
+              scVal.value[i],
+              'VectorItemError',
+            ),
           )
         }
       }
@@ -515,7 +544,18 @@ export function normalizeNode(
     case ScValType.SCV_MAP: {
       const entries: Array<{ key: Node; value: Node }> = []
       if (Array.isArray(scVal.value)) {
-        for (const entry of scVal.value) {
+        const maxChildren = normalizeMaxChildren(options?.maxChildren)
+
+        for (let i = 0; i < scVal.value.length; i++) {
+          if (maxChildren !== undefined && i >= maxChildren) {
+            entries.push({
+              key: createTruncatedNode(path, currentDepth + 1),
+              value: createTruncatedNode(path, currentDepth + 1),
+            })
+            break
+          }
+
+          const entry = scVal.value[i]
           try {
             const keyNode = normalizeNode(
               entry.key,

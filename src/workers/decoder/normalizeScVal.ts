@@ -98,10 +98,12 @@ export type NormalizedValue =
 function createUnsupportedFallback(
   variant: string,
   rawData: unknown,
+  sourceType?: string,
 ): NormalizedUnsupported {
   return {
     kind: 'unsupported',
     variant,
+    sourceType: sourceType ?? variant,
     rawData: rawData === undefined ? null : rawData,
   }
 }
@@ -253,6 +255,20 @@ function parts256ToString(value: unknown, signed: boolean): string | null {
 export interface NormalizeScValOptions {
   /** When set, nodes at this depth or deeper are replaced with a truncated marker. */
   maxDepth?: number
+  /** When set, vec/map children beyond this count are replaced with a truncated marker. */
+  maxChildren?: number
+}
+
+function normalizeMaxChildren(value: unknown): number | undefined {
+  if (
+    typeof value !== 'number' ||
+    !Number.isFinite(value) ||
+    !Number.isInteger(value) ||
+    value < 0
+  ) {
+    return undefined
+  }
+  return value
 }
 
 function createTruncatedMarker(depth: number): NormalizedTruncated {
@@ -484,11 +500,21 @@ export function normalizeScVal(
 
     case ScValType.SCV_VEC:
       if (Array.isArray(scVal.value)) {
+        const maxChildren = normalizeMaxChildren(options?.maxChildren)
+        const items = scVal.value.flatMap((item, index) => {
+          if (maxChildren !== undefined && index >= maxChildren) {
+            return [createTruncatedMarker(depth + 1)]
+          }
+          return [normalizeScVal(item, visited, options, depth + 1)]
+        })
         return {
           kind: 'vec',
-          items: scVal.value.map((item) =>
-            normalizeScVal(item, visited, options, depth + 1),
-          ),
+          items:
+            maxChildren !== undefined && scVal.value.length > maxChildren
+              ? items
+                  .slice(0, maxChildren)
+                  .concat(createTruncatedMarker(depth + 1))
+              : items,
         }
       }
       return {
@@ -500,21 +526,47 @@ export function normalizeScVal(
       // Map keys in Soroban can be complex objects, so we preserve them as
       // explicit key/value pairs in a normalized map structure.
       if (Array.isArray(scVal.value)) {
+        const maxChildren = normalizeMaxChildren(options?.maxChildren)
+        const entries = scVal.value.flatMap(
+          (entry: { key: ScVal; val: ScVal }, index) => {
+            if (maxChildren !== undefined && index >= maxChildren) {
+              return [
+                {
+                  key: createTruncatedMarker(depth + 1),
+                  value: createTruncatedMarker(depth + 1),
+                },
+              ]
+            }
+
+            try {
+              return [
+                {
+                  key: normalizeScVal(entry.key, visited, options, depth + 1),
+                  value: normalizeScVal(entry.val, visited, options, depth + 1),
+                } satisfies NormalizedMapEntry,
+              ]
+            } catch {
+              return [
+                {
+                  key: createUnsupportedFallback('MapEntryKeyError', entry.key),
+                  value: createUnsupportedFallback(
+                    'MapEntryValueError',
+                    entry.val,
+                  ),
+                } satisfies NormalizedMapEntry,
+              ]
+            }
+          },
+        )
         return {
           kind: 'map',
-          entries: scVal.value.map((entry: { key: ScVal; val: ScVal }) => {
-            try {
-              return {
-                key: normalizeScVal(entry.key, visited, options, depth + 1),
-                value: normalizeScVal(entry.val, visited, options, depth + 1),
-              } satisfies NormalizedMapEntry
-            } catch {
-              return {
-                key: createUnsupportedFallback('MapEntryKeyError', entry.key),
-                value: createUnsupportedFallback('MapEntryValueError', entry.val),
-              } satisfies NormalizedMapEntry
-            }
-          }),
+          entries:
+            maxChildren !== undefined && scVal.value.length > maxChildren
+              ? entries.slice(0, maxChildren).concat({
+                  key: createTruncatedMarker(depth + 1),
+                  value: createTruncatedMarker(depth + 1),
+                })
+              : entries,
         }
       }
       // null/undefined value means an empty map
