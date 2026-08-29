@@ -48,6 +48,13 @@ function parseLatestLedgerResult(value: unknown): LatestLedgerResult | null {
   }
 
   if (typeof candidate.protocolVersion === 'number') {
+    if (
+      !Number.isFinite(candidate.protocolVersion) ||
+      !Number.isInteger(candidate.protocolVersion) ||
+      candidate.protocolVersion < 0
+    ) {
+      return null
+    }
     ledger.protocolVersion = candidate.protocolVersion
   }
 
@@ -122,11 +129,12 @@ export async function getLatestLedgerConnectionCheck(
   } catch (error) {
     return {
       success: false,
-      error: resolvedOptions?.signal?.aborted || signal?.aborted
-        ? 'Connection check aborted'
-        : error instanceof Error
-          ? error.message
-          : 'Connection failed',
+      error:
+        resolvedOptions?.signal?.aborted || signal?.aborted
+          ? 'Connection check aborted'
+          : error instanceof Error
+            ? error.message
+            : 'Connection failed',
     }
   }
 }
