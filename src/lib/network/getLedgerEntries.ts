@@ -3,6 +3,7 @@ import { isJsonRpcErrorResponse } from '../rpc/isJsonRpcErrorResponse'
 import { isJsonRpcSuccessResponse } from '../rpc/isJsonRpcSuccessResponse'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
 import { withRpcRetries } from '../rpc/withRpcRetries'
+import { normalizeRpcUrl } from '../validation/normalizeRpcUrl'
 import { deduplicateKeys } from './deduplicateKeys'
 
 export interface GetLedgerEntriesParams {
@@ -71,16 +72,19 @@ export async function getLedgerEntries(
   // Deduplicate keys while preserving first-seen order
   const keys = deduplicateKeys(inputKeys)
 
+  if (signal?.aborted) {
+    throw new AbortError()
+  }
+
   // Stable guard: an empty keys array never reaches the RPC endpoint and
   // resolves to a handled empty result instead of an untyped request error.
   if (keys.length === 0) {
     return { entries: [], latestLedger: 0 }
   }
-
-  if (signal?.aborted) {
-    throw new AbortError()
+  const normalized = normalizeRpcUrl(rpcUrl)
+  if (normalized === '') {
+    throw new Error('Invalid RPC URL')
   }
-
   const requestId = toRpcRequestId()
 
   const result = await withRpcRetries<LedgerEntriesOpResult>(async () => {
@@ -88,7 +92,7 @@ export async function getLedgerEntries(
 
     let response: Response
     try {
-      response = await fetch(rpcUrl, {
+      response = await fetch(normalized, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -174,13 +178,29 @@ export async function getLedgerEntries(
       }
     }
 
+    // Deduplicate by key, keep first-seen records
+    const seen = new Set<string>()
+    const deduped = [] as Array<{
+      key: string
+      xdr: string
+      lastModifiedLedgerSeq?: number
+      liveUntilLedgerSeq?: number
+    }>
+
+    for (const entry of opResult.entries || []) {
+      if (!seen.has(entry.key)) {
+        seen.add(entry.key)
+        deduped.push({
+          key: entry.key,
+          xdr: entry.xdr,
+          lastModifiedLedgerSeq: entry.lastModifiedLedgerSeq,
+          liveUntilLedgerSeq: entry.liveUntilLedgerSeq,
+        })
+      }
+    }
+
     return {
-      entries: (opResult.entries ?? []).map((entry) => ({
-        key: entry.key,
-        xdr: entry.xdr,
-        lastModifiedLedgerSeq: entry.lastModifiedLedgerSeq,
-        liveUntilLedgerSeq: entry.liveUntilLedgerSeq,
-      })),
+      entries: deduped,
       latestLedger: opResult.latestLedger,
     }
   })
