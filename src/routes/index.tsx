@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import SearchLandingScreen from '@/components/Home/SearchLandingScreen'
 import { probeDecoderWorker } from './initializeDecoderWorkerPing'
+import SearchLandingScreen from '@/components/Home/SearchLandingScreen'
 
 export const Route = createFileRoute('/')({
   component: App,

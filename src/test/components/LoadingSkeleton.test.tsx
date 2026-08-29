@@ -7,7 +7,7 @@ describe('LoadingSkeleton', () => {
     render(<LoadingSkeleton />)
 
     const region = screen.getByRole('region', { name: /loading state/i })
-    expect(region).toHaveAttribute('aria-busy', 'true')
+    expect(region.getAttribute('aria-busy')).toBe('true')
 
     const status = screen.getByRole('status', { name: /loading explorer rows/i })
     expect(status).toBeTruthy()

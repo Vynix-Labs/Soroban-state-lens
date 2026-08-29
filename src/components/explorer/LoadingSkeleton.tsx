@@ -1,20 +1,27 @@
-import { Heading, Card } from '@stellar/design-system'
-
 export function LoadingSkeleton() {
   return (
-    <Card>
-      <div className="p-6 space-y-4" role="region" aria-busy="true" aria-labelledby="loading-heading">
-        <Heading
-          size="sm"
-          as="h3"
+    <div className="Card Card--primary">
+      <div
+        className="p-6 space-y-4"
+        role="region"
+        aria-busy="true"
+        aria-labelledby="loading-heading"
+      >
+        <h3
           id="loading-heading"
           className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
         >
           Loading State
-        </Heading>
+        </h3>
 
         <div>
-          <div role="status" aria-live="polite">Loading explorer rows</div>
+          <div
+            role="status"
+            aria-live="polite"
+            aria-label="Loading explorer rows"
+          >
+            Loading explorer rows
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -26,7 +33,7 @@ export function LoadingSkeleton() {
           ))}
         </div>
       </div>
-    </Card>
+    </div>
   )
 }
 
