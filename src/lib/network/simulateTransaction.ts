@@ -64,9 +64,18 @@ export function simulateTransactionAdapter(
     return { success: false, error: response.error }
   }
 
+  const latestLedger =
+    response.latestLedger !== undefined &&
+    (typeof response.latestLedger !== 'number' ||
+      !Number.isFinite(response.latestLedger) ||
+      !Number.isInteger(response.latestLedger) ||
+      response.latestLedger < 0)
+      ? undefined
+      : response.latestLedger
+
   return {
     success: true,
-    latestLedger: response.latestLedger,
+    latestLedger,
     results: response.results ?? [],
     footprint: {
       readOnly: sanitizeFootprintSection(response.footprint?.readOnly),

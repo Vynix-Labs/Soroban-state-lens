@@ -1,4 +1,5 @@
 import { normalizeTimeoutMs } from '../rpc/normalizeTimeoutMs'
+import { normalizeRpcUrl } from '../validation/normalizeRpcUrl'
 import type { RpcConfig, RpcError } from './types'
 
 function isAbortError(error: unknown): boolean {
@@ -19,6 +20,7 @@ export async function callRpc<T = unknown>(
   config: RpcConfig,
   body?: unknown,
 ): Promise<T | RpcError> {
+  const normalized = normalizeRpcUrl(config.url)
   const normalizedTimeout = normalizeTimeoutMs(config.timeout)
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), normalizedTimeout)
@@ -42,7 +44,7 @@ export async function callRpc<T = unknown>(
   }
 
   try {
-    const response = await fetch(config.url, {
+    const response = await fetch(normalized, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -58,6 +60,27 @@ export async function callRpc<T = unknown>(
         message: `HTTP ${response.status}: ${response.statusText}`,
         code: response.status,
         details: errorText,
+        isTimeout: false,
+      }
+    }
+
+    // A successful (2xx) response with no body is not a parseable RPC
+    // payload. This commonly happens during proxy or maintenance failures
+    // (e.g. a bare 204, or a 200 with an empty body). Peek at the body via
+    // a clone so `response.json()` below is unaffected when this check
+    // can't be performed (e.g. in test doubles that don't implement
+    // `clone`/`text`).
+    let bodyText: string | undefined
+    try {
+      bodyText = await response.clone().text()
+    } catch {
+      bodyText = undefined
+    }
+    if (bodyText !== undefined && bodyText.trim().length === 0) {
+      return {
+        message: 'Empty RPC response body',
+        code: 'INVALID_RESPONSE',
+        details: `Received HTTP ${response.status} with an empty response body`,
         isTimeout: false,
       }
     }
@@ -82,6 +105,20 @@ export async function callRpc<T = unknown>(
       }
     }
 
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error'
+    if (
+      error instanceof SyntaxError ||
+      (typeof errorMessage === 'string' && /JSON/i.test(errorMessage))
+    ) {
+      return {
+        message: 'Invalid JSON response',
+        code: 'INVALID_JSON',
+        details: errorMessage,
+        isTimeout: false,
+      }
+    }
+
     if (error instanceof TypeError) {
       return {
         message: 'Network error',
@@ -92,7 +129,7 @@ export async function callRpc<T = unknown>(
     }
 
     return {
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: errorMessage,
       code: 'UNKNOWN_ERROR',
       details: error,
       isTimeout: false,
