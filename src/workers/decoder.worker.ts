@@ -62,7 +62,7 @@ export const decoderWorkerApi: DecoderWorkerApi = {
 
   decodeScVal(request: DecodeScValRequest): Promise<DecodeScValResult> {
     try {
-      const { xdr: xdrString } = request
+      const { xdr: xdrString, maxDepth } = request
 
       // Decode the ScVal from XDR
       const scValXdr = xdr.ScVal.fromXDR(xdrString, 'base64')
@@ -92,8 +92,13 @@ export const decoderWorkerApi: DecoderWorkerApi = {
         value,
       }
 
-      // Perform full node normalization
-      const normalizedNode = normalizeNode(plainScVal)
+      // Perform full node normalization with optional depth limiting
+      const normalizedNode = normalizeNode(
+        plainScVal,
+        undefined,
+        undefined,
+        { maxDepth },
+      )
 
       return Promise.resolve(normalizedNode)
     } catch (error) {

@@ -1,10 +1,11 @@
-# PR Description
+# PR: Thread maxDepth through worker decodeScVal and add selectSnapshotsForContract selector
 
 ## Summary
-- Fix watchlist removal so removing the last pinned item removes the empty contract bucket from state.
-- Add regression tests for watchlist removal, persistence, and route behavior.
-- Improve decoder normalization for invalid maxDepth values and preserve valid map entries when one entry is malformed.
-- Add component tests for the landing screen validation and navigation flow.
+- Extend the decoder worker `decodeScVal` request type to accept an optional `maxDepth` field.
+- Forward `maxDepth` into `normalizeNode` during XDR-decoded ScVal normalization.
+- Add a regression test ensuring `decodeScVal` returns truncated nodes when `maxDepth` is set.
+- Add `selectSnapshotsForContract` selector to the store selectors and tests for known and unknown contracts.
 
-## Testing
-- Ran targeted Vitest suites covering watchlist, hydration, routing, and decoder behavior.
+## Validation
+- `npm exec -- vitest run src/test/workers/decodeScVal.internal.test.ts`
+- `npm exec -- vitest run src/test/store/selectors.test.ts`

@@ -199,6 +199,17 @@ describe('lensStore', () => {
       expect(state.expandedNodes).toContain('node-3')
     })
 
+    it('ignores blank node ids in setExpanded, toggleExpanded, and expandAll', () => {
+      const { setExpanded, toggleExpanded, expandAll } = useLensStore.getState()
+
+      setExpanded('   ', true)
+      toggleExpanded('\n')
+      expandAll(['node-1', '   ', 'node-2', '  \t  '])
+
+      const state = getStoreState()
+      expect(state.expandedNodes).toEqual(['node-1', 'node-2'])
+    })
+
     it('expandAll does not duplicate existing nodes', () => {
       const { setExpanded, expandAll } = useLensStore.getState()
 
@@ -236,6 +247,30 @@ describe('lensStore', () => {
       const state = getStoreState()
       expect(state.ledgerData['test-key']).toBeDefined()
       expect(state.networkConfig.networkId).toBe('futurenet')
+    })
+  })
+
+  describe('watchlist actions', () => {
+    it('ignores blank contract ids and key paths', () => {
+      const { addToWatchlist, getWatchlistForContract } = useLensStore.getState()
+
+      addToWatchlist('   ', ' /path/to/key ')
+      addToWatchlist('contract-1', '   ')
+      addToWatchlist('contract-1', '   ')
+
+      const watchlist = getWatchlistForContract('contract-1')
+      expect(watchlist).toEqual([])
+    })
+
+    it('trims values before duplicate checks and storage', () => {
+      const { addToWatchlist, getWatchlistForContract } = useLensStore.getState()
+
+      addToWatchlist('contract-1', '  /path/to/key  ')
+      addToWatchlist('contract-1', '/path/to/key')
+
+      const watchlist = getWatchlistForContract('contract-1')
+      expect(watchlist).toHaveLength(1)
+      expect(watchlist[0].keyPath).toBe('/path/to/key')
     })
   })
 

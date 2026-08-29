@@ -78,6 +78,76 @@ function toRaw(scVal: ScVal | null | undefined): RawScVal {
   }
 }
 
+function getScValSwitch(scVal: any): string | undefined {
+  if (!scVal || typeof scVal !== 'object') {
+    return undefined
+  }
+
+  if (typeof scVal.switch === 'string') {
+    return scVal.switch
+  }
+
+  if (typeof scVal.switch === 'function') {
+    try {
+      const switchEnum = scVal.switch()
+      if (
+        switchEnum &&
+        typeof switchEnum === 'object' &&
+        typeof (switchEnum as { name: unknown }).name === 'string'
+      ) {
+        const name = String((switchEnum as { name: string }).name)
+        return name.charAt(0).toUpperCase() + name.slice(1)
+      }
+    } catch {
+      return undefined
+    }
+  }
+
+  return undefined
+}
+
+function getScValValue(scVal: any): unknown {
+  if (!scVal || typeof scVal !== 'object') {
+    return scVal
+  }
+
+  if (typeof scVal.value === 'function') {
+    try {
+      return scVal.value()
+    } catch {
+      return undefined
+    }
+  }
+
+  return scVal.value
+}
+
+/**
+ * Coerces an ScvString / ScvSymbol value to its string representation.
+ * Directly-constructed ScVal values expose the value as a `string`, but
+ * values decoded from XDR arrive as a `Buffer`/`Uint8Array`, so both shapes
+ * are supported here.
+ */
+function stringLikeToString(value: unknown): string {
+  if (typeof value === 'string') {
+    return value
+  }
+  if (value === null || value === undefined) {
+    return ''
+  }
+  if (typeof value === 'object' && typeof (value as any).toString === 'function') {
+    try {
+      const str = (value as any).toString()
+      if (typeof str === 'string') {
+        return str
+      }
+    } catch {
+      // fall through to empty string
+    }
+  }
+  return ''
+}
+
 function bigIntLikeToString(value: unknown): string | null {
   if (typeof value === 'bigint') {
     return value.toString()
@@ -165,34 +235,53 @@ function parts256ToString(value: unknown, signed: boolean): string | null {
     return null
   }
 
+  const maxU64 = (1n << 64n) - 1n
+  const minI64 = -(1n << 63n)
+  const maxI64 = (1n << 63n) - 1n
+
   const hiHi = BigInt(hiHiStr)
   const hiLo = BigInt(hiLoStr)
   const loHi = BigInt(loHiStr)
   const loLo = BigInt(loLoStr)
 
-  const uLoLo = loLo < 0n ? loLo + (1n << 64n) : loLo
-  const uLoHi = loHi < 0n ? loHi + (1n << 64n) : loHi
-  const uHiLo = hiLo < 0n ? hiLo + (1n << 64n) : hiLo
-
   if (signed) {
+    if (hiHi < minI64 || hiHi > maxI64) {
+      return null
+    }
+    if (hiLo < 0n || hiLo > maxU64 || loHi < 0n || loHi > maxU64 || loLo < 0n || loLo > maxU64) {
+      return null
+    }
+
     const combined =
-      hiHi * (1n << 192n) + uHiLo * (1n << 128n) + uLoHi * (1n << 64n) + uLoLo
+      hiHi * (1n << 192n) + hiLo * (1n << 128n) + loHi * (1n << 64n) + loLo
     const min = -(1n << 255n)
     const max = (1n << 255n) - 1n
     if (combined < min || combined > max) {
       return null
     }
     return combined.toString()
-  } else {
-    const uHiHi = hiHi < 0n ? hiHi + (1n << 64n) : hiHi
-    const combined =
-      uHiHi * (1n << 192n) + uHiLo * (1n << 128n) + uLoHi * (1n << 64n) + uLoLo
-    const max = (1n << 256n) - 1n
-    if (combined < 0n || combined > max) {
-      return null
-    }
-    return combined.toString()
   }
+
+  if (
+    hiHi < 0n ||
+    hiHi > maxU64 ||
+    hiLo < 0n ||
+    hiLo > maxU64 ||
+    loHi < 0n ||
+    loHi > maxU64 ||
+    loLo < 0n ||
+    loLo > maxU64
+  ) {
+    return null
+  }
+
+  const combined =
+    hiHi * (1n << 192n) + hiLo * (1n << 128n) + loHi * (1n << 64n) + loLo
+  const max = (1n << 256n) - 1n
+  if (combined < 0n || combined > max) {
+    return null
+  }
+  return combined.toString()
 }
 
 function createCycleNode(path: Path, depth: number): CycleNode {
@@ -278,17 +367,27 @@ export function normalizeNode(
     visited.markVisited(scVal)
   }
 
-  if (!scVal || typeof scVal.switch !== 'string') {
+  const switchValue = getScValSwitch(scVal)
+  const value = getScValValue(scVal)
+
+  if (!scVal || typeof switchValue !== 'string') {
     return createUnsupportedNode(path, 'Invalid', scVal)
   }
 
-  switch (scVal.switch) {
+  const normalizedScVal: ScVal = {
+    switch: switchValue as ScValType,
+    value,
+  }
+
+  switch (switchValue) {
     case ScValType.SCV_BOOL: {
       return {
         kind: 'primitive',
         path,
         scType: 'bool',
-        value: typeof scVal.value === 'boolean' ? scVal.value : false,
+        value: typeof normalizedScVal.value === 'boolean'
+          ? normalizedScVal.value
+          : false,
         raw: toRaw(scVal),
       } satisfies PrimitiveNode
     }
@@ -304,17 +403,18 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_U32: {
+      const value = normalizedScVal.value
       if (
-        typeof scVal.value === 'number' &&
-        Number.isInteger(scVal.value) &&
-        scVal.value >= 0 &&
-        scVal.value <= 0xffffffff
+        typeof value === 'number' &&
+        Number.isInteger(value) &&
+        value >= 0 &&
+        value <= 0xffffffff
       ) {
         return {
           kind: 'primitive',
           path,
           scType: 'u32',
-          value: scVal.value,
+          value,
           raw: toRaw(scVal),
         } satisfies PrimitiveNode
       }
@@ -322,17 +422,18 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_I32: {
+      const value = normalizedScVal.value
       if (
-        typeof scVal.value === 'number' &&
-        Number.isInteger(scVal.value) &&
-        scVal.value >= -0x80000000 &&
-        scVal.value <= 0x7fffffff
+        typeof value === 'number' &&
+        Number.isInteger(value) &&
+        value >= -0x80000000 &&
+        value <= 0x7fffffff
       ) {
         return {
           kind: 'primitive',
           path,
           scType: 'i32',
-          value: scVal.value,
+          value,
           raw: toRaw(scVal),
         } satisfies PrimitiveNode
       }
@@ -340,7 +441,7 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_U64: {
-      const str = bigIntLikeToString(scVal.value)
+      const str = bigIntLikeToString(normalizedScVal.value)
       if (str !== null) {
         const n = BigInt(str)
         if (n >= 0n && n <= 0xffffffffffffffffn) {
@@ -356,8 +457,25 @@ export function normalizeNode(
       return createUnsupportedNode(path, ScValType.SCV_U64, scVal)
     }
 
-    case ScValType.SCV_I64: {
+    case ScValType.SCV_TIMEPOINT: {
       const str = bigIntLikeToString(scVal.value)
+      if (str !== null) {
+        const n = BigInt(str)
+        if (n >= 0n && n <= 0xffffffffffffffffn) {
+          return {
+            kind: 'primitive',
+            path,
+            scType: 'timepoint',
+            value: str,
+            raw: toRaw(scVal),
+          } satisfies PrimitiveNode
+        }
+      }
+      return createUnsupportedNode(path, ScValType.SCV_TIMEPOINT, scVal)
+    }
+
+    case ScValType.SCV_I64: {
+      const str = bigIntLikeToString(normalizedScVal.value)
       if (str !== null) {
         const n = BigInt(str)
         if (n >= -0x8000000000000000n && n <= 0x7fffffffffffffffn) {
@@ -373,8 +491,25 @@ export function normalizeNode(
       return createUnsupportedNode(path, ScValType.SCV_I64, scVal)
     }
 
+    case ScValType.SCV_DURATION: {
+      const str = bigIntLikeToString(scVal.value)
+      if (str !== null) {
+        const n = BigInt(str)
+        if (n >= 0n && n <= 0xffffffffffffffffn) {
+          return {
+            kind: 'primitive',
+            path,
+            scType: 'duration',
+            value: str,
+            raw: toRaw(scVal),
+          } satisfies PrimitiveNode
+        }
+      }
+      return createUnsupportedNode(path, ScValType.SCV_DURATION, scVal)
+    }
+
     case ScValType.SCV_U128: {
-      const str = parts128ToString(scVal.value, false)
+      const str = parts128ToString(normalizedScVal.value, false)
       if (str !== null) {
         return {
           kind: 'primitive',
@@ -388,7 +523,7 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_I128: {
-      const str = parts128ToString(scVal.value, true)
+      const str = parts128ToString(normalizedScVal.value, true)
       if (str !== null) {
         return {
           kind: 'primitive',
@@ -402,7 +537,7 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_U256: {
-      const str = parts256ToString(scVal.value, false)
+      const str = parts256ToString(normalizedScVal.value, false)
       if (str !== null) {
         return {
           kind: 'primitive',
@@ -416,7 +551,7 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_I256: {
-      const str = parts256ToString(scVal.value, true)
+      const str = parts256ToString(normalizedScVal.value, true)
       if (str !== null) {
         return {
           kind: 'primitive',
@@ -434,7 +569,7 @@ export function normalizeNode(
         kind: 'primitive',
         path,
         scType: 'string',
-        value: typeof scVal.value === 'string' ? scVal.value : '',
+        value: stringLikeToString(normalizedScVal.value),
         raw: toRaw(scVal),
       } satisfies PrimitiveNode
     }
@@ -444,13 +579,13 @@ export function normalizeNode(
         kind: 'primitive',
         path,
         scType: 'symbol',
-        value: typeof scVal.value === 'string' ? scVal.value : '',
+        value: stringLikeToString(normalizedScVal.value),
         raw: toRaw(scVal),
       } satisfies PrimitiveNode
     }
 
     case ScValType.SCV_ERROR: {
-      const raw = scVal.value
+      const raw = normalizedScVal.value
       if (
         raw !== null &&
         raw !== undefined &&
@@ -478,7 +613,7 @@ export function normalizeNode(
 
     case ScValType.SCV_VEC: {
       // Early return for null/undefined values - optimization for empty vectors
-      if (scVal.value == null) {
+      if (normalizedScVal.value == null) {
         return {
           kind: 'vec',
           path,
@@ -487,7 +622,7 @@ export function normalizeNode(
         } satisfies VecNode
       }
 
-      if (!Array.isArray(scVal.value)) {
+      if (!Array.isArray(normalizedScVal.value)) {
         return {
           kind: 'vec',
           path,
@@ -496,39 +631,26 @@ export function normalizeNode(
         } satisfies VecNode
       }
 
-      const maxChildren = normalizeMaxChildren(options?.maxChildren)
-      const items: Array<Node> = []
+      // Pre-allocate array with known size for better performance
+      const items: Array<Node> = new Array(normalizedScVal.value.length)
 
-      for (let i = 0; i < scVal.value.length; i++) {
-        if (maxChildren !== undefined && i >= maxChildren) {
-          items.push(
-            createTruncatedNode(
-              appendPath(path, { type: 'index', index: i }),
-              currentDepth + 1,
-            ),
-          )
-          break
-        }
-
+      // Use for loop with better error handling for large arrays
+      for (let i = 0; i < normalizedScVal.value.length; i++) {
         try {
           const childPath = appendPath(path, { type: 'index', index: i })
-          items.push(
-            normalizeNode(
-              scVal.value[i],
-              childPath,
-              visited,
-              options,
-              currentDepth + 1,
-            ),
+          items[i] = normalizeNode(
+            normalizedScVal.value[i],
+            childPath,
+            visited,
+            options,
+            currentDepth + 1,
           )
         } catch (error) {
-          items.push(
-            createUnsupportedNode(
-              appendPath(path, { type: 'index', index: i }),
-              'VectorItemError',
-              scVal.value[i],
-              'VectorItemError',
-            ),
+          // Handle individual item errors gracefully
+          items[i] = createUnsupportedNode(
+            appendPath(path, { type: 'index', index: i }),
+            'VectorItemError',
+            normalizedScVal.value[i],
           )
         }
       }
@@ -543,42 +665,32 @@ export function normalizeNode(
 
     case ScValType.SCV_MAP: {
       const entries: Array<{ key: Node; value: Node }> = []
-      if (Array.isArray(scVal.value)) {
-        const maxChildren = normalizeMaxChildren(options?.maxChildren)
-
-        for (let i = 0; i < scVal.value.length; i++) {
-          if (maxChildren !== undefined && i >= maxChildren) {
-            entries.push({
-              key: createTruncatedNode(path, currentDepth + 1),
-              value: createTruncatedNode(path, currentDepth + 1),
-            })
-            break
-          }
-
-          const entry = scVal.value[i]
-          try {
-            const keyNode = normalizeNode(
-              entry.key,
-              path,
-              visited,
-              options,
-              currentDepth + 1,
-            )
-            const keyPath = appendPath(path, { type: 'key', key: keyNode })
-            const valueNode = normalizeNode(
-              entry.val,
-              keyPath,
-              visited,
-              options,
-              currentDepth + 1,
-            )
-            entries.push({ key: keyNode, value: valueNode })
-          } catch {
-            entries.push({
-              key: createUnsupportedNode(path, 'MapEntryError', entry.key),
-              value: createUnsupportedNode(path, 'MapEntryError', entry.val),
-            })
-          }
+      if (Array.isArray(normalizedScVal.value)) {
+        for (const entry of normalizedScVal.value) {
+          // js-xdr exposes struct fields via accessor methods (e.g.
+          // `entry.key()`), while plain test fixtures use `entry.key`.
+          // Read both shapes so map decoding works for XDR-originated
+          // ScMapEntry instances as well as inline fixtures.
+          const entryKey =
+            entry && typeof entry.key === 'function' ? entry.key() : entry.key
+          const entryVal =
+            entry && typeof entry.val === 'function' ? entry.val() : entry.val
+          const keyNode = normalizeNode(
+            entryKey,
+            path,
+            visited,
+            options,
+            currentDepth + 1,
+          )
+          const keyPath = appendPath(path, { type: 'key', key: keyNode })
+          const valueNode = normalizeNode(
+            entryVal,
+            keyPath,
+            visited,
+            options,
+            currentDepth + 1,
+          )
+          entries.push({ key: keyNode, value: valueNode })
         }
       }
       return {

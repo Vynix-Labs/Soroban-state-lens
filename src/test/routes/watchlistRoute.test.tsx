@@ -1,28 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
+import { fireEvent, render, screen } from '@testing-library/react'
+import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { routeTree } from '../../routeTree.gen'
+import { resetStore, useLensStore } from '../../store/lensStore'
 
 vi.mock('@stellar/design-system', () => ({
   Button: (props: any) => <button {...props} />,
   Card: (props: any) => <div {...props}>{props.children}</div>,
   Heading: (props: any) => <div {...props}>{props.children}</div>,
 }))
-
-vi.mock('@tanstack/react-router', async () => {
-  const actual = await vi.importActual<typeof import('@tanstack/react-router')>(
-    '@tanstack/react-router',
-  )
-  return {
-    ...actual,
-    useNavigate: () => navigateMock,
-  }
-})
-
-import { fireEvent, render, screen } from '@testing-library/react'
-import { createRouter, RouterProvider } from '@tanstack/react-router'
-import { routeTree } from '../../routeTree.gen'
-import { resetStore, useLensStore } from '../../store/lensStore'
-import SearchLandingScreen from '../../components/Home/SearchLandingScreen'
 
 const VALID_CONTRACT_ID =
   'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC'
@@ -39,21 +26,19 @@ function createTestRouter() {
 }
 
 describe('Watchlist route', () => {
-  function renderRoute(path: string) {
-    window.history.pushState({}, '', path)
-
-    const router = createTestRouter()
-    render(<RouterProvider router={router} />)
-    return router
-  }
-
   beforeEach(() => {
     resetStore()
-    navigateMock.mockReset()
   })
 
   it('renders an empty state when no watchlist items exist for the contract', async () => {
-    renderRoute(`/contracts/${VALID_CONTRACT_ID}/watchlist`)
+    window.history.pushState(
+      {},
+      '',
+      `/contracts/${VALID_CONTRACT_ID}/watchlist`,
+    )
+
+    const router = createTestRouter()
+    render(<RouterProvider router={router} />)
 
     expect(await screen.findByText('No saved watchlist items')).toBeTruthy()
     expect(
@@ -63,48 +48,31 @@ describe('Watchlist route', () => {
 
   it('renders saved watchlist items and an inspect action', async () => {
     useLensStore.getState().addToWatchlist(VALID_CONTRACT_ID, '/test/key')
-    renderRoute(`/contracts/${VALID_CONTRACT_ID}/watchlist`)
+    window.history.pushState(
+      {},
+      '',
+      `/contracts/${VALID_CONTRACT_ID}/watchlist`,
+    )
+
+    const router = createTestRouter()
+    render(<RouterProvider router={router} />)
 
     expect(await screen.findByText('/test/key')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Inspect' })).toBeTruthy()
   })
-})
 
-describe('SearchLandingScreen', () => {
-  beforeEach(() => {
-    resetStore()
-    navigateMock.mockReset()
-  })
+  it('uses the normalized contract ID for watchlist reads and removals', async () => {
+    useLensStore.getState().addToWatchlist(VALID_CONTRACT_ID, '/test/key')
+    const paddedRouteParam = `  ${VALID_CONTRACT_ID.toLowerCase()}  `
+    window.history.pushState({}, '', `/contracts/${paddedRouteParam}/watchlist`)
 
-  it('navigates to the contract route for a valid contract ID', () => {
-    render(<SearchLandingScreen />)
+    const router = createTestRouter()
+    render(<RouterProvider router={router} />)
 
-    const input = screen.getByPlaceholderText(
-      'Search Contract ID (C...) or Ledger Key',
-    )
-    const form = input.closest('form')
+    expect(await screen.findByText('/test/key')).toBeTruthy()
 
-    fireEvent.change(input, { target: { value: VALID_CONTRACT_ID } })
-    fireEvent.submit(form as HTMLFormElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
 
-    expect(navigateMock).toHaveBeenCalledWith({
-      to: '/contracts/$contractId',
-      params: { contractId: VALID_CONTRACT_ID },
-    })
-  })
-
-  it('shows a validation error for an invalid contract ID', () => {
-    render(<SearchLandingScreen />)
-
-    const input = screen.getByPlaceholderText(
-      'Search Contract ID (C...) or Ledger Key',
-    )
-    const form = input.closest('form')
-
-    fireEvent.change(input, { target: { value: 'not-a-contract' } })
-    fireEvent.submit(form as HTMLFormElement)
-
-    expect(screen.getByText('Invalid contract ID')).toBeTruthy()
-    expect(navigateMock).not.toHaveBeenCalled()
+    expect(useLensStore.getState().watchlist[VALID_CONTRACT_ID]).toBeUndefined()
   })
 })

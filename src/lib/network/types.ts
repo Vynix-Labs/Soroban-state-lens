@@ -2,6 +2,11 @@ export interface RpcConfig {
   url: string
   timeout: number
   headers?: Record<string, string>
+  /**
+   * Optional caller-provided signal. When aborted, the in-flight request is
+   * cancelled and callRpc resolves with a stable `ABORTED` error shape.
+   */
+  signal?: AbortSignal
 }
 
 export interface RpcError {
