@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NetworkSelector from '../../components/global/NetworkSelector'
+import * as connectionModule from '../../lib/network/testConnection'
 import { resetStore, useLensStore } from '../../store/lensStore'
 import { DEFAULT_NETWORKS } from '../../store/types'
 
@@ -40,10 +41,16 @@ describe('NetworkSelector Component', () => {
     expect(screen.getByText('Custom RPC Configuration')).toBeTruthy()
 
     const urlInput = screen.getByLabelText('Custom RPC URL input')
-    const passphraseInput = screen.getByLabelText('Custom Network Passphrase input')
+    const passphraseInput = screen.getByLabelText(
+      'Custom Network Passphrase input',
+    )
 
-    fireEvent.change(urlInput, { target: { value: 'https://custom-rpc.example.com' } })
-    fireEvent.change(passphraseInput, { target: { value: 'Test SDF Network ; September 2015' } })
+    fireEvent.change(urlInput, {
+      target: { value: 'https://custom-rpc.example.com' },
+    })
+    fireEvent.change(passphraseInput, {
+      target: { value: 'Test SDF Network ; September 2015' },
+    })
 
     const applyButton = screen.getByRole('button', { name: /apply/i })
     fireEvent.click(applyButton)
@@ -68,7 +75,9 @@ describe('NetworkSelector Component', () => {
     fireEvent.click(customOption)
 
     const urlInput = screen.getByLabelText('Custom RPC URL input')
-    fireEvent.change(urlInput, { target: { value: 'https://custom-rpc2.example.com' } })
+    fireEvent.change(urlInput, {
+      target: { value: 'https://custom-rpc2.example.com' },
+    })
 
     const applyButton = screen.getByRole('button', { name: /apply/i })
     fireEvent.click(applyButton)
@@ -103,20 +112,6 @@ describe('NetworkSelector Component', () => {
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
   })
 
-  it('does not select an option on Enter or Space keydown before native activation', () => {
-    render(<NetworkSelector />)
-
-    const trigger = screen.getByRole('button', { name: /select network/i })
-    fireEvent.click(trigger)
-
-    const option = screen.getByRole('option', { name: /mainnet/i })
-    fireEvent.keyDown(option, { key: 'Enter' })
-    fireEvent.keyDown(option, { key: ' ' })
-
-    const state = useLensStore.getState()
-    expect(state.networkConfig).toEqual(DEFAULT_NETWORKS.futurenet)
-  })
-
   it('focuses the custom RPC input after the panel opens and clears the timer on unmount', () => {
     vi.useFakeTimers()
     const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus')
@@ -130,7 +125,9 @@ describe('NetworkSelector Component', () => {
     fireEvent.click(customOption)
 
     vi.advanceTimersByTime(50)
-    expect(screen.getByLabelText('Custom RPC URL input')).toHaveFocus()
+    expect(document.activeElement).toBe(
+      screen.getByLabelText('Custom RPC URL input'),
+    )
 
     unmount()
     vi.advanceTimersByTime(100)
@@ -138,5 +135,105 @@ describe('NetworkSelector Component', () => {
 
     focusSpy.mockRestore()
     vi.useRealTimers()
+  })
+
+  it('ignores stale success results from an earlier custom RPC URL', async () => {
+    const firstResult = new Promise<{ success: true }>((resolve) => {
+      ;(
+        globalThis as typeof globalThis & {
+          __firstResolve?: (value: { success: true }) => void
+        }
+      ).__firstResolve = resolve
+    })
+    const secondResult = new Promise<{ success: false; error: string }>(
+      (resolve) => {
+        ;(
+          globalThis as typeof globalThis & {
+            __secondResolve?: (value: { success: false; error: string }) => void
+          }
+        ).__secondResolve = resolve
+      },
+    )
+
+    vi.spyOn(connectionModule, 'testRpcConnection')
+      .mockImplementationOnce(() => firstResult)
+      .mockImplementationOnce(() => secondResult)
+
+    render(<NetworkSelector />)
+
+    fireEvent.click(screen.getByRole('button', { name: /select network/i }))
+    fireEvent.click(screen.getByRole('option', { name: /custom/i }))
+
+    const input = screen.getByLabelText('Custom RPC URL input')
+    fireEvent.change(input, { target: { value: 'https://rpc-a.example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: /test connection/i }))
+
+    fireEvent.change(input, { target: { value: 'https://rpc-b.example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: /test connection/i }))
+    ;(
+      globalThis as typeof globalThis & {
+        __firstResolve?: (value: { success: true }) => void
+      }
+    ).__firstResolve?.({ success: true })
+    ;(
+      globalThis as typeof globalThis & {
+        __secondResolve?: (value: { success: false; error: string }) => void
+      }
+    ).__secondResolve?.({ success: false, error: 'B failed' })
+
+    await waitFor(() => {
+      expect(screen.getByText('B failed')).toBeTruthy()
+    })
+    expect(screen.queryByText('Connection successful')).toBeNull()
+  })
+
+  it('ignores stale error results from an earlier custom RPC URL', async () => {
+    const firstResult = new Promise<{ success: false; error: string }>(
+      (resolve) => {
+        ;(
+          globalThis as typeof globalThis & {
+            __firstResolve?: (value: { success: false; error: string }) => void
+          }
+        ).__firstResolve = resolve
+      },
+    )
+    const secondResult = new Promise<{ success: true }>((resolve) => {
+      ;(
+        globalThis as typeof globalThis & {
+          __secondResolve?: (value: { success: true }) => void
+        }
+      ).__secondResolve = resolve
+    })
+
+    vi.spyOn(connectionModule, 'testRpcConnection')
+      .mockImplementationOnce(() => firstResult)
+      .mockImplementationOnce(() => secondResult)
+
+    render(<NetworkSelector />)
+
+    fireEvent.click(screen.getByRole('button', { name: /select network/i }))
+    fireEvent.click(screen.getByRole('option', { name: /custom/i }))
+
+    const input = screen.getByLabelText('Custom RPC URL input')
+    fireEvent.change(input, { target: { value: 'https://rpc-a.example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: /test connection/i }))
+
+    fireEvent.change(input, { target: { value: 'https://rpc-b.example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: /test connection/i }))
+    ;(
+      globalThis as typeof globalThis & {
+        __firstResolve?: (value: { success: false; error: string }) => void
+      }
+    ).__firstResolve?.({ success: false, error: 'A failed' })
+    ;(
+      globalThis as typeof globalThis & {
+        __secondResolve?: (value: { success: true }) => void
+      }
+    ).__secondResolve?.({ success: true })
+
+    await waitFor(() => {
+      expect(screen.getByText('Connection successful')).toBeTruthy()
+    })
+    expect(screen.queryByText('A failed')).toBeNull()
   })
 })

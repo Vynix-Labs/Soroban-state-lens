@@ -36,6 +36,7 @@ export default function NetworkSelector() {
   const [isHydrated, setIsHydrated] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const currentTestRequestId = useRef(0)
 
   const networkConfig = useLensStore((state) => state.networkConfig)
   const lastCustomUrl = useLensStore((state) => state.lastCustomUrl)
@@ -70,9 +71,7 @@ export default function NetworkSelector() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      if (showCustomInput) {
-        inputRef.current?.focus()
-      }
+      inputRef.current?.focus()
     }, 50)
 
     return () => window.clearTimeout(timeoutId)
@@ -104,7 +103,10 @@ export default function NetworkSelector() {
       setIsOpen(false)
     } else {
       // Custom: restore last custom URL or set up for new input
-      const urlToUse = lastCustomUrl || (networkConfig.networkId === 'custom' ? networkConfig.rpcUrl : '') || ''
+      const urlToUse =
+        lastCustomUrl ||
+        (networkConfig.networkId === 'custom' ? networkConfig.rpcUrl : '') ||
+        ''
       const passphraseToUse =
         networkConfig.networkId === 'custom'
           ? networkConfig.networkPassphrase || ''
@@ -153,10 +155,17 @@ export default function NetworkSelector() {
       return
     }
 
+    const requestId = ++currentTestRequestId.current
+    const rpcUrl = customRpcUrl.trim()
+
     setTestStatus('loading')
     setTestError('')
 
-    const result = await testRpcConnection(customRpcUrl.trim())
+    const result = await testRpcConnection(rpcUrl)
+
+    if (requestId !== currentTestRequestId.current) {
+      return
+    }
 
     if (result.success) {
       setTestStatus('success')
@@ -184,6 +193,7 @@ export default function NetworkSelector() {
   }
 
   const handleCustomUrlChange = (url: string) => {
+    currentTestRequestId.current += 1
     setCustomRpcUrl(url)
     const resetState = resetConnectionTestState()
     setTestStatus(resetState.status)

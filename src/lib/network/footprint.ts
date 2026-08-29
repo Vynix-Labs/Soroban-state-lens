@@ -3,7 +3,7 @@
  * Parses read/write keys from simulation responses
  */
 
-import { compareCodeUnitStrings } from './normalizeFootprintKeys'
+import { normalizeFootprintSection } from './normalizeFootprintKeys'
 
 export interface FootprintKeys {
   readOnly: Array<string>
@@ -24,13 +24,8 @@ export function extractFootprintKeys(
     return { readOnly: [], readWrite: [] }
   }
 
-  // Deduplicate and sort for stable ordering using explicit code-unit ordering.
-  const readOnly = [...new Set(footprint.readOnly ?? [])].sort(
-    compareCodeUnitStrings,
-  )
-  const readWrite = [...new Set(footprint.readWrite ?? [])].sort(
-    compareCodeUnitStrings,
-  )
+  const readOnly = normalizeFootprintSection(footprint.readOnly)
+  const readWrite = normalizeFootprintSection(footprint.readWrite)
 
   return { readOnly, readWrite }
 }

@@ -1,17 +1,14 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useShallow } from 'zustand/react/shallow'
 
 import { deepClone } from '../lib/deepClone'
 import { getLedgerEntries } from '../lib/network/getLedgerEntries'
 import { mapLedgerEntriesToStoreEntries } from '../lib/network/mapLedgerEntriesToStoreEntries'
 import { isDecoderWorkerError } from '../types/decoder-worker'
 import { createDecoderWorkerSafe } from '../workers/createDecoderWorkerSafe'
-import {
-  ConnectionStatus,
-  ContractLoadStatus,
-  DEFAULT_NETWORKS,
-  DEFAULT_PREFERENCES,
-} from './types'
+import { createContractSlice } from './contractSlice'
+import { createContractSpecSlice } from './contractSpecSlice'
 import {
   DEFAULT_NETWORK_CONFIG,
   NETWORK_CONFIG_STORAGE_KEY,
@@ -20,9 +17,13 @@ import {
   mergePreferences,
   serializeNetworkConfigForStorage,
 } from './persistence'
-import { createContractSlice } from './contractSlice'
-import { createContractSpecSlice } from './contractSpecSlice'
 import { createPreferencesSlice } from './preferencesSlice'
+import {
+  ConnectionStatus,
+  ContractLoadStatus,
+  DEFAULT_NETWORKS,
+  DEFAULT_PREFERENCES,
+} from './types'
 
 import type { PersistedState } from './persistence'
 import type {
@@ -62,6 +63,8 @@ const createNetworkConfigSlice = (
   resetNetworkConfig: () =>
     set(() => ({
       networkConfig: DEFAULT_NETWORK_CONFIG,
+      connectionStatus: ConnectionStatus.IDLE,
+      lastCustomUrl: undefined,
     })),
 
   setConnectionStatus: (status: ConnectionStatus) =>
@@ -432,19 +435,30 @@ const createWatchlistSlice = (
     }),
 
   removeFromWatchlist: (contractId: string, keyPath: string) =>
-    set((state) => ({
-      watchlist: {
-        ...state.watchlist,
-        [contractId]: deduplicateWatchlistItems(
-          (state.watchlist[contractId] ?? []).filter(
-            (item) => item.keyPath !== keyPath,
-          ),
+    set((state) => {
+      const remainingItems = deduplicateWatchlistItems(
+        (state.watchlist[contractId] ?? []).filter(
+          (item) => item.keyPath !== keyPath,
         ),
-      },
-    })),
+      )
+
+      if (remainingItems.length === 0) {
+        const { [contractId]: _, ...rest } = state.watchlist
+        return { watchlist: rest }
+      }
+
+      return {
+        watchlist: {
+          ...state.watchlist,
+          [contractId]: remainingItems,
+        },
+      }
+    }),
 
   getWatchlistForContract: (contractId: string) => {
-    return deduplicateWatchlistItems(get().watchlist[contractId])
+    return deduplicateWatchlistItems(get().watchlist[contractId]).filter(
+      (item) => item.contractId === contractId,
+    )
   },
 
   clearWatchlist: (contractId: string) =>
@@ -482,6 +496,23 @@ export const useLensStore = create<LensStore>()(
     {
       name: NETWORK_CONFIG_STORAGE_KEY,
       storage: createSafeStorage<PersistedState>(),
+      version: 1,
+      migrate: (persistedState, version) => {
+        if (
+          typeof persistedState !== 'object' ||
+          persistedState === null ||
+          version === 0 ||
+          version === 1
+        ) {
+          return persistedState as PersistedState
+        }
+
+        return {
+          networkConfig: serializeNetworkConfigForStorage(DEFAULT_NETWORK_CONFIG),
+          preferences: DEFAULT_PREFERENCES,
+          watchlist: {},
+        }
+      },
       // Persist networkConfig, preferences, and the watchlist
       partialize: (state): PersistedState => ({
         networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
@@ -522,8 +553,15 @@ export const useContractLoadError = () =>
   useLensStore((state) => state.contractLoadError)
 export const useSnapshots = (contractId: string) =>
   useLensStore((state) => state.snapshots[contractId] ?? EMPTY_ARRAY)
-export const useWatchlist = (contractId: string) =>
-  useLensStore((state) => state.watchlist[contractId] ?? EMPTY_ARRAY)
+export const useWatchlist = (contractId: string) => {
+  return useLensStore(
+    useShallow((state) =>
+      deduplicateWatchlistItems(state.watchlist[contractId]).filter(
+        (item) => item.contractId === contractId,
+      ),
+    ),
+  )
+}
 
 /**
  * Get store state outside of React components (for testing)
