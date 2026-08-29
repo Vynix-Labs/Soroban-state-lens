@@ -16,16 +16,25 @@ export function mapLedgerEntriesToStoreEntries(
 ): Array<StoreLedgerEntry> {
   const { contractId, entries, decodedValuesByKey = {} } = params
 
-  return entries.map((entry) => ({
-    key: makeLedgerEntryKey(contractId, 'Other', entry.key),
-    contractId,
-    type: 'Other',
-    value:
-      decodedValuesByKey[entry.key] !== undefined
-        ? decodedValuesByKey[entry.key]
-        : entry.xdr,
-    lastModifiedLedger: entry.lastModifiedLedgerSeq ?? 0,
-    expirationLedger: entry.liveUntilLedgerSeq,
-    rawXdr: entry.xdr,
-  }))
+  return entries.map((entry) => {
+    const hasDecodedValue = Object.prototype.hasOwnProperty.call(
+      decodedValuesByKey,
+      entry.key,
+    )
+    const expirationLedger =
+      typeof entry.liveUntilLedgerSeq === 'number' &&
+      Number.isFinite(entry.liveUntilLedgerSeq)
+        ? entry.liveUntilLedgerSeq
+        : undefined
+
+    return {
+      key: makeLedgerEntryKey(contractId, 'Other', entry.key),
+      contractId,
+      type: 'Other',
+      value: hasDecodedValue ? decodedValuesByKey[entry.key] : entry.xdr,
+      lastModifiedLedger: entry.lastModifiedLedgerSeq ?? 0,
+      expirationLedger,
+      rawXdr: entry.xdr,
+    }
+  })
 }

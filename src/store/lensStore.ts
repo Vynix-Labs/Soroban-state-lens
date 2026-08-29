@@ -155,7 +155,9 @@ const createExpandedNodesSlice = (
         return { expandedNodes: [...state.expandedNodes, normalizedNodeId] }
       } else {
         return {
-          expandedNodes: state.expandedNodes.filter((id) => id !== normalizedNodeId),
+          expandedNodes: state.expandedNodes.filter(
+            (id) => id !== normalizedNodeId,
+          ),
         }
       }
     }),
@@ -169,7 +171,9 @@ const createExpandedNodesSlice = (
 
       if (state.expandedNodes.includes(normalizedNodeId)) {
         return {
-          expandedNodes: state.expandedNodes.filter((id) => id !== normalizedNodeId),
+          expandedNodes: state.expandedNodes.filter(
+            (id) => id !== normalizedNodeId,
+          ),
         }
       }
       return { expandedNodes: [...state.expandedNodes, normalizedNodeId] }
@@ -181,7 +185,10 @@ const createExpandedNodesSlice = (
         .map((nodeId) => nodeId.trim())
         .filter((nodeId) => nodeId.length > 0)
 
-      const newExpanded = new Set([...state.expandedNodes, ...normalizedNodeIds])
+      const newExpanded = new Set([
+        ...state.expandedNodes,
+        ...normalizedNodeIds,
+      ])
       return { expandedNodes: Array.from(newExpanded) }
     }),
 
@@ -291,7 +298,8 @@ const createContractLoadSlice = (
       const controller = new AbortController()
       activeController = controller
       const { signal } = controller
-      const isRequestStale = () => currentRequestId !== requestId || signal.aborted
+      const isRequestStale = () =>
+        currentRequestId !== requestId || signal.aborted
 
       set((state) => ({
         activeContractId: contractId,
@@ -318,7 +326,7 @@ const createContractLoadSlice = (
         for (const entry of entries) {
           const result = await worker.decodeScVal({ xdr: entry.xdr })
           decodedValuesByKey[entry.key] = isDecoderWorkerError(result)
-            ? entry.xdr
+            ? { kind: 'raw-xdr', xdr: entry.xdr }
             : result
         }
 
@@ -476,10 +484,10 @@ export const useLensStore = create<LensStore>()(
       storage: createSafeStorage<PersistedState>(),
       // Persist networkConfig, preferences, and the watchlist
       partialize: (state): PersistedState => ({
-          networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
-          preferences: state.preferences,
-          watchlist: state.watchlist,
-        }),
+        networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
+        preferences: state.preferences,
+        watchlist: state.watchlist,
+      }),
       // Validate and merge persisted data safely
       merge: (persistedState, currentState) => {
         const mergedNetwork = mergeNetworkConfig(persistedState, currentState)
@@ -579,7 +587,8 @@ export const lensActions = {
     useLensStore.getState().setContractLoadStatus(status),
   setContractLoadError: (message: string | null) =>
     useLensStore.getState().setContractLoadError(message),
-  resetContractLoadState: () => useLensStore.getState().resetContractLoadState(),
+  resetContractLoadState: () =>
+    useLensStore.getState().resetContractLoadState(),
   loadContract: (contractId: string, keys: Array<string>) =>
     useLensStore.getState().loadContract(contractId, keys),
   addSnapshot: (

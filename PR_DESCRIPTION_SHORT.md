@@ -1,12 +1,12 @@
 # PR Summary
 
-Implements three focused enhancements:
+Implements three focused UI and formatting fixes:
 
-- Extract `contractspecv0` payload from WASM modules safely.
-- Normalize `ScvDuration` and `ScvTimepoint` values as decimal-string primitives.
-- Validate persisted display preferences during hydration and fall back to defaults for invalid values.
+- Clear the custom RPC autofocus timer on cleanup so delayed focus no longer runs after the panel closes or unmounts.
+- Normalize invalid contract ID shortening length options to safe defaults.
+- Clamp virtualized tree scroll position after rows shrink to prevent blank viewports.
 
 ## Verification
 
-- `npm test -- src/test/lib/wasm.extractor.test.ts src/test/decoder/primitive.duration-timepoint.test.ts src/test/store/preferences-validation.test.ts`
-- `npm run build`
+- Added regression coverage for autofocus cleanup, formatter edge cases, and scroll clamping behavior.
+- Verified the touched files report no editor-reported errors.
