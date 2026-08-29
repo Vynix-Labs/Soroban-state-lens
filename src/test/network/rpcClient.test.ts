@@ -226,17 +226,21 @@ describe('callRpc', () => {
     })
   })
 
-  it('should handle JSON parsing errors', async () => {
+  it('maps JSON parsing failures to a structured INVALID_JSON error', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.reject(new Error('Invalid JSON')),
+      json: () =>
+        Promise.reject(
+          new SyntaxError('Unexpected token < in JSON at position 0'),
+        ),
     })
 
     const result = await callRpc(defaultConfig)
 
     expect(result).toMatchObject({
-      message: 'Invalid JSON',
-      code: 'UNKNOWN_ERROR',
+      message: 'Invalid JSON response',
+      code: 'INVALID_JSON',
+      details: 'Unexpected token < in JSON at position 0',
       isTimeout: false,
     })
   })

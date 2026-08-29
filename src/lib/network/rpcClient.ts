@@ -105,6 +105,20 @@ export async function callRpc<T = unknown>(
       }
     }
 
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error'
+    if (
+      error instanceof SyntaxError ||
+      (typeof errorMessage === 'string' && /JSON/i.test(errorMessage))
+    ) {
+      return {
+        message: 'Invalid JSON response',
+        code: 'INVALID_JSON',
+        details: errorMessage,
+        isTimeout: false,
+      }
+    }
+
     if (error instanceof TypeError) {
       return {
         message: 'Network error',
@@ -115,7 +129,7 @@ export async function callRpc<T = unknown>(
     }
 
     return {
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: errorMessage,
       code: 'UNKNOWN_ERROR',
       details: error,
       isTimeout: false,
