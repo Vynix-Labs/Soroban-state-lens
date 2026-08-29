@@ -55,7 +55,7 @@ describe('buildJsonRpcRequest', () => {
     'should reject invalid request ids: %p',
     (invalidId) => {
       expect(() =>
-        buildJsonRpcRequest('someMethod', {}, invalidId as number),
+        buildJsonRpcRequest('someMethod', {}, invalidId),
       ).toThrow('JSON-RPC request ID must be a finite positive integer')
     },
   )

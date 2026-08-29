@@ -2,9 +2,14 @@
  * Narrow values to JSON-RPC 2.0 error responses.
  *
  * @param value - The value to check.
- * @returns True if the value is a valid JSON-RPC 2.0 error response.
+ * @param expectedId - When provided, the response `id` must equal this value.
+ * @returns True if the value is a valid JSON-RPC 2.0 error response and,
+ *   when `expectedId` is supplied, the response id matches the request id.
  */
-export function isJsonRpcErrorResponse(value: unknown): value is {
+export function isJsonRpcErrorResponse(
+  value: unknown,
+  expectedId?: number | string,
+): value is {
   jsonrpc: '2.0'
   id: number | string | null
   error: { code: number; message: string; data?: unknown }
@@ -48,6 +53,11 @@ export function isJsonRpcErrorResponse(value: unknown): value is {
 
   // Reject success responses (should not have 'result')
   if ('result' in candidate) {
+    return false
+  }
+
+  // When a request ID is provided, the response ID must match exactly.
+  if (expectedId !== undefined && candidate.id !== expectedId) {
     return false
   }
 
