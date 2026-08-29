@@ -1,4 +1,5 @@
 import { normalizeTimeoutMs } from '../rpc/normalizeTimeoutMs'
+import { normalizeRpcUrl } from '../validation/normalizeRpcUrl'
 import type { RpcConfig, RpcError } from './types'
 
 function isAbortError(error: unknown): boolean {
@@ -19,6 +20,7 @@ export async function callRpc<T = unknown>(
   config: RpcConfig,
   body?: unknown,
 ): Promise<T | RpcError> {
+  const normalized = normalizeRpcUrl(config.url)
   const normalizedTimeout = normalizeTimeoutMs(config.timeout)
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), normalizedTimeout)
@@ -42,7 +44,7 @@ export async function callRpc<T = unknown>(
   }
 
   try {
-    const response = await fetch(config.url, {
+    const response = await fetch(normalized, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
