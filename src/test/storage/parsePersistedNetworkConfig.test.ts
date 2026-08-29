@@ -27,6 +27,21 @@ describe('parsePersistedNetworkConfig', () => {
     })
   })
 
+  it('parses persisted custom rpc values with custom network passphrase', () => {
+    expect(
+      parsePersistedNetworkConfig({
+        kind: 'custom',
+        rpcUrl: 'https://rpc.custom.example.com/',
+        networkPassphrase: 'Test SDF Network ; September 2015',
+      }),
+    ).toEqual({
+      networkId: 'custom',
+      networkPassphrase: 'Test SDF Network ; September 2015',
+      rpcUrl: 'https://rpc.custom.example.com',
+      horizonUrl: DEFAULT_NETWORKS.futurenet.horizonUrl,
+    })
+  })
+
   it('supports the legacy persisted network config shape', () => {
     expect(
       parsePersistedNetworkConfig({

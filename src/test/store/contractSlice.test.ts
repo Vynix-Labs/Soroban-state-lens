@@ -29,4 +29,24 @@ describe('Contract Slice', () => {
 
     expect(getStoreState().activeContractId).toBe(null)
   })
+
+  it('clears the selected key path when switching to a different contract', () => {
+    const state = getStoreState()
+
+    state.setSelectedKeyPath('contract.entry-0-value')
+    state.setActiveContractId('ABC123')
+    state.setActiveContractId('XYZ789')
+
+    expect(getStoreState().selectedKeyPath).toBeNull()
+  })
+
+  it('preserves the selected key path when the same contract is set again', () => {
+    const state = getStoreState()
+
+    state.setActiveContractId('ABC123')
+    state.setSelectedKeyPath('contract.entry-0-value')
+    state.setActiveContractId('ABC123')
+
+    expect(getStoreState().selectedKeyPath).toBe('contract.entry-0-value')
+  })
 })

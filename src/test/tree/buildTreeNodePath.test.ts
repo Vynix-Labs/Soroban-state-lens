@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildTreeNodePath } from '../../lib/tree/buildTreeNodePath'
+import { parseTreeNodePath } from '../../lib/tree/parseTreeNodePath'
 
 describe('buildTreeNodePath', () => {
   describe('happy path', () => {
@@ -51,6 +52,22 @@ describe('buildTreeNodePath', () => {
       expect(buildTreeNodePath(['node@domain', 'user#tag'])).toBe(
         'node@domain.user#tag',
       )
+    })
+  })
+
+  describe('round-trip behavior', () => {
+    it('should preserve tricky escaped segments when building and parsing', () => {
+      const fixtures = [
+        ['segment\\'],
+        ['segment\\', 'another'],
+        ['a.b', 'c\\d'],
+        ['a\\.b', 'c'],
+        ['a\\\\b', 'c'],
+      ]
+
+      for (const parts of fixtures) {
+        expect(parseTreeNodePath(buildTreeNodePath(parts))).toEqual(parts)
+      }
     })
   })
 

@@ -5,9 +5,11 @@ import {
   clearPersistedNetworkConfig,
   isValidNetworkConfig,
   mergeNetworkConfig,
+  sanitizeWatchlist,
   serializeNetworkConfigForStorage,
 } from '../../store/persistence'
 import { DEFAULT_NETWORKS } from '../../store/types'
+import { useLensStore } from '@/store/lensStore'
 
 // Simple localStorage mock for node environment
 const localStorageMock = (function () {
@@ -193,6 +195,202 @@ describe('persistence', () => {
       const persistedState = 'not an object'
       const result = mergeNetworkConfig(persistedState, currentState)
       expect(result.networkConfig).toEqual(DEFAULT_NETWORK_CONFIG)
+    })
+
+    it('hydrates a sanitized watchlist alongside a valid networkConfig', () => {
+      const watchlist = {
+        'C1': [
+          {
+            contractId: 'C1',
+            keyPath: 'counter',
+            timestamp: 1,
+          },
+        ],
+      }
+      const persistedState = {
+        networkConfig: {
+          kind: 'preset',
+          networkId: 'testnet',
+        },
+        watchlist,
+      }
+      const result = mergeNetworkConfig(persistedState, currentState)
+      expect(result.networkConfig).toEqual(DEFAULT_NETWORKS.testnet)
+      expect(result.watchlist).toEqual(watchlist)
+    })
+
+    it('drops invalid watchlist entries on hydration without crashing', () => {
+      const persistedState = {
+        networkConfig: {
+          kind: 'preset',
+          networkId: 'testnet',
+        },
+        watchlist: {
+          'C1': [
+            { contractId: 'C1', keyPath: 'ok', timestamp: 1 },
+            { contractId: 'C1', keyPath: 'bad' },
+            'not-an-item',
+            null,
+            { contractId: 2, keyPath: 'bad', timestamp: 1 },
+          ],
+          '': [{ contractId: 'C1', keyPath: 'x', timestamp: 1 }],
+          'C2': 'not-an-array',
+        },
+      }
+      const result = mergeNetworkConfig(persistedState, currentState)
+      expect(result.watchlist).toEqual({
+        C1: [{ contractId: 'C1', keyPath: 'ok', timestamp: 1 }],
+      })
+    })
+  })
+
+  describe('sanitizeWatchlist', () => {
+    it('returns an empty record for non-object input', () => {
+      expect(sanitizeWatchlist(null)).toEqual({})
+      expect(sanitizeWatchlist('x')).toEqual({})
+      expect(sanitizeWatchlist(undefined)).toEqual({})
+    })
+
+    it('drops contracts with empty keys or non-array items', () => {
+      const result = sanitizeWatchlist({
+        'C1': [{ contractId: 'C1', keyPath: 'k', timestamp: 1 }],
+        '': [{ contractId: 'C1', keyPath: 'k', timestamp: 1 }],
+        'C2': 'nope',
+      })
+      expect(result).toEqual({
+        C1: [{ contractId: 'C1', keyPath: 'k', timestamp: 1 }],
+      })
+    })
+
+    it('drops individual malformed items and keeps valid ones', () => {
+      const result = sanitizeWatchlist({
+        C1: [
+          { contractId: 'C1', keyPath: 'k', timestamp: 1 },
+          { contractId: 'C1', keyPath: 'k', timestamp: NaN },
+          { contractId: 'C1' },
+          { keyPath: 'k', timestamp: 1 },
+          { contractId: 'C1', keyPath: 1, timestamp: 1 },
+        ],
+      })
+      expect(result.C1).toHaveLength(1)
+      expect(result.C1[0].keyPath).toBe('k')
+    })
+
+    it('drops future-dated items while preserving present and past items', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-07-27T12:00:00.000Z'))
+
+      try {
+        const now = Date.now()
+
+        const result = sanitizeWatchlist({
+          C1: [
+            {
+              contractId: 'C1',
+              keyPath: 'past',
+              timestamp: now - 1,
+            },
+            {
+              contractId: 'C1',
+              keyPath: 'present',
+              timestamp: now,
+            },
+            {
+              contractId: 'C1',
+              keyPath: 'future',
+              timestamp: now + 1,
+            },
+          ],
+        })
+
+        expect(result).toEqual({
+          C1: [
+            {
+              contractId: 'C1',
+              keyPath: 'past',
+              timestamp: now - 1,
+            },
+            {
+              contractId: 'C1',
+              keyPath: 'present',
+              timestamp: now,
+            },
+          ],
+        })
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('omits the contract entirely when every item is future-dated', () => {
+      const now = Date.now()
+      const result = sanitizeWatchlist({
+        C1: [{ contractId: 'C1', keyPath: 'a', timestamp: now + 1000 }],
+      })
+      expect(result).toEqual({})
+    })
+
+    it('handles valid, future-dated, and malformed items together', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-07-27T12:00:00.000Z'))
+
+      try {
+        const now = Date.now()
+
+        const result = sanitizeWatchlist({
+          C1: [
+            { contractId: 'C1', keyPath: 'valid', timestamp: now - 100 },
+            { contractId: 'C1', keyPath: 'future', timestamp: now + 100 },
+            {
+              contractId: 'C1',
+              keyPath: 'bad-type',
+              timestamp: 'not-a-number',
+            },
+            null,
+          ],
+        })
+
+        expect(result).toEqual({
+          C1: [
+            {
+              contractId: 'C1',
+              keyPath: 'valid',
+              timestamp: now - 100,
+            },
+          ],
+        })
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('preserves an item added immediately before hydration', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-07-27T12:00:00.000Z'))
+
+      try {
+        useLensStore.setState({ watchlist: {} })
+
+        useLensStore.getState().addToWatchlist('C1', '/some/key')
+
+        const result = sanitizeWatchlist(useLensStore.getState().watchlist)
+
+        expect(result.C1).toEqual([
+          {
+            contractId: 'C1',
+            keyPath: '/some/key',
+            timestamp: Date.now(),
+          },
+        ])
+      } finally {
+        useLensStore.setState({ watchlist: {} })
+        vi.useRealTimers()
+      }
+    })
+
+    it('omits contracts whose items all failed validation', () => {
+      const result = sanitizeWatchlist({ C1: [{ bad: true }] })
+      expect(result).toEqual({})
     })
   })
 

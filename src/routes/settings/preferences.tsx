@@ -8,8 +8,8 @@ export const Route = createFileRoute('/settings/preferences')({
 })
 
 function PreferencesSettings() {
-  const byteDisplayMode = useLensStore((state) => state.byteDisplayMode)
-  const bigIntDisplayMode = useLensStore((state) => state.bigIntDisplayMode)
+  const byteDisplayMode = useLensStore((state) => state.preferences.byteDisplayMode)
+  const bigIntDisplayMode = useLensStore((state) => state.preferences.bigIntDisplayMode)
   const setByteDisplayMode = useLensStore((state) => state.setByteDisplayMode)
   const setBigIntDisplayMode = useLensStore(
     (state) => state.setBigIntDisplayMode,
@@ -26,10 +26,13 @@ function PreferencesSettings() {
         <Card>
           <div className="p-4 flex flex-col gap-6">
             <div>
-              <Heading size="sm" as="h3" className="mb-2">
-                Byte Display Mode
-              </Heading>
+              <label htmlFor="byte-display-mode" className="block mb-2">
+                <Heading size="sm" as="h3">
+                  Byte Display Mode
+                </Heading>
+              </label>
               <select
+                id="byte-display-mode"
                 value={byteDisplayMode}
                 onChange={(e) =>
                   setByteDisplayMode(e.target.value as ByteDisplayMode)
@@ -38,22 +41,27 @@ function PreferencesSettings() {
               >
                 <option value={ByteDisplayMode.HEX}>Hex</option>
                 <option value={ByteDisplayMode.BASE64}>Base64</option>
+                <option value={ByteDisplayMode.UTF8}>UTF-8</option>
               </select>
             </div>
 
             <div>
-              <Heading size="sm" as="h3" className="mb-2">
-                BigInt Display Mode
-              </Heading>
+              <label htmlFor="bigint-display-mode" className="block mb-2">
+                <Heading size="sm" as="h3">
+                  BigInt Display Mode
+                </Heading>
+              </label>
               <select
+                id="bigint-display-mode"
                 value={bigIntDisplayMode}
                 onChange={(e) =>
                   setBigIntDisplayMode(e.target.value as BigIntDisplayMode)
                 }
                 className="w-full p-2 border rounded"
               >
-                <option value={BigIntDisplayMode.RAW}>Raw</option>
-                <option value={BigIntDisplayMode.FORMATTED}>Formatted</option>
+                <option value={BigIntDisplayMode.DECIMAL}>Decimal</option>
+                <option value={BigIntDisplayMode.HEX}>Hex</option>
+                <option value={BigIntDisplayMode.SCIENTIFIC}>Scientific</option>
               </select>
             </div>
 

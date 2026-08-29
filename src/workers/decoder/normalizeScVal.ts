@@ -6,8 +6,8 @@ import {
 } from '../../lib/format/bytesToHex'
 import { VisitedTracker, createVisitedTracker } from './guards'
 import type {
-  CycleMarker,
   NormalizedAddress,
+  NormalizedCycle,
   NormalizedError,
   NormalizedMap,
   NormalizedMapEntry,
@@ -23,6 +23,7 @@ export { VisitedTracker, createVisitedTracker }
 
 // Re-export normalized types so consumers can import from a single location
 export type {
+  NormalizedCycle,
   NormalizedError,
   NormalizedMapEntry,
   NormalizedTruncated,
@@ -81,7 +82,7 @@ export type NormalizedValue =
   | number
   | string
   | null
-  | CycleMarker
+  | NormalizedCycle
   | NormalizedTruncated
   | NormalizedError
   | NormalizedUnsupported
@@ -157,6 +158,22 @@ function parts128ToString(value: unknown, signed: boolean): string | null {
 
   const hi = BigInt(hiStr)
   const lo = BigInt(loStr)
+  const minSigned64 = -(1n << 63n)
+  const maxSigned64 = (1n << 63n) - 1n
+  const minUnsigned64 = 0n
+  const maxUnsigned64 = (1n << 64n) - 1n
+
+  if (signed) {
+    if (hi < minSigned64 || hi > maxSigned64) {
+      return null
+    }
+  } else if (hi < minUnsigned64 || hi > maxUnsigned64) {
+    return null
+  }
+
+  if (lo < minUnsigned64 || lo > maxUnsigned64) {
+    return null
+  }
 
   // lo is always treated as unsigned 64-bit
   const uLo = lo < 0n ? lo + (1n << 64n) : lo
@@ -222,12 +239,41 @@ function parts256ToString(value: unknown, signed: boolean): string | null {
   const hiLo = BigInt(hiLoStr)
   const loHi = BigInt(loHiStr)
   const loLo = BigInt(loLoStr)
+  const minSigned64 = -(1n << 63n)
+  const maxSigned64 = (1n << 63n) - 1n
+  const minUnsigned64 = 0n
+  const maxUnsigned64 = (1n << 64n) - 1n
+
+  if (signed) {
+    if (hiHi < minSigned64 || hiHi > maxSigned64) {
+      return null
+    }
+  } else if (hiHi < minUnsigned64 || hiHi > maxUnsigned64) {
+    return null
+  }
+
+  if (hiLo < minUnsigned64 || hiLo > maxUnsigned64) {
+    return null
+  }
+  if (loHi < minUnsigned64 || loHi > maxUnsigned64) {
+    return null
+  }
+  if (loLo < minUnsigned64 || loLo > maxUnsigned64) {
+    return null
+  }
 
   if (signed) {
     if (hiHi < minI64 || hiHi > maxI64) {
       return null
     }
-    if (hiLo < 0n || hiLo > maxU64 || loHi < 0n || loHi > maxU64 || loLo < 0n || loLo > maxU64) {
+    if (
+      hiLo < 0n ||
+      hiLo > maxU64 ||
+      loHi < 0n ||
+      loHi > maxU64 ||
+      loLo < 0n ||
+      loLo > maxU64
+    ) {
       return null
     }
 
@@ -295,7 +341,13 @@ export function normalizeScVal(
   currentDepth?: number,
 ): any {
   const depth = currentDepth ?? 0
-  const maxDepth = options?.maxDepth ?? MAX_DEPTH_DEFAULT
+  const maxDepth =
+    typeof options?.maxDepth === 'number' &&
+    Number.isFinite(options.maxDepth) &&
+    options.maxDepth >= 0 &&
+    Number.isInteger(options.maxDepth)
+      ? options.maxDepth
+      : MAX_DEPTH_DEFAULT
 
   if (depth >= maxDepth) {
     return createTruncatedMarker(depth)
@@ -411,6 +463,28 @@ export function normalizeScVal(
       return createUnsupportedFallback(ScValType.SCV_I64, scVal.value)
     }
 
+    case ScValType.SCV_TIMEPOINT: {
+      const str = bigIntLikeToString(scVal.value)
+      if (str !== null) {
+        const n = BigInt(str)
+        if (n >= 0n && n <= 0xffffffffffffffffn) {
+          return { kind: 'primitive', primitive: 'timepoint', value: str }
+        }
+      }
+      return createUnsupportedFallback(ScValType.SCV_TIMEPOINT, scVal.value)
+    }
+
+    case ScValType.SCV_DURATION: {
+      const str = bigIntLikeToString(scVal.value)
+      if (str !== null) {
+        const n = BigInt(str)
+        if (n >= 0n && n <= 0xffffffffffffffffn) {
+          return { kind: 'primitive', primitive: 'duration', value: str }
+        }
+      }
+      return createUnsupportedFallback(ScValType.SCV_DURATION, scVal.value)
+    }
+
     case ScValType.SCV_U128: {
       const str = parts128ToString(scVal.value, false)
       if (str !== null) {
@@ -513,10 +587,25 @@ export function normalizeScVal(
         return {
           kind: 'map',
           entries: scVal.value.map(
-            (entry: { key: ScVal; val: ScVal }): NormalizedMapEntry => ({
-              key: normalizeScVal(entry.key, visited, options, depth + 1),
-              value: normalizeScVal(entry.val, visited, options, depth + 1),
-            }),
+            (entry: { key: ScVal; val: ScVal } | null | undefined) => {
+              const rawKey = entry?.key
+              const rawValue = entry?.val
+
+              try {
+                return {
+                  key: normalizeScVal(rawKey, visited, options, depth + 1),
+                  value: normalizeScVal(rawValue, visited, options, depth + 1),
+                } satisfies NormalizedMapEntry
+              } catch {
+                return {
+                  key: createUnsupportedFallback('MapEntryKeyError', rawKey),
+                  value: createUnsupportedFallback(
+                    'MapEntryValueError',
+                    rawValue,
+                  ),
+                } satisfies NormalizedMapEntry
+              }
+            },
           ),
         }
       }

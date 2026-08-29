@@ -18,6 +18,7 @@ function NavItem({ icon, label, isActive = false, onClick }: NavItemProps) {
           : 'text-text-muted hover:text-white hover:bg-white/5'
       }`}
       aria-label={label}
+      aria-current={isActive ? 'page' : undefined}
     >
       {icon}
     </button>

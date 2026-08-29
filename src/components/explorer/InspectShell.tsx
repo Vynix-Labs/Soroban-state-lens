@@ -1,10 +1,14 @@
+import { useEffect, useRef, useState } from 'react'
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
+import { Link } from '@tanstack/react-router'
 import { useLensStore } from '../../store/lensStore'
+import { buildInspectBreadcrumb } from './buildInspectBreadcrumb'
 
 interface InspectShellProps {
   contractId: string
   normalizedContractId: string
   keyPath: string
+  keyPathError?: string
 }
 
 interface KeyMetadata {
@@ -17,8 +21,11 @@ export function InspectShell({
   contractId,
   normalizedContractId,
   keyPath,
+  keyPathError,
 }: InspectShellProps) {
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
+  const [copied, setCopied] = useState(false)
+  const copiedResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const metadata: KeyMetadata = {
     durability: 'Persistent',
@@ -26,16 +33,36 @@ export function InspectShell({
     expirationLedger: 1235000,
   }
 
+  useEffect(() => {
+    return () => {
+      if (copiedResetTimeout.current !== null) {
+        clearTimeout(copiedResetTimeout.current)
+      }
+    }
+  }, [])
+
   const handlePinKey = () => {
     if (keyPath) {
       addToWatchlist(contractId, keyPath)
     }
   }
 
-  const handleCopyXDR = () => {
+  const handleCopyXDR = async () => {
     const mockXDR = 'AAAAEgAAAAEAAAABAAAABQAAADEAA...'
-    navigator.clipboard.writeText(mockXDR)
+    await navigator.clipboard.writeText(mockXDR)
+    setCopied(true)
+
+    if (copiedResetTimeout.current !== null) {
+      clearTimeout(copiedResetTimeout.current)
+    }
+
+    copiedResetTimeout.current = setTimeout(() => {
+      setCopied(false)
+      copiedResetTimeout.current = null
+    }, 1500)
   }
+
+  const breadcrumb = buildInspectBreadcrumb(contractId, keyPath)
 
   return (
     <div className="flex flex-col gap-6 p-6 lg:p-10 max-w-6xl mx-auto w-full">
@@ -51,6 +78,15 @@ export function InspectShell({
           </Heading>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Link
+            to="/contracts/$contractId/explorer"
+            params={{ contractId }}
+            search={{ keys: '' }}
+            aria-label="Back to explorer"
+            className="text-sm text-primary hover:underline font-mono whitespace-nowrap"
+          >
+            ← Explorer
+          </Link>
           <IconButton
             icon="pin"
             altText="Add to watchlist"
@@ -61,11 +97,45 @@ export function InspectShell({
         </div>
       </header>
 
-      <div className="flex items-center gap-2 text-sm text-text-muted font-mono">
-        <span>Contract</span>
-        <span>/</span>
-        <span className="text-white truncate">{keyPath || 'No key selected'}</span>
-      </div>
+      <nav
+        aria-label="Inspect breadcrumb"
+        className="flex flex-wrap items-center gap-1 text-sm text-text-muted font-mono overflow-hidden"
+      >
+        {breadcrumb.segments.map((segment, index) => {
+          const isLast = index === breadcrumb.segments.length - 1
+          return (
+            <span
+              key={`${index}-${segment.label}`}
+              className="flex items-center gap-1 min-w-0"
+            >
+              <span
+                title={segment.title ?? segment.label}
+                className={
+                  isLast
+                    ? 'text-white truncate max-w-[16rem]'
+                    : 'text-text-muted truncate max-w-[12rem]'
+                }
+              >
+                {segment.label}
+              </span>
+              {!isLast ? (
+                <span className="text-text-muted shrink-0">/</span>
+              ) : null}
+            </span>
+          )
+        })}
+      </nav>
+
+      {keyPathError ? (
+        <Card>
+          <div className="p-6 space-y-2">
+            <Heading size="sm" as="h2" className="text-white">
+              Invalid key path
+            </Heading>
+            <p className="text-sm text-text-muted">{keyPathError}</p>
+          </div>
+        </Card>
+      ) : null}
 
       <Card>
         <div className="p-6 space-y-4">
@@ -112,7 +182,7 @@ export function InspectShell({
               Raw XDR
             </Heading>
             <Button variant="secondary" size="sm" onClick={handleCopyXDR}>
-              Copy
+              {copied ? 'Copied!' : 'Copy'}
             </Button>
           </div>
           <div className="bg-surface-dark rounded p-3 max-h-48 overflow-auto">

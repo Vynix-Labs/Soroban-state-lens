@@ -1,6 +1,14 @@
-import { describe, expect, it } from 'vitest'
-import { simulateTransactionAdapter } from '../../lib/network/simulateTransaction'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  simulateTransaction,
+  simulateTransactionAdapter,
+} from '../../lib/network/simulateTransaction'
 import { extractFootprintKeys } from '../../lib/network/footprint'
+
+// Allow vi.mock to hoist before imports
+vi.mock('../../lib/rpc/toRpcRequestId', () => ({
+  toRpcRequestId: vi.fn(() => 1),
+}))
 
 describe('simulateTransactionAdapter', () => {
   it('should return success false when response is null', () => {
@@ -49,6 +57,45 @@ describe('simulateTransactionAdapter', () => {
     const result = simulateTransactionAdapter({ latestLedger: 50, results: [] })
     expect(result.success).toBe(true)
     expect(result.results).toEqual([])
+  })
+
+  it.each([
+    { latestLedger: 1.5, description: 'fractional' },
+    { latestLedger: -1, description: 'negative' },
+    { latestLedger: Number.NaN, description: 'NaN' },
+    { latestLedger: Number.POSITIVE_INFINITY, description: 'Infinity' },
+  ])(
+    'should drop $description latestLedger ($latestLedger)',
+    ({ latestLedger }) => {
+      const result = simulateTransactionAdapter({ latestLedger })
+      expect(result.success).toBe(true)
+      expect(result.latestLedger).toBeUndefined()
+    },
+  )
+
+  it('should preserve valid latestLedger values including zero', () => {
+    expect(simulateTransactionAdapter({ latestLedger: 0 }).latestLedger).toBe(0)
+    expect(simulateTransactionAdapter({ latestLedger: 100 }).latestLedger).toBe(
+      100,
+    )
+    expect(
+      simulateTransactionAdapter({ latestLedger: Number.MAX_SAFE_INTEGER })
+        .latestLedger,
+    ).toBe(Number.MAX_SAFE_INTEGER)
+  })
+
+  it('should sanitize malformed footprint sections to empty arrays', () => {
+    const result = simulateTransactionAdapter({
+      latestLedger: 50,
+      footprint: {
+        readOnly: 'not-an-array' as unknown as Array<string>,
+        readWrite: ['key1', 2, 'key2'] as unknown as Array<string>,
+      },
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.footprint?.readOnly).toEqual([])
+    expect(result.footprint?.readWrite).toEqual([])
   })
 })
 
@@ -102,5 +149,192 @@ describe('extractFootprintKeys', () => {
     const result2 = extractFootprintKeys({ readWrite: ['key1'] })
     expect(result2.readOnly).toEqual([])
     expect(result2.readWrite).toEqual(['key1'])
+  })
+
+  it('should trim whitespace, drop blanks, and deduplicate legacy keys', () => {
+    const result = extractFootprintKeys({
+      readOnly: [' key1 ', 'key1', '   '],
+      readWrite: [' key2', 'key2 ', '', 'key2'],
+    })
+    expect(result.readOnly).toEqual(['key1'])
+    expect(result.readWrite).toEqual(['key2'])
+  })
+})
+
+describe('simulateTransaction request helper', () => {
+  const mockRpcUrl = 'https://test.rpc.url'
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  it('returns a parsed success response', async () => {
+    const rpcResponse = {
+      jsonrpc: '2.0',
+      id: 1,
+      result: {
+        latestLedger: 100,
+        results: [{ xdr: 'some-xdr', auth: [] }],
+        footprint: {
+          readOnly: ['key1'],
+          readWrite: ['key2'],
+        },
+      },
+    }
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => rpcResponse,
+    } as Response)
+
+    const result = await simulateTransaction({
+      rpcUrl: mockRpcUrl,
+      transaction: 'base64-xdr',
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.latestLedger).toBe(100)
+    expect(result.results).toHaveLength(1)
+    expect(result.footprint?.readOnly).toEqual(['key1'])
+    expect(result.footprint?.readWrite).toEqual(['key2'])
+    expect(fetch).toHaveBeenCalledWith(
+      mockRpcUrl,
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+  })
+
+  it('returns a handled error on JSON-RPC error', async () => {
+    const rpcResponse = {
+      jsonrpc: '2.0',
+      id: 1,
+      error: { code: -32602, message: 'Invalid params' },
+    }
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => rpcResponse,
+    } as Response)
+
+    const result = await simulateTransaction({
+      rpcUrl: mockRpcUrl,
+      transaction: 'base64-xdr',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('RPC Error')
+  })
+
+  it('returns a handled error on HTTP failure', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    } as Response)
+
+    const result = await simulateTransaction({
+      rpcUrl: mockRpcUrl,
+      transaction: 'base64-xdr',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('HTTP 500')
+  })
+
+  it('returns a handled error on malformed JSON-RPC', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ not: 'rpc' }),
+    } as Response)
+
+    const result = await simulateTransaction({
+      rpcUrl: mockRpcUrl,
+      transaction: 'base64-xdr',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Invalid JSON-RPC')
+  })
+
+  it('returns a handled error when the transaction XDR is empty', async () => {
+    const result = await simulateTransaction({
+      rpcUrl: mockRpcUrl,
+      transaction: '',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('required')
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('returns a handled abort error when the caller signal is aborted', async () => {
+    vi.mocked(fetch).mockRejectedValue(
+      new DOMException('The operation was aborted.', 'AbortError'),
+    )
+
+    const result = await simulateTransaction({
+      rpcUrl: mockRpcUrl,
+      transaction: 'base64-xdr',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('Request aborted')
+  })
+
+  it('returns a handled error on network failure', async () => {
+    vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'))
+
+    const result = await simulateTransaction({
+      rpcUrl: mockRpcUrl,
+      transaction: 'base64-xdr',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('Failed to fetch')
+  })
+
+  it('returns a handled error when success response id does not match request id', async () => {
+    // toRpcRequestId is mocked to return 1; response carries id: 9999
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        jsonrpc: '2.0',
+        id: 9999,
+        result: { latestLedger: 100, results: [] },
+      }),
+    } as Response)
+
+    const result = await simulateTransaction({
+      rpcUrl: mockRpcUrl,
+      transaction: 'base64-xdr',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Invalid JSON-RPC')
+  })
+
+  it('returns a handled error when error response id does not match request id', async () => {
+    // toRpcRequestId is mocked to return 1; response carries id: 9999
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        jsonrpc: '2.0',
+        id: 9999,
+        error: { code: -32600, message: 'Invalid Request' },
+      }),
+    } as Response)
+
+    const result = await simulateTransaction({
+      rpcUrl: mockRpcUrl,
+      transaction: 'base64-xdr',
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('Invalid JSON-RPC')
   })
 })
