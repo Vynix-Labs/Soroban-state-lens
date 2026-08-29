@@ -65,10 +65,15 @@ export default function NetworkSelector() {
 
   // Auto-focus the input whenever the custom panel becomes visible
   useEffect(() => {
-    if (showCustomInput) {
-      // Small delay to allow the DOM to paint before focusing
-      setTimeout(() => inputRef.current?.focus(), 50)
+    if (!showCustomInput) {
+      return
     }
+
+    const timeoutId = window.setTimeout(() => {
+      inputRef.current?.focus()
+    }, 50)
+
+    return () => window.clearTimeout(timeoutId)
   }, [showCustomInput])
 
   // Don't render until hydrated to prevent SSR mismatches

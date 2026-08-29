@@ -1,5 +1,5 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Button, Card, Heading } from '@stellar/design-system'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useLensStore, useWatchlist } from '../../../store/lensStore'
 import { validateContractRouteParam } from './-validateContractRouteParam'
 
@@ -54,16 +54,12 @@ function WatchlistRoute() {
       {watchlistItems.length === 0 ? (
         <Card>
           <div className="p-6 space-y-4">
-            <Heading
-              size="sm"
-              as="h2"
-              className="text-white font-bold"
-            >
+            <Heading size="sm" as="h2" className="text-white font-bold">
               No saved watchlist items
             </Heading>
             <p className="text-text-muted text-sm">
-              You do not have any pinned keys for this contract yet.
-              Navigate from discovery or inspect a key to add items to the watchlist.
+              You do not have any pinned keys for this contract yet. Navigate
+              from discovery or inspect a key to add items to the watchlist.
             </p>
           </div>
         </Card>

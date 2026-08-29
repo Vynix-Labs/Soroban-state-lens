@@ -182,6 +182,48 @@ describe('getLedgerEntries', () => {
         }),
       ).rejects.toThrow('Invalid JSON-RPC response format')
     })
+
+    it('throws error when ledger result entries are malformed', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          jsonrpc: '2.0',
+          id: 1,
+          result: {
+            entries: [{ key: 'key1' }],
+            latestLedger: 100,
+          },
+        }),
+      } as Response)
+
+      await expect(
+        getLedgerEntries({
+          rpcUrl: mockRpcUrl,
+          keys: mockKeys,
+        }),
+      ).rejects.toThrow('Invalid JSON-RPC response format')
+    })
+
+    it('throws error when latestLedger is not a finite number', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          jsonrpc: '2.0',
+          id: 1,
+          result: {
+            entries: [{ key: 'key1', xdr: 'xdr1' }],
+            latestLedger: '100',
+          },
+        }),
+      } as Response)
+
+      await expect(
+        getLedgerEntries({
+          rpcUrl: mockRpcUrl,
+          keys: mockKeys,
+        }),
+      ).rejects.toThrow('Invalid JSON-RPC response format')
+    })
   })
 
   describe('abort scenarios', () => {
