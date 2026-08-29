@@ -3,6 +3,7 @@ import { useLensStore } from '../../store/lensStore'
 import {
   NETWORK_CONFIG_STORAGE_KEY,
   clearPersistedNetworkConfig,
+  mergeNetworkConfig,
 } from '../../store/persistence'
 import { DEFAULT_NETWORKS } from '../../store/types'
 
@@ -124,6 +125,54 @@ describe('LensStore Hydration', () => {
 
     const state = useLensStore.getState()
     expect(state.networkConfig).toEqual(DEFAULT_NETWORKS.futurenet)
+  })
+
+  it('accepts legacy and current persisted versions while ignoring future ones', () => {
+    const legacyPersistedState = {
+      state: {
+        networkConfig: {
+          kind: 'preset',
+          networkId: 'testnet',
+        },
+      },
+      version: 0,
+    }
+    const currentPersistedState = {
+      state: {
+        networkConfig: {
+          kind: 'preset',
+          networkId: 'mainnet',
+        },
+      },
+      version: 1,
+    }
+    const futurePersistedState = {
+      state: {
+        networkConfig: {
+          kind: 'preset',
+          networkId: 'futurenet',
+        },
+      },
+      version: 999,
+    }
+
+    expect(
+      mergeNetworkConfig(legacyPersistedState, {
+        networkConfig: DEFAULT_NETWORKS.futurenet,
+      }).networkConfig,
+    ).toEqual(DEFAULT_NETWORKS.testnet)
+
+    expect(
+      mergeNetworkConfig(currentPersistedState, {
+        networkConfig: DEFAULT_NETWORKS.futurenet,
+      }).networkConfig,
+    ).toEqual(DEFAULT_NETWORKS.mainnet)
+
+    expect(
+      mergeNetworkConfig(futurePersistedState, {
+        networkConfig: DEFAULT_NETWORKS.futurenet,
+      }).networkConfig,
+    ).toEqual(DEFAULT_NETWORKS.futurenet)
   })
 
   it('falls back to default network when storage contains unknown keys', async () => {
