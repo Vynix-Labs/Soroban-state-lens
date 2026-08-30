@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getStoreState, resetStore, useLensStore } from '../../store/lensStore'
 
@@ -132,5 +132,35 @@ describe('snapshotSlice', () => {
     clearSnapshots('nonexistent')
 
     expect(getSnapshots('c1')).toHaveLength(1)
+  })
+
+  it('drops oldest snapshots first once the retention limit is exceeded', () => {
+    const { addSnapshot, getSnapshots } = useLensStore.getState()
+
+    for (let index = 1; index <= 30; index += 1) {
+      addSnapshot(
+        'c1',
+        { [`key-${index}`]: makeEntry(`key-${index}`, 'c1') },
+        `Snapshot ${index}`,
+      )
+    }
+
+    const snapshots = getSnapshots('c1')
+    expect(snapshots).toHaveLength(25)
+    expect(snapshots[0].label).toBe('Snapshot 6')
+    expect(snapshots[snapshots.length - 1].label).toBe('Snapshot 30')
+  })
+
+  it('uses a single clock value for the snapshot timestamp and id prefix', () => {
+    const { addSnapshot, getSnapshots } = useLensStore.getState()
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(123456)
+
+    addSnapshot('c1', { key1: makeEntry('key1', 'c1') })
+
+    const snapshot = getSnapshots('c1')[0]
+    expect(snapshot.timestamp).toBe(123456)
+    expect(snapshot.id.startsWith('123456-')).toBe(true)
+
+    nowSpy.mockRestore()
   })
 })

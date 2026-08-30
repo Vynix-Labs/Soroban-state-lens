@@ -176,6 +176,8 @@ const createExpandedNodesSlice = (
     })),
 })
 
+export const DEFAULT_SNAPSHOT_RETENTION_LIMIT = 25
+
 /**
  * Snapshot slice creator
  */
@@ -189,6 +191,7 @@ const createSnapshotSlice = (
     contractId: string,
     entries: Record<string, LedgerEntry>,
     label?: string,
+    maxSnapshots: number = DEFAULT_SNAPSHOT_RETENTION_LIMIT,
   ) =>
     set((state) => {
       // Deep clone entries to ensure immutability
@@ -200,19 +203,23 @@ const createSnapshotSlice = (
         }
       }
 
+      const existing = state.snapshots[contractId] ?? []
+      const timestamp = Date.now()
+      const nextSnapshot = {
+        id: `${timestamp}-${crypto.randomUUID()}`,
+        contractId,
+        timestamp,
+        ledgerData: clonedEntries,
+        label,
+      }
+
+      const trimmedSnapshots =
+        maxSnapshots > 0 ? [...existing, nextSnapshot].slice(-maxSnapshots) : []
+
       return {
         snapshots: {
           ...state.snapshots,
-          [contractId]: [
-            ...(state.snapshots[contractId] ?? []),
-            {
-              id: crypto.randomUUID(),
-              contractId,
-              timestamp: Date.now(),
-              ledgerData: clonedEntries,
-              label,
-            },
-          ],
+          [contractId]: trimmedSnapshots,
         },
       }
     }),
@@ -354,7 +361,7 @@ const createWatchlistSlice = (
   addToWatchlist: (contractId: string, keyPath: string) =>
     set((state) => {
       const currentItems = state.watchlist[contractId] ?? []
-      
+
       // Check if item already exists (duplicate protection)
       const isDuplicate = currentItems.some((item) => item.keyPath === keyPath)
       if (isDuplicate) {
@@ -529,14 +536,19 @@ export const lensActions = {
     useLensStore.getState().setContractLoadStatus(status),
   setContractLoadError: (message: string | null) =>
     useLensStore.getState().setContractLoadError(message),
-  resetContractLoadState: () => useLensStore.getState().resetContractLoadState(),
+  resetContractLoadState: () =>
+    useLensStore.getState().resetContractLoadState(),
   loadContract: (contractId: string, keys: Array<string>) =>
     useLensStore.getState().loadContract(contractId, keys),
   addSnapshot: (
     contractId: string,
     entries: Record<string, LedgerEntry>,
     label?: string,
-  ) => useLensStore.getState().addSnapshot(contractId, entries, label),
+    maxSnapshots?: number,
+  ) =>
+    useLensStore
+      .getState()
+      .addSnapshot(contractId, entries, label, maxSnapshots),
   getSnapshots: (contractId: string) =>
     useLensStore.getState().getSnapshots(contractId),
   removeSnapshot: (contractId: string, snapshotId: string) =>

@@ -12,6 +12,21 @@ import { validateContractRouteParam } from './-validateContractRouteParam'
 import type { FlattenTreeRoot } from '../../../lib/tree/flatTreeRow'
 import type { Node } from '../../../types/node'
 
+export function resolveSelectedKeyPath(
+  selectedKeyPath: string | null,
+  rows: Array<{ id?: string; keyPath?: string }>,
+): string | null {
+  if (!selectedKeyPath) {
+    return null
+  }
+
+  return rows.some(
+    (row) => row.id === selectedKeyPath || row.keyPath === selectedKeyPath,
+  )
+    ? selectedKeyPath
+    : null
+}
+
 function isNodeLike(value: unknown): value is Node {
   return (
     typeof value === 'object' &&
@@ -57,6 +72,9 @@ function ContractExplorer() {
   const collapseAll = useLensStore((state) => state.collapseAll)
   const selectedKeyPath = useLensStore((state) => state.selectedKeyPath)
   const setSelectedKeyPath = useLensStore((state) => state.setSelectedKeyPath)
+  const clearSelectedKeyPath = useLensStore(
+    (state) => state.clearSelectedKeyPath,
+  )
 
   const ledgerData = useLensStore((state) => state.ledgerData)
   const ledgerEntries = useMemo(() => {
@@ -123,6 +141,13 @@ function ContractExplorer() {
   const handleCollapseAll = () => {
     collapseAll()
   }
+
+  useEffect(() => {
+    const nextSelection = resolveSelectedKeyPath(selectedKeyPath, flatRows)
+    if (selectedKeyPath !== nextSelection) {
+      clearSelectedKeyPath()
+    }
+  }, [clearSelectedKeyPath, flatRows, selectedKeyPath])
 
   useEffect(() => {
     setActiveContractId(contractId)

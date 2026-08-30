@@ -89,6 +89,7 @@ export interface SnapshotSlice {
     contractId: string,
     entries: Record<string, LedgerEntry>,
     label?: string,
+    maxSnapshots?: number,
   ) => void
   getSnapshots: (contractId: string) => Array<ContractSnapshot>
   removeSnapshot: (contractId: string, snapshotId: string) => void

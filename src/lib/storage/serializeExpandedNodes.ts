@@ -5,17 +5,44 @@
  * - Deterministic order preservation of the first occurrence.
  * - Duplicates removed.
  * - Compact JSON output.
+ * - Capped by a strict serialized-size budget so hydration remains safe.
  *
  * @param nodes Array of node IDs.
+ * @param maxBytes Maximum serialized output size in UTF-16 code units.
  * @returns Serialized JSON string.
  */
-export function serializeExpandedNodes(nodes: Array<string>): string {
+export const MAX_SERIALIZED_EXPANDED_NODES_BYTES = 4096
+
+export function serializeExpandedNodes(
+  nodes: Array<string>,
+  maxBytes: number = MAX_SERIALIZED_EXPANDED_NODES_BYTES,
+): string {
   if (!Array.isArray(nodes)) {
     return '[]'
   }
 
-  // Remove duplicates while preserving the first occurrence using a Set
   const uniqueNodes = Array.from(new Set(nodes))
 
-  return JSON.stringify(uniqueNodes)
+  if (maxBytes <= 0) {
+    return '[]'
+  }
+
+  const fullPayload = JSON.stringify(uniqueNodes)
+  if (fullPayload.length <= maxBytes) {
+    return fullPayload
+  }
+
+  let trimmedNodes: Array<string> = []
+  let serialized = '[]'
+
+  for (const node of uniqueNodes) {
+    const candidate = JSON.stringify([...trimmedNodes, node])
+    if (candidate.length > maxBytes) {
+      break
+    }
+    trimmedNodes = [...trimmedNodes, node]
+    serialized = candidate
+  }
+
+  return serialized
 }

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { clearActiveContractContext } from '@/routes/contracts/$contractId'
 import { getStoreState, resetStore } from '@/store/lensStore'
+import { resolveSelectedKeyPath } from '@/routes/contracts/$contractId/explorer'
 
 const VALID_CONTRACT_ID =
   'CC42QZWUV2R7PUN2SZZW3Y3A43UUB5L2U3B4K3O5EUT7Y4I2O2W34EWM'
@@ -52,5 +53,12 @@ describe('contract layout cleanup (#292)', () => {
     clearActiveContractContext()
 
     expect(getStoreState().ledgerData).toBe(ledgerBefore)
+  })
+
+  it('clears stale selections when the selected row is no longer in the tree', () => {
+    const rows = [{ id: 'root.child' }, { id: 'root.other' }]
+
+    expect(resolveSelectedKeyPath('root.child', rows)).toBe('root.child')
+    expect(resolveSelectedKeyPath('root.missing', rows)).toBeNull()
   })
 })
