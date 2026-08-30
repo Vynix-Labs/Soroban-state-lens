@@ -97,7 +97,10 @@ export default function NetworkSelector() {
       setIsOpen(false)
     } else {
       // Custom: restore last custom URL or set up for new input
-      const urlToUse = lastCustomUrl || (networkConfig.networkId === 'custom' ? networkConfig.rpcUrl : '') || ''
+      const urlToUse =
+        lastCustomUrl ||
+        (networkConfig.networkId === 'custom' ? networkConfig.rpcUrl : '') ||
+        ''
       const passphraseToUse =
         networkConfig.networkId === 'custom'
           ? networkConfig.networkPassphrase || ''
@@ -343,7 +346,11 @@ export default function NetworkSelector() {
               )}
 
               {testStatus === 'error' && testError && (
-                <p className="text-xs text-red-500 flex items-center gap-1">
+                <p
+                  className="text-xs text-red-500 flex items-center gap-1"
+                  role="status"
+                  aria-live="polite"
+                >
                   <span className="material-symbols-outlined text-[14px]">
                     warning
                   </span>
@@ -352,7 +359,11 @@ export default function NetworkSelector() {
               )}
 
               {testStatus === 'success' && (
-                <p className="text-xs text-green-500 flex items-center gap-1">
+                <p
+                  className="text-xs text-green-500 flex items-center gap-1"
+                  role="status"
+                  aria-live="polite"
+                >
                   <span className="material-symbols-outlined text-[14px]">
                     check_circle
                   </span>
