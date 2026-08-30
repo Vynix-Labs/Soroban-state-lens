@@ -40,10 +40,16 @@ describe('NetworkSelector Component', () => {
     expect(screen.getByText('Custom RPC Configuration')).toBeTruthy()
 
     const urlInput = screen.getByLabelText('Custom RPC URL input')
-    const passphraseInput = screen.getByLabelText('Custom Network Passphrase input')
+    const passphraseInput = screen.getByLabelText(
+      'Custom Network Passphrase input',
+    )
 
-    fireEvent.change(urlInput, { target: { value: 'https://custom-rpc.example.com' } })
-    fireEvent.change(passphraseInput, { target: { value: 'Test SDF Network ; September 2015' } })
+    fireEvent.change(urlInput, {
+      target: { value: 'https://custom-rpc.example.com' },
+    })
+    fireEvent.change(passphraseInput, {
+      target: { value: 'Test SDF Network ; September 2015' },
+    })
 
     const applyButton = screen.getByRole('button', { name: /apply/i })
     fireEvent.click(applyButton)
@@ -68,7 +74,9 @@ describe('NetworkSelector Component', () => {
     fireEvent.click(customOption)
 
     const urlInput = screen.getByLabelText('Custom RPC URL input')
-    fireEvent.change(urlInput, { target: { value: 'https://custom-rpc2.example.com' } })
+    fireEvent.change(urlInput, {
+      target: { value: 'https://custom-rpc2.example.com' },
+    })
 
     const applyButton = screen.getByRole('button', { name: /apply/i })
     fireEvent.click(applyButton)
@@ -101,5 +109,16 @@ describe('NetworkSelector Component', () => {
     fireEvent.keyDown(trigger, { key: ' ' })
     fireEvent.click(trigger)
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('returns focus to the trigger after closing the custom RPC panel', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('option', { name: /custom/i }))
+    fireEvent.click(screen.getByRole('button', { name: /cancel custom rpc/i }))
+
+    expect(document.activeElement).toBe(trigger)
   })
 })
