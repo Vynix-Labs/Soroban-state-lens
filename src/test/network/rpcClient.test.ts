@@ -169,7 +169,9 @@ describe('callRpc', () => {
       () =>
         new Promise((_resolve, reject) => {
           caller.signal.addEventListener('abort', () =>
-            reject(new DOMException('The operation was aborted.', 'AbortError')),
+            reject(
+              new DOMException('The operation was aborted.', 'AbortError'),
+            ),
           )
         }),
     )
@@ -191,11 +193,10 @@ describe('callRpc', () => {
   it('returns an aborted shape when the caller signal is already aborted', async () => {
     const caller = new AbortController()
     caller.abort()
-    mockFetch.mockImplementationOnce(
-      () =>
-        Promise.reject(
-          new DOMException('The operation was aborted.', 'AbortError'),
-        ),
+    mockFetch.mockImplementationOnce(() =>
+      Promise.reject(
+        new DOMException('The operation was aborted.', 'AbortError'),
+      ),
     )
 
     const result = await callRpc(
@@ -236,6 +237,33 @@ describe('callRpc', () => {
     expect(result).toMatchObject({
       message: 'Invalid JSON',
       code: 'UNKNOWN_ERROR',
+      isTimeout: false,
+    })
+  })
+
+  it('rejects a streamed response after the configured byte limit', async () => {
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"result":"'))
+        controller.enqueue(new TextEncoder().encode('too-large"}'))
+        controller.close()
+      },
+    })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers(),
+      body,
+    })
+
+    const result = await callRpc(
+      { ...defaultConfig, maxResponseBytes: 10 },
+      { method: 'test' },
+    )
+
+    expect(result).toMatchObject({
+      message: 'RPC response exceeds maximum size of 10 bytes',
+      code: 'RESPONSE_TOO_LARGE',
+      details: { maxResponseBytes: 10 },
       isTimeout: false,
     })
   })
