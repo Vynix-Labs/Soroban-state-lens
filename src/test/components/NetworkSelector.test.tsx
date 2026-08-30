@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import NetworkSelector from '../../components/global/NetworkSelector'
 import { resetStore, useLensStore } from '../../store/lensStore'
@@ -40,10 +40,16 @@ describe('NetworkSelector Component', () => {
     expect(screen.getByText('Custom RPC Configuration')).toBeTruthy()
 
     const urlInput = screen.getByLabelText('Custom RPC URL input')
-    const passphraseInput = screen.getByLabelText('Custom Network Passphrase input')
+    const passphraseInput = screen.getByLabelText(
+      'Custom Network Passphrase input',
+    )
 
-    fireEvent.change(urlInput, { target: { value: 'https://custom-rpc.example.com' } })
-    fireEvent.change(passphraseInput, { target: { value: 'Test SDF Network ; September 2015' } })
+    fireEvent.change(urlInput, {
+      target: { value: 'https://custom-rpc.example.com' },
+    })
+    fireEvent.change(passphraseInput, {
+      target: { value: 'Test SDF Network ; September 2015' },
+    })
 
     const applyButton = screen.getByRole('button', { name: /apply/i })
     fireEvent.click(applyButton)
@@ -68,7 +74,9 @@ describe('NetworkSelector Component', () => {
     fireEvent.click(customOption)
 
     const urlInput = screen.getByLabelText('Custom RPC URL input')
-    fireEvent.change(urlInput, { target: { value: 'https://custom-rpc2.example.com' } })
+    fireEvent.change(urlInput, {
+      target: { value: 'https://custom-rpc2.example.com' },
+    })
 
     const applyButton = screen.getByRole('button', { name: /apply/i })
     fireEvent.click(applyButton)
@@ -100,6 +108,21 @@ describe('NetworkSelector Component', () => {
 
     fireEvent.keyDown(trigger, { key: ' ' })
     fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('returns focus to the trigger after selecting a preset network', async () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    await waitFor(() =>
+      expect(trigger.getAttribute('aria-expanded')).toBe('false'),
+    )
+
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('option', { name: /mainnet/i }))
+
+    expect(document.activeElement).toBe(trigger)
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
   })
 })

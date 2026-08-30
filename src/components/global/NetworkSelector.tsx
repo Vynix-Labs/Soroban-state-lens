@@ -35,6 +35,7 @@ export default function NetworkSelector() {
   const [testError, setTestError] = useState('')
   const [isHydrated, setIsHydrated] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const networkConfig = useLensStore((state) => state.networkConfig)
@@ -95,9 +96,13 @@ export default function NetworkSelector() {
       setCustomRpcUrl('')
       setCustomNetworkPassphrase('')
       setIsOpen(false)
+      triggerRef.current?.focus()
     } else {
       // Custom: restore last custom URL or set up for new input
-      const urlToUse = lastCustomUrl || (networkConfig.networkId === 'custom' ? networkConfig.rpcUrl : '') || ''
+      const urlToUse =
+        lastCustomUrl ||
+        (networkConfig.networkId === 'custom' ? networkConfig.rpcUrl : '') ||
+        ''
       const passphraseToUse =
         networkConfig.networkId === 'custom'
           ? networkConfig.networkPassphrase || ''
@@ -235,6 +240,7 @@ export default function NetworkSelector() {
       {/* Trigger Button */}
       <button
         type="button"
+        ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
         className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border-dark bg-background-dark hover:border-primary/50 hover:bg-primary/10 transition-colors text-sm font-medium "
