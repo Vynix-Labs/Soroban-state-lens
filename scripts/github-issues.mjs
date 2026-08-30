@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { issues } from './github-issues-data.mjs'
+import { validatePublisherLabelPolicy } from './github-issue-label-policy.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -245,6 +246,7 @@ function listIssues(argv) {
 
 function publishIssues(argv) {
   const selected = getSelectedIssues(argv)
+  validatePublisherLabelPolicy(selected)
   ensureLabels()
   const existingTitles = getExistingTitles()
 
