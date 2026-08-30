@@ -160,6 +160,32 @@ describe('startLedgerHeadPoll', () => {
       stop()
       randomSpy.mockRestore()
     })
+
+    it('reports one error per failed tick and resumes after recovery', async () => {
+      const onLedgerChange = vi.fn()
+      const onError = vi.fn()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+      const error = { message: 'Network error', code: 'NETWORK_ERROR' }
+      mockCallRpc
+        .mockResolvedValueOnce(error)
+        .mockResolvedValueOnce({ result: { sequence: 100 } })
+
+      const stop = startLedgerHeadPoll({
+        rpcConfig: defaultRpcConfig,
+        intervalMs: 1000,
+        onLedgerChange,
+        onError,
+      })
+
+      await vi.advanceTimersByTimeAsync(0)
+      expect(onError).toHaveBeenCalledTimes(1)
+      expect(onError).toHaveBeenCalledWith(error)
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(onError).toHaveBeenCalledTimes(1)
+      expect(onLedgerChange).toHaveBeenCalledWith(100)
+      stop()
+      randomSpy.mockRestore()
+    })
   })
 
   describe('stop function', () => {
