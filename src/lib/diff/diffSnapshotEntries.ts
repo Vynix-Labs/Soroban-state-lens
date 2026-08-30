@@ -46,6 +46,7 @@ export function diffSnapshotEntries(
     }
   }
 
-  diffResults.sort((a, b) => a.key.localeCompare(b.key))
+  // Use code-unit ordering so output does not depend on the runtime locale.
+  diffResults.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
   return diffResults
 }

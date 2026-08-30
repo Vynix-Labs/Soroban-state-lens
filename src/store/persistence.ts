@@ -1,18 +1,14 @@
 import { createJSONStorage } from 'zustand/middleware'
 import { parsePersistedNetworkConfig } from '../lib/storage/parsePersistedNetworkConfig'
 import { serializePersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
-import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
 import {
   BigIntDisplayMode,
   ByteDisplayMode,
   DEFAULT_NETWORKS,
   DEFAULT_PREFERENCES,
 } from './types'
-import type {
-  DisplayPreferences,
-  NetworkConfig,
-  WatchlistItem,
-} from './types'
+import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
+import type { DisplayPreferences, NetworkConfig, WatchlistItem } from './types'
 import type { PersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
 import type { PersistStorage } from 'zustand/middleware'
 
@@ -20,6 +16,12 @@ import type { PersistStorage } from 'zustand/middleware'
  * Storage key for network config persistence
  */
 export const NETWORK_CONFIG_STORAGE_KEY = 'ssl.network-config.v1'
+export const PERSISTED_STATE_VERSION = 1
+
+/**
+ * Storage key for preferences persistence
+ */
+export const PREFERENCES_STORAGE_KEY = 'ssl.preferences.v1'
 
 /**
  * Storage key for preferences persistence
@@ -82,9 +84,7 @@ export function isValidBigIntDisplayMode(
   )
 }
 
-export function validateDisplayPreferences(
-  value: unknown,
-): DisplayPreferences {
+export function validateDisplayPreferences(value: unknown): DisplayPreferences {
   if (typeof value !== 'object' || value === null) {
     return DEFAULT_PREFERENCES
   }
@@ -95,7 +95,9 @@ export function validateDisplayPreferences(
     ? candidate.byteDisplayMode
     : DEFAULT_PREFERENCES.byteDisplayMode
 
-  const bigIntDisplayMode = isValidBigIntDisplayMode(candidate.bigIntDisplayMode)
+  const bigIntDisplayMode = isValidBigIntDisplayMode(
+    candidate.bigIntDisplayMode,
+  )
     ? candidate.bigIntDisplayMode
     : DEFAULT_PREFERENCES.bigIntDisplayMode
 
@@ -103,6 +105,19 @@ export function validateDisplayPreferences(
     byteDisplayMode,
     bigIntDisplayMode,
   }
+}
+
+function getPersistedStateVersion(persistedState: unknown): number | null {
+  if (typeof persistedState !== 'object' || persistedState === null) {
+    return null
+  }
+
+  const persisted = persistedState as Record<string, unknown>
+  const version = persisted.version
+
+  return typeof version === 'number' && Number.isFinite(version)
+    ? version
+    : null
 }
 
 function unwrapPersistedState(
@@ -113,6 +128,11 @@ function unwrapPersistedState(
   }
 
   const persisted = persistedState as Record<string, unknown>
+  const version = getPersistedStateVersion(persistedState)
+
+  if (version !== null && version !== 0 && version !== PERSISTED_STATE_VERSION) {
+    return null
+  }
 
   if (
     'state' in persisted &&
@@ -176,10 +196,15 @@ export const createSafeStorage = <T>(): PersistStorage<T> | undefined =>
 export function mergeNetworkConfig(
   persistedState: unknown,
   currentState: { networkConfig: NetworkConfig },
-): { networkConfig: NetworkConfig; watchlist: Record<string, Array<WatchlistItem>> } {
+): {
+  networkConfig: NetworkConfig
+  watchlist: Record<string, Array<WatchlistItem>>
+} {
   const hydratedState = unwrapPersistedState(persistedState)
   const watchlist = sanitizeWatchlist(
-    hydratedState && typeof hydratedState === 'object' && 'watchlist' in hydratedState
+    hydratedState &&
+      typeof hydratedState === 'object' &&
+      'watchlist' in hydratedState
       ? hydratedState.watchlist
       : undefined,
   )
@@ -219,6 +244,7 @@ export function sanitizeWatchlist(
     return {}
   }
 
+  const hydrationTime = Date.now()
   const source = value as Record<string, unknown>
   const sanitized: Record<string, Array<WatchlistItem>> = {}
 
@@ -226,22 +252,27 @@ export function sanitizeWatchlist(
     if (typeof contractId !== 'string' || contractId.length === 0) {
       continue
     }
+
     if (!Array.isArray(items)) {
       continue
     }
 
     const validItems: Array<WatchlistItem> = []
+
     for (const item of items) {
+      if (typeof item !== 'object' || item === null) {
+        continue
+      }
+
+      const candidate = item as Record<string, unknown>
+
       if (
-        typeof item === 'object' &&
-        item !== null &&
-        'contractId' in item &&
-        'keyPath' in item &&
-        'timestamp' in item &&
-        typeof (item as Record<string, unknown>).contractId === 'string' &&
-        typeof (item as Record<string, unknown>).keyPath === 'string' &&
-        typeof (item as Record<string, unknown>).timestamp === 'number' &&
-        Number.isFinite((item as Record<string, unknown>).timestamp as number)
+        typeof candidate.contractId === 'string' &&
+        typeof candidate.keyPath === 'string' &&
+        typeof candidate.timestamp === 'number' &&
+        Number.isFinite(candidate.timestamp) &&
+        candidate.timestamp <= hydrationTime &&
+        candidate.contractId === contractId
       ) {
         validItems.push(item as unknown as WatchlistItem)
       }

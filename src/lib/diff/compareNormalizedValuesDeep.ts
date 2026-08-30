@@ -10,6 +10,7 @@
 export function compareNormalizedValuesDeep(
   a: unknown,
   b: unknown,
+  seenPairs: WeakMap<object, WeakSet<object>> = new WeakMap(),
 ): boolean {
   if (a === b) {
     return true
@@ -29,19 +30,29 @@ export function compareNormalizedValuesDeep(
     return false
   }
 
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) {
-      return false
+  if (typeof a === 'object' && typeof b === 'object') {
+    const comparedObjects = seenPairs.get(a)
+    if (comparedObjects?.has(b)) {
+      return true
     }
-    for (let i = 0; i < a.length; i += 1) {
-      if (!compareNormalizedValuesDeep(a[i], b[i])) {
+    if (comparedObjects) {
+      comparedObjects.add(b)
+    } else {
+      seenPairs.set(a, new WeakSet([b]))
+    }
+
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) {
         return false
       }
+      for (let i = 0; i < a.length; i += 1) {
+        if (!compareNormalizedValuesDeep(a[i], b[i], seenPairs)) {
+          return false
+        }
+      }
+      return true
     }
-    return true
-  }
 
-  if (typeof a === 'object' && typeof b === 'object') {
     if (Array.isArray(a) || Array.isArray(b)) {
       return false
     }
@@ -53,7 +64,7 @@ export function compareNormalizedValuesDeep(
       if (!mapA || !mapB) {
         return false
       }
-      return compareNormalizedMapEntries(a.entries, b.entries)
+      return compareNormalizedMapEntries(a.entries, b.entries, seenPairs)
     }
 
     const keysA = Object.keys(a as Record<string, unknown>)
@@ -71,6 +82,7 @@ export function compareNormalizedValuesDeep(
         !compareNormalizedValuesDeep(
           (a as Record<string, unknown>)[key],
           (b as Record<string, unknown>)[key],
+          seenPairs,
         )
       ) {
         return false
@@ -99,6 +111,7 @@ function isNormalizedMap(value: unknown): value is {
 function compareNormalizedMapEntries(
   entriesA: Array<{ key: unknown; value: unknown }>,
   entriesB: Array<{ key: unknown; value: unknown }>,
+  seenPairs: WeakMap<object, WeakSet<object>>,
 ): boolean {
   if (entriesA.length !== entriesB.length) {
     return false
@@ -116,8 +129,8 @@ function compareNormalizedMapEntries(
 
       const entryB = entriesB[index]
       if (
-        compareNormalizedValuesDeep(entryA.key, entryB.key) &&
-        compareNormalizedValuesDeep(entryA.value, entryB.value)
+        compareNormalizedValuesDeep(entryA.key, entryB.key, seenPairs) &&
+        compareNormalizedValuesDeep(entryA.value, entryB.value, seenPairs)
       ) {
         matched[index] = true
         found = true

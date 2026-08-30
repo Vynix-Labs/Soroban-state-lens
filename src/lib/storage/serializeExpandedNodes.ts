@@ -21,7 +21,11 @@ export function serializeExpandedNodes(
     return '[]'
   }
 
-  const uniqueNodes = Array.from(new Set(nodes))
+  // Filter out blank strings, then remove duplicates while preserving the first occurrence using a Set
+  const validNodes = nodes.filter(
+    (node) => typeof node === 'string' && node.trim().length > 0,
+  )
+  const uniqueNodes = Array.from(new Set(validNodes))
 
   if (maxBytes <= 0) {
     return '[]'

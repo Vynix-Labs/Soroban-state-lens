@@ -120,6 +120,32 @@ function getScValValue(scVal: any): unknown {
   return scVal.value
 }
 
+/**
+ * Coerces an ScvString / ScvSymbol value to its string representation.
+ * Directly-constructed ScVal values expose the value as a `string`, but
+ * values decoded from XDR arrive as a `Buffer`/`Uint8Array`, so both shapes
+ * are supported here.
+ */
+function stringLikeToString(value: unknown): string {
+  if (typeof value === 'string') {
+    return value
+  }
+  if (value === null || value === undefined) {
+    return ''
+  }
+  if (typeof value === 'object' && typeof (value as any).toString === 'function') {
+    try {
+      const str = (value as any).toString()
+      if (typeof str === 'string') {
+        return str
+      }
+    } catch {
+      // fall through to empty string
+    }
+  }
+  return ''
+}
+
 function bigIntLikeToString(value: unknown): string | null {
   if (typeof value === 'bigint') {
     return value.toString()
@@ -207,34 +233,53 @@ function parts256ToString(value: unknown, signed: boolean): string | null {
     return null
   }
 
+  const maxU64 = (1n << 64n) - 1n
+  const minI64 = -(1n << 63n)
+  const maxI64 = (1n << 63n) - 1n
+
   const hiHi = BigInt(hiHiStr)
   const hiLo = BigInt(hiLoStr)
   const loHi = BigInt(loHiStr)
   const loLo = BigInt(loLoStr)
 
-  const uLoLo = loLo < 0n ? loLo + (1n << 64n) : loLo
-  const uLoHi = loHi < 0n ? loHi + (1n << 64n) : loHi
-  const uHiLo = hiLo < 0n ? hiLo + (1n << 64n) : hiLo
-
   if (signed) {
+    if (hiHi < minI64 || hiHi > maxI64) {
+      return null
+    }
+    if (hiLo < 0n || hiLo > maxU64 || loHi < 0n || loHi > maxU64 || loLo < 0n || loLo > maxU64) {
+      return null
+    }
+
     const combined =
-      hiHi * (1n << 192n) + uHiLo * (1n << 128n) + uLoHi * (1n << 64n) + uLoLo
+      hiHi * (1n << 192n) + hiLo * (1n << 128n) + loHi * (1n << 64n) + loLo
     const min = -(1n << 255n)
     const max = (1n << 255n) - 1n
     if (combined < min || combined > max) {
       return null
     }
     return combined.toString()
-  } else {
-    const uHiHi = hiHi < 0n ? hiHi + (1n << 64n) : hiHi
-    const combined =
-      uHiHi * (1n << 192n) + uHiLo * (1n << 128n) + uLoHi * (1n << 64n) + uLoLo
-    const max = (1n << 256n) - 1n
-    if (combined < 0n || combined > max) {
-      return null
-    }
-    return combined.toString()
   }
+
+  if (
+    hiHi < 0n ||
+    hiHi > maxU64 ||
+    hiLo < 0n ||
+    hiLo > maxU64 ||
+    loHi < 0n ||
+    loHi > maxU64 ||
+    loLo < 0n ||
+    loLo > maxU64
+  ) {
+    return null
+  }
+
+  const combined =
+    hiHi * (1n << 192n) + hiLo * (1n << 128n) + loHi * (1n << 64n) + loLo
+  const max = (1n << 256n) - 1n
+  if (combined < 0n || combined > max) {
+    return null
+  }
+  return combined.toString()
 }
 
 function createCycleNode(path: Path, depth: number): CycleNode {
@@ -283,7 +328,13 @@ export function normalizeNode(
   depth?: number,
 ): Node {
   const currentDepth = depth ?? 0
-  const maxDepth = options?.maxDepth ?? MAX_DEPTH_DEFAULT
+  const maxDepth =
+    typeof options?.maxDepth === 'number' &&
+    Number.isFinite(options.maxDepth) &&
+    options.maxDepth >= 0 &&
+    Number.isInteger(options.maxDepth)
+      ? options.maxDepth
+      : MAX_DEPTH_DEFAULT
 
   if (currentDepth >= maxDepth) {
     return createTruncatedNode(path, currentDepth)
@@ -502,7 +553,7 @@ export function normalizeNode(
         kind: 'primitive',
         path,
         scType: 'string',
-        value: typeof normalizedScVal.value === 'string' ? normalizedScVal.value : '',
+        value: stringLikeToString(normalizedScVal.value),
         raw: toRaw(scVal),
       } satisfies PrimitiveNode
     }
@@ -512,7 +563,7 @@ export function normalizeNode(
         kind: 'primitive',
         path,
         scType: 'symbol',
-        value: typeof normalizedScVal.value === 'string' ? normalizedScVal.value : '',
+        value: stringLikeToString(normalizedScVal.value),
         raw: toRaw(scVal),
       } satisfies PrimitiveNode
     }
@@ -600,8 +651,16 @@ export function normalizeNode(
       const entries: Array<{ key: Node; value: Node }> = []
       if (Array.isArray(normalizedScVal.value)) {
         for (const entry of normalizedScVal.value) {
+          // js-xdr exposes struct fields via accessor methods (e.g.
+          // `entry.key()`), while plain test fixtures use `entry.key`.
+          // Read both shapes so map decoding works for XDR-originated
+          // ScMapEntry instances as well as inline fixtures.
+          const entryKey =
+            entry && typeof entry.key === 'function' ? entry.key() : entry.key
+          const entryVal =
+            entry && typeof entry.val === 'function' ? entry.val() : entry.val
           const keyNode = normalizeNode(
-            entry.key,
+            entryKey,
             path,
             visited,
             options,
@@ -609,7 +668,7 @@ export function normalizeNode(
           )
           const keyPath = appendPath(path, { type: 'key', key: keyNode })
           const valueNode = normalizeNode(
-            entry.val,
+            entryVal,
             keyPath,
             visited,
             options,

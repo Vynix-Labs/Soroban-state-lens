@@ -1,154 +1,239 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NetworkSelector from '../../components/global/NetworkSelector'
-import { resetStore } from '../../store/lensStore'
-import * as networkValidation from '../../lib/network/validation'
-import * as testConnection from '../../lib/network/testConnection'
+import * as connectionModule from '../../lib/network/testConnection'
+import { resetStore, useLensStore } from '../../store/lensStore'
+import { DEFAULT_NETWORKS } from '../../store/types'
 
-// Mock the network functions
-vi.mock('../../lib/network/validation')
-vi.mock('../../lib/network/testConnection')
-
-describe('NetworkSelector', () => {
+describe('NetworkSelector Component', () => {
   beforeEach(() => {
     resetStore()
-    vi.clearAllMocks()
-
-    // Default mock implementations
-    vi.mocked(networkValidation.validateRpcUrl).mockReturnValue({ isValid: true })
-    vi.mocked(testConnection.testRpcConnection).mockResolvedValue({ success: true })
   })
 
-  it('renders network selector button', () => {
+  it('renders with default preset network', () => {
     render(<NetworkSelector />)
-    const button = screen.getByRole('button', { name: /Select network/i })
-    expect(button).not.toBeNull()
+    expect(screen.getByRole('button', { name: /select network/i })).toBeTruthy()
+    expect(screen.getByText('Futurenet')).toBeTruthy()
   })
 
-  it('toggles dropdown visibility on button click', () => {
+  it('opens dropdown and switches to preset network', () => {
     render(<NetworkSelector />)
-    const button = screen.getByRole('button', { name: /Select network/i })
 
-    fireEvent.click(button)
-    expect(screen.queryByRole('listbox')).not.toBeNull()
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
 
-    fireEvent.click(button)
-    expect(screen.queryByRole('listbox')).toBeNull()
+    const mainnetOption = screen.getByRole('option', { name: /mainnet/i })
+    fireEvent.click(mainnetOption)
+
+    const state = useLensStore.getState()
+    expect(state.networkConfig).toEqual(DEFAULT_NETWORKS.mainnet)
   })
 
-  it('shows custom input when Custom is selected', async () => {
+  it('opens custom panel and captures custom url and network passphrase on apply', () => {
     render(<NetworkSelector />)
-    const button = screen.getByRole('button', { name: /Select network/i })
-    fireEvent.click(button)
 
-    const customOption = screen.getByRole('option', { name: /Custom/i })
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+
+    const customOption = screen.getByRole('option', { name: /custom/i })
     fireEvent.click(customOption)
 
-    const input = await screen.findByPlaceholderText(/rpc.example.com|rpc/i)
-    expect(input).not.toBeNull()
-  })
+    expect(screen.getByText('Custom RPC Configuration')).toBeTruthy()
 
-  it('updates URL input and preserves controlled value', async () => {
-    render(<NetworkSelector />)
-    const button = screen.getByRole('button', { name: /Select network/i })
-    fireEvent.click(button)
+    const urlInput = screen.getByLabelText('Custom RPC URL input')
+    const passphraseInput = screen.getByLabelText(
+      'Custom Network Passphrase input',
+    )
 
-    const customOption = screen.getByRole('option', { name: /Custom/i })
-    fireEvent.click(customOption)
-
-    const urlInput = (await screen.findByPlaceholderText(/rpc.example.com|rpc/i)) as HTMLInputElement
-    fireEvent.change(urlInput, { target: { value: 'https://test1.com' } })
-    expect(urlInput.value).toBe('https://test1.com')
-
-    fireEvent.change(urlInput, { target: { value: 'https://test2.com' } })
-    expect(urlInput.value).toBe('https://test2.com')
-  })
-
-  it('disables Apply button with invalid URL and enables with valid', async () => {
-    vi.mocked(networkValidation.validateRpcUrl).mockReturnValue({ isValid: false, error: 'Invalid URL format' })
-
-    render(<NetworkSelector />)
-    const button = screen.getByRole('button', { name: /Select network/i })
-    fireEvent.click(button)
-
-    const customOption = screen.getByRole('option', { name: /Custom/i })
-    fireEvent.click(customOption)
-
-    const urlInput = (await screen.findByPlaceholderText(/rpc.example.com|rpc/i)) as HTMLInputElement
-    fireEvent.change(urlInput, { target: { value: 'invalid-url' } })
-
-    await waitFor(() => {
-      const applyButton = screen.getByRole('button', { name: /Apply/i }) as HTMLButtonElement
-      expect(applyButton.disabled).toBe(true)
+    fireEvent.change(urlInput, {
+      target: { value: 'https://custom-rpc.example.com' },
+    })
+    fireEvent.change(passphraseInput, {
+      target: { value: 'Test SDF Network ; September 2015' },
     })
 
-    // make valid
-    vi.mocked(networkValidation.validateRpcUrl).mockReturnValue({ isValid: true })
-    fireEvent.change(urlInput, { target: { value: 'https://valid.rpc' } })
-
-    await waitFor(() => {
-      const applyButton = screen.getByRole('button', { name: /Apply/i }) as HTMLButtonElement
-      expect(applyButton.disabled).toBe(false)
-    })
-  })
-
-  it('tests RPC connection and shows messages', async () => {
-    vi.mocked(testConnection.testRpcConnection).mockResolvedValue({ success: true })
-
-    render(<NetworkSelector />)
-    const button = screen.getByRole('button', { name: /Select network/i })
-    fireEvent.click(button)
-
-    const customOption = screen.getByRole('option', { name: /Custom/i })
-    fireEvent.click(customOption)
-
-    const urlInput = (await screen.findByPlaceholderText(/rpc.example.com|rpc/i)) as HTMLInputElement
-    fireEvent.change(urlInput, { target: { value: 'https://valid.rpc' } })
-
-    const testButton = screen.getByRole('button', { name: /Test Connection/i })
-    fireEvent.click(testButton)
-
-    await waitFor(() => {
-      expect(screen.queryByText(/Connection successful/i)).not.toBeNull()
-    })
-
-    // simulate failure
-    vi.mocked(testConnection.testRpcConnection).mockResolvedValue({ success: false, error: 'Connection timeout' })
-    fireEvent.click(testButton)
-
-    await waitFor(() => {
-      expect(screen.queryByText(/Connection timeout/i)).not.toBeNull()
-    })
-  })
-
-  it('preserves last custom URL when switching networks', async () => {
-    render(<NetworkSelector />)
-
-    const button = screen.getByRole('button', { name: /Select network/i })
-    fireEvent.click(button)
-    fireEvent.click(screen.getByRole('option', { name: /Custom/i }))
-
-    const urlInput = (await screen.findByPlaceholderText(/rpc.example.com|rpc/i)) as HTMLInputElement
-    fireEvent.change(urlInput, { target: { value: 'https://persistent.rpc.url' } })
-
-    const applyButton = screen.getByRole('button', { name: /Apply/i })
+    const applyButton = screen.getByRole('button', { name: /apply/i })
     fireEvent.click(applyButton)
 
-    // close custom panel
-    const cancelCustom = screen.getByRole('button', { name: /Cancel custom RPC/i })
-    fireEvent.click(cancelCustom)
+    const state = useLensStore.getState()
+    expect(state.networkConfig).toEqual({
+      networkId: 'custom',
+      rpcUrl: 'https://custom-rpc.example.com',
+      networkPassphrase: 'Test SDF Network ; September 2015',
+      horizonUrl: DEFAULT_NETWORKS.futurenet.horizonUrl,
+    })
+    expect(state.lastCustomUrl).toBe('https://custom-rpc.example.com')
+  })
 
-    // open dropdown then select Testnet
-    fireEvent.click(button)
-    fireEvent.click(screen.getByText(/Testnet/i))
+  it('defaults custom network passphrase to Custom Network when left empty', () => {
+    render(<NetworkSelector />)
 
-    // open dropdown and re-select Custom
-    fireEvent.click(button)
-    fireEvent.click(screen.getByText(/Custom/i))
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+
+    const customOption = screen.getByRole('option', { name: /custom/i })
+    fireEvent.click(customOption)
+
+    const urlInput = screen.getByLabelText('Custom RPC URL input')
+    fireEvent.change(urlInput, {
+      target: { value: 'https://custom-rpc2.example.com' },
+    })
+
+    const applyButton = screen.getByRole('button', { name: /apply/i })
+    fireEvent.click(applyButton)
+
+    const state = useLensStore.getState()
+    expect(state.networkConfig.networkPassphrase).toBe('Custom Network')
+  })
+
+  it('toggles the dropdown once for native Enter activation', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.keyDown(trigger, { key: 'Enter' })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.keyDown(trigger, { key: 'Enter' })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('toggles the dropdown once for native Space activation', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.keyDown(trigger, { key: ' ' })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.keyDown(trigger, { key: ' ' })
+    fireEvent.click(trigger)
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('focuses the custom RPC input after the panel opens and clears the timer on unmount', () => {
+    vi.useFakeTimers()
+    const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus')
+
+    const { unmount } = render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+
+    const customOption = screen.getByRole('option', { name: /custom/i })
+    fireEvent.click(customOption)
+
+    vi.advanceTimersByTime(50)
+    expect(document.activeElement).toBe(
+      screen.getByLabelText('Custom RPC URL input'),
+    )
+
+    unmount()
+    vi.advanceTimersByTime(100)
+    expect(focusSpy).toHaveBeenCalledTimes(1)
+
+    focusSpy.mockRestore()
+    vi.useRealTimers()
+  })
+
+  it('ignores stale success results from an earlier custom RPC URL', async () => {
+    const firstResult = new Promise<{ success: true }>((resolve) => {
+      ;(
+        globalThis as typeof globalThis & {
+          __firstResolve?: (value: { success: true }) => void
+        }
+      ).__firstResolve = resolve
+    })
+    const secondResult = new Promise<{ success: false; error: string }>(
+      (resolve) => {
+        ;(
+          globalThis as typeof globalThis & {
+            __secondResolve?: (value: { success: false; error: string }) => void
+          }
+        ).__secondResolve = resolve
+      },
+    )
+
+    vi.spyOn(connectionModule, 'testRpcConnection')
+      .mockImplementationOnce(() => firstResult)
+      .mockImplementationOnce(() => secondResult)
+
+    render(<NetworkSelector />)
+
+    fireEvent.click(screen.getByRole('button', { name: /select network/i }))
+    fireEvent.click(screen.getByRole('option', { name: /custom/i }))
+
+    const input = screen.getByLabelText('Custom RPC URL input')
+    fireEvent.change(input, { target: { value: 'https://rpc-a.example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: /test connection/i }))
+
+    fireEvent.change(input, { target: { value: 'https://rpc-b.example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: /test connection/i }))
+    ;(
+      globalThis as typeof globalThis & {
+        __firstResolve?: (value: { success: true }) => void
+      }
+    ).__firstResolve?.({ success: true })
+    ;(
+      globalThis as typeof globalThis & {
+        __secondResolve?: (value: { success: false; error: string }) => void
+      }
+    ).__secondResolve?.({ success: false, error: 'B failed' })
 
     await waitFor(() => {
-      const restoredInput = screen.getByPlaceholderText(/rpc.example.com|rpc/i) as HTMLInputElement
-      expect(restoredInput.value).toBe('https://persistent.rpc.url')
+      expect(screen.getByText('B failed')).toBeTruthy()
     })
+    expect(screen.queryByText('Connection successful')).toBeNull()
+  })
+
+  it('ignores stale error results from an earlier custom RPC URL', async () => {
+    const firstResult = new Promise<{ success: false; error: string }>(
+      (resolve) => {
+        ;(
+          globalThis as typeof globalThis & {
+            __firstResolve?: (value: { success: false; error: string }) => void
+          }
+        ).__firstResolve = resolve
+      },
+    )
+    const secondResult = new Promise<{ success: true }>((resolve) => {
+      ;(
+        globalThis as typeof globalThis & {
+          __secondResolve?: (value: { success: true }) => void
+        }
+      ).__secondResolve = resolve
+    })
+
+    vi.spyOn(connectionModule, 'testRpcConnection')
+      .mockImplementationOnce(() => firstResult)
+      .mockImplementationOnce(() => secondResult)
+
+    render(<NetworkSelector />)
+
+    fireEvent.click(screen.getByRole('button', { name: /select network/i }))
+    fireEvent.click(screen.getByRole('option', { name: /custom/i }))
+
+    const input = screen.getByLabelText('Custom RPC URL input')
+    fireEvent.change(input, { target: { value: 'https://rpc-a.example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: /test connection/i }))
+
+    fireEvent.change(input, { target: { value: 'https://rpc-b.example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: /test connection/i }))
+    ;(
+      globalThis as typeof globalThis & {
+        __firstResolve?: (value: { success: false; error: string }) => void
+      }
+    ).__firstResolve?.({ success: false, error: 'A failed' })
+    ;(
+      globalThis as typeof globalThis & {
+        __secondResolve?: (value: { success: true }) => void
+      }
+    ).__secondResolve?.({ success: true })
+
+    await waitFor(() => {
+      expect(screen.getByText('Connection successful')).toBeTruthy()
+    })
+    expect(screen.queryByText('A failed')).toBeNull()
   })
 })

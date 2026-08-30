@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { callRpc } from '../../lib/network/rpcClient'
 import type { RpcConfig } from '../../lib/network/types'
 
@@ -15,6 +15,10 @@ describe('callRpc', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('should handle successful responses', async () => {
@@ -86,6 +90,33 @@ describe('callRpc', () => {
     })
   })
 
+  it.each([
+    { input: 0, expected: 10000 },
+    { input: -123, expected: 10000 },
+    { input: 1.9, expected: 1 },
+    { input: Number.NaN, expected: 10000 },
+    { input: Number.POSITIVE_INFINITY, expected: 10000 },
+  ])(
+    'normalizes timeout $input to $expected before scheduling the abort timer',
+    async ({ input, expected }) => {
+      vi.useFakeTimers()
+      const setTimeoutSpy = vi.spyOn(global, 'setTimeout')
+      mockFetch.mockRejectedValueOnce(
+        new DOMException('The operation was aborted.', 'AbortError'),
+      )
+
+      const result = await callRpc({ ...defaultConfig, timeout: input })
+
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), expected)
+      expect(result).toMatchObject({
+        message: 'Request timeout',
+        code: 'TIMEOUT',
+        details: `Request timed out after ${expected}ms`,
+        isTimeout: true,
+      })
+    },
+  )
+
   it('should work without body parameter', async () => {
     const mockData = { status: 'ok' }
     mockFetch.mockResolvedValueOnce({
@@ -132,13 +163,72 @@ describe('callRpc', () => {
     })
   })
 
+  it('should ignore caller Content-Type that is incompatible', async () => {
+    const configWithBadContentType: RpcConfig = {
+      url: 'https://api.example.com/rpc',
+      timeout: 5000,
+      headers: { 'Content-Type': 'text/plain', 'X-Custom': 'test' },
+    }
+
+    const mockData = { result: 'ok' }
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockData),
+    })
+
+    const result = await callRpc(configWithBadContentType)
+
+    expect(result).toEqual(mockData)
+    expect(mockFetch).toHaveBeenCalledWith(configWithBadContentType.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Custom': 'test',
+      },
+      body: undefined,
+      signal: expect.any(AbortSignal),
+    })
+  })
+
+  it('should ignore caller Content-Type regardless of casing', async () => {
+    const configWithLowercaseContentType: RpcConfig = {
+      url: 'https://api.example.com/rpc',
+      timeout: 5000,
+      headers: { 'content-type': 'text/plain', 'X-Custom': 'test' } as any,
+    }
+
+    const mockData = { result: 'ok' }
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockData),
+    })
+
+    const result = await callRpc(configWithLowercaseContentType)
+
+    expect(result).toEqual(mockData)
+    expect(mockFetch).toHaveBeenCalledWith(
+      configWithLowercaseContentType.url,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Custom': 'test',
+        },
+        body: undefined,
+        signal: expect.any(AbortSignal),
+      },
+    )
+  })
+
   it('aborts the in-flight request when a caller signal aborts', async () => {
     const caller = new AbortController()
     mockFetch.mockImplementationOnce(
       () =>
         new Promise((_resolve, reject) => {
           caller.signal.addEventListener('abort', () =>
-            reject(new DOMException('The operation was aborted.', 'AbortError')),
+            reject(
+              new DOMException('The operation was aborted.', 'AbortError'),
+            ),
           )
         }),
     )
@@ -160,11 +250,10 @@ describe('callRpc', () => {
   it('returns an aborted shape when the caller signal is already aborted', async () => {
     const caller = new AbortController()
     caller.abort()
-    mockFetch.mockImplementationOnce(
-      () =>
-        Promise.reject(
-          new DOMException('The operation was aborted.', 'AbortError'),
-        ),
+    mockFetch.mockImplementationOnce(() =>
+      Promise.reject(
+        new DOMException('The operation was aborted.', 'AbortError'),
+      ),
     )
 
     const result = await callRpc(
@@ -194,18 +283,132 @@ describe('callRpc', () => {
     })
   })
 
-  it('should handle JSON parsing errors', async () => {
+  it('maps JSON parsing failures to a structured INVALID_JSON error', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.reject(new Error('Invalid JSON')),
+      json: () =>
+        Promise.reject(
+          new SyntaxError('Unexpected token < in JSON at position 0'),
+        ),
     })
 
     const result = await callRpc(defaultConfig)
 
     expect(result).toMatchObject({
-      message: 'Invalid JSON',
-      code: 'UNKNOWN_ERROR',
+      message: 'Invalid JSON response',
+      code: 'INVALID_JSON',
+      details: 'Unexpected token < in JSON at position 0',
       isTimeout: false,
     })
+  })
+
+  it('should treat an empty 200 response body as an invalid RPC response', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      clone: function (this: unknown) {
+        return this
+      },
+      text: () => Promise.resolve(''),
+      json: () => Promise.reject(new Error('Unexpected end of JSON input')),
+    })
+
+    const result = await callRpc(defaultConfig)
+
+    expect(result).toMatchObject({
+      message: 'Empty RPC response body',
+      code: 'INVALID_RESPONSE',
+      details: 'Received HTTP 200 with an empty response body',
+      isTimeout: false,
+    })
+  })
+
+  it('should treat a 204 No Content response as an invalid RPC response', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 204,
+      statusText: 'No Content',
+      clone: function (this: unknown) {
+        return this
+      },
+      text: () => Promise.resolve(''),
+      json: () => Promise.reject(new Error('Unexpected end of JSON input')),
+    })
+
+    const result = await callRpc(defaultConfig)
+
+    expect(result).toMatchObject({
+      message: 'Empty RPC response body',
+      code: 'INVALID_RESPONSE',
+      details: 'Received HTTP 204 with an empty response body',
+      isTimeout: false,
+    })
+  })
+
+  it('should treat a whitespace-only body as an invalid RPC response', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      clone: function (this: unknown) {
+        return this
+      },
+      text: () => Promise.resolve('   \n  '),
+      json: () => Promise.reject(new Error('Unexpected end of JSON input')),
+    })
+
+    const result = await callRpc(defaultConfig)
+
+    expect(result).toMatchObject({
+      message: 'Empty RPC response body',
+      code: 'INVALID_RESPONSE',
+    })
+  })
+
+  it('should still parse a valid non-empty JSON body when clone/text succeed', async () => {
+    const mockData = { result: 'success' }
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      clone: function (this: unknown) {
+        return this
+      },
+      text: () => Promise.resolve(JSON.stringify(mockData)),
+      json: () => Promise.resolve(mockData),
+    })
+
+    const result = await callRpc<typeof mockData>(defaultConfig)
+
+    expect(result).toEqual(mockData)
+  })
+
+  it('should timeout while waiting for response.json()', async () => {
+    vi.useFakeTimers()
+    mockFetch.mockImplementationOnce((_url, init) =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(
+                new DOMException('The operation was aborted.', 'AbortError'),
+              ),
+            )
+          }),
+      } as unknown as Response),
+    )
+
+    const promise = callRpc({ ...defaultConfig, timeout: 1000 })
+    await vi.runAllTimersAsync()
+
+    const result = await promise
+    expect(result).toMatchObject({
+      message: 'Request timeout',
+      code: 'TIMEOUT',
+      isTimeout: true,
+    })
+    vi.useRealTimers()
   })
 })

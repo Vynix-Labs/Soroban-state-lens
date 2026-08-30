@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Button, Card, Heading } from '@stellar/design-system'
 import { VirtualizedTreeList } from '../../../components/explorer/VirtualizedTreeList'
+import { LoadingSkeleton } from '../../../components/explorer/LoadingSkeleton'
 import {
   collectExpandableNodeIds,
   flattenTree,
@@ -202,7 +203,12 @@ function ContractExplorer() {
 
         <div className="flex items-center gap-3 shrink-0">
           {contractLoadStatus === ContractLoadStatus.SUCCESS && (
-            <Button variant="primary" size="sm" onClick={handleCaptureSnapshot}>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleCaptureSnapshot}
+              disabled={ledgerEntries.length === 0}
+            >
               Capture Snapshot
             </Button>
           )}
@@ -213,25 +219,7 @@ function ContractExplorer() {
       </header>
 
       {contractLoadStatus === ContractLoadStatus.LOADING && (
-        <Card>
-          <div className="p-6 space-y-4">
-            <Heading
-              size="sm"
-              as="h3"
-              className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
-            >
-              Loading State
-            </Heading>
-            <div className="space-y-3">
-              {Array.from({ length: 6 }).map((_, idx) => (
-                <div
-                  key={idx}
-                  className="h-10 rounded bg-white/5 border border-border-dark animate-pulse"
-                />
-              ))}
-            </div>
-          </div>
-        </Card>
+        <LoadingSkeleton />
       )}
 
       {contractLoadStatus === ContractLoadStatus.EMPTY && (
