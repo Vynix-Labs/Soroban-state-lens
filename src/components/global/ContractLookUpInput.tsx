@@ -36,6 +36,8 @@ function ContractLookUpInput() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (isValidating) return
+
     if (!inputValue.trim()) {
       setValidationError('Please enter a contract ID')
       return
@@ -115,10 +117,7 @@ function ContractLookUpInput() {
         </div>
       </div>
       {validationError && (
-        <p
-          id="contract-lookup-error"
-          className="mt-2 text-sm text-red-500"
-        >
+        <p id="contract-lookup-error" className="mt-2 text-sm text-red-500">
           {validationError}
         </p>
       )}
