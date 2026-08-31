@@ -225,6 +225,9 @@ const createSnapshotSlice = (
         }
       }
 
+      const normalizedLabel =
+        typeof label === 'string' ? label.trim() || undefined : label
+
       return {
         snapshots: {
           ...state.snapshots,
@@ -235,7 +238,7 @@ const createSnapshotSlice = (
               contractId,
               timestamp: Date.now(),
               ledgerData: clonedEntries,
-              label,
+              label: normalizedLabel,
             },
           ],
         },

@@ -4,6 +4,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { issues } from './github-issues-data.mjs'
+import { validatePublisherLabelPolicy } from './github-issue-label-policy.mjs'
+import { buildParityReport } from './github-issue-parity.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -187,6 +189,29 @@ function getExistingTitles() {
   return new Set(parsed.map((issue) => issue.title))
 }
 
+function getLiveIssues() {
+  const raw = gh([
+    'issue',
+    'list',
+    '--state',
+    'all',
+    '--limit',
+    '500',
+    '--json',
+    'number,title,body',
+  ])
+  return raw ? JSON.parse(raw) : []
+}
+
+function parityIssues() {
+  const sourceIssues = issues.map((issue) => ({
+    ...issue,
+    body: renderIssueBody(issue),
+  }))
+  const report = buildParityReport(sourceIssues, getLiveIssues())
+  console.log(JSON.stringify(report, null, 2))
+}
+
 function getLimit(argv) {
   const index = argv.indexOf('--limit')
   if (index === -1) {
@@ -245,6 +270,7 @@ function listIssues(argv) {
 
 function publishIssues(argv) {
   const selected = getSelectedIssues(argv)
+  validatePublisherLabelPolicy(selected)
   ensureLabels()
   const existingTitles = getExistingTitles()
 
@@ -282,9 +308,13 @@ function publishIssues(argv) {
 }
 
 function main() {
-  writeBacklogJson()
-
   const [, , command = 'list', ...rest] = process.argv
+  if (command === 'parity') {
+    parityIssues()
+    return
+  }
+
+  writeBacklogJson()
   if (command === 'build') {
     console.log(
       `Wrote ${issues.length} issues to ${path.relative(repoRoot, backlogJsonPath)}`,

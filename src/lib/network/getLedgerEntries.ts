@@ -161,22 +161,29 @@ export async function getLedgerEntries(
       return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
     }
 
-    if (Array.isArray(opResult.entries)) {
-      const isValidEntries = opResult.entries.every((entry: unknown) => {
-        if (!entry || typeof entry !== 'object') {
-          return false
-        }
+    const filteredEntries =
+      opResult.entries === null
+        ? []
+        : opResult.entries.filter((entry): entry is {
+            key: string
+            xdr: string
+            lastModifiedLedgerSeq?: number
+            liveUntilLedgerSeq?: number
+          } => {
+            if (!entry || typeof entry !== 'object') {
+              return false
+            }
 
-        return (
-          typeof (entry as { key?: unknown }).key === 'string' &&
-          typeof (entry as { xdr?: unknown }).xdr === 'string'
-        )
-      })
+            const key = (entry as { key?: unknown }).key
+            const xdr = (entry as { xdr?: unknown }).xdr
 
-      if (!isValidEntries) {
-        return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
-      }
-    }
+            return (
+              typeof key === 'string' &&
+              key.trim() !== '' &&
+              typeof xdr === 'string' &&
+              xdr.trim() !== ''
+            )
+          })
 
     // Deduplicate by key, keep first-seen records
     const seen = new Set<string>()
@@ -187,7 +194,7 @@ export async function getLedgerEntries(
       liveUntilLedgerSeq?: number
     }>
 
-    for (const entry of opResult.entries || []) {
+    for (const entry of filteredEntries) {
       if (!seen.has(entry.key)) {
         seen.add(entry.key)
         deduped.push({
