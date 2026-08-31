@@ -328,7 +328,13 @@ export function normalizeNode(
   depth?: number,
 ): Node {
   const currentDepth = depth ?? 0
-  const maxDepth = options?.maxDepth ?? MAX_DEPTH_DEFAULT
+  const maxDepth =
+    typeof options?.maxDepth === 'number' &&
+    Number.isFinite(options.maxDepth) &&
+    options.maxDepth >= 0 &&
+    Number.isInteger(options.maxDepth)
+      ? options.maxDepth
+      : MAX_DEPTH_DEFAULT
 
   if (currentDepth >= maxDepth) {
     return createTruncatedNode(path, currentDepth)

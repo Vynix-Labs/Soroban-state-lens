@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useRef } from 'react'
 import { useLensStore } from '../../store/lensStore'
 import { resolveDiffStatus } from '../../lib/diff/resolveDiffStatus'
+import { formatContractIdShort } from '../../lib/format/formatContractIdShort'
 
 interface SidebarProps {
   open: boolean
@@ -30,6 +31,10 @@ export default function Sidebar({
 }: SidebarProps) {
   const isPinned = variant === 'pinned'
   const isHistory = activeNavItem === 'history'
+  const activeContractId = useLensStore((state) => state.activeContractId)
+  const activeContractLabel = activeContractId
+    ? formatContractIdShort(activeContractId)
+    : null
 
   // Pinned variant: inline panel
   if (isPinned) {
@@ -43,9 +48,19 @@ export default function Sidebar({
         <div className="w-100 flex flex-col h-full">
           {/* Panel Header */}
           <div className="h-10 border-b border-border-dark flex items-center justify-between px-4 bg-surface-dark/50 shrink-0">
-            <span className="text-xs font-bold text-text-muted uppercase tracking-wider font-mono">
-              {isHistory ? 'Compare History' : 'Ledger State'}
-            </span>
+            <div className="min-w-0 flex flex-col">
+              <span className="text-xs font-bold text-text-muted uppercase tracking-wider font-mono">
+                {isHistory ? 'Compare History' : 'Ledger State'}
+              </span>
+              {!isHistory && activeContractLabel ? (
+                <span
+                  className="text-[11px] font-mono text-white truncate max-w-[14rem]"
+                  title={activeContractId ?? undefined}
+                >
+                  {activeContractLabel}
+                </span>
+              ) : null}
+            </div>
             {!isHistory && (
               <div className="flex gap-2">
                 <button
@@ -172,9 +187,19 @@ export default function Sidebar({
       >
         {/* Panel Header */}
         <div className="h-10 border-b border-border-dark flex items-center justify-between px-4 bg-surface-dark/50 shrink-0">
-          <span className="text-xs font-bold text-text-muted uppercase tracking-wider font-mono">
-            {isHistory ? 'Compare History' : 'Ledger State'}
-          </span>
+          <div className="min-w-0 flex flex-col">
+            <span className="text-xs font-bold text-text-muted uppercase tracking-wider font-mono">
+              {isHistory ? 'Compare History' : 'Ledger State'}
+            </span>
+            {!isHistory && activeContractLabel ? (
+              <span
+                className="text-[11px] font-mono text-white truncate max-w-[14rem]"
+                title={activeContractId ?? undefined}
+              >
+                {activeContractLabel}
+              </span>
+            ) : null}
+          </div>
           <div className="flex gap-2">
             {!isHistory && (
               <button
@@ -236,6 +261,20 @@ function HistoryPanel() {
     })
     const label = `Snapshot #${snapshots.length + 1}`
     addSnapshot(activeContractId, entriesDict, label)
+  }
+
+  const handleClearSnapshots = () => {
+    if (!activeContractId) return
+
+    if (
+      !window.confirm(
+        `Clear all snapshots for ${activeContractId}? This action cannot be undone.`,
+      )
+    ) {
+      return
+    }
+
+    clearSnapshots(activeContractId)
   }
 
   // Formatting helper for timestamps
@@ -438,7 +477,7 @@ function HistoryPanel() {
                 Capture
               </button>
               <button
-                onClick={() => clearSnapshots(activeContractId)}
+                onClick={handleClearSnapshots}
                 aria-label={`Clear all snapshots for ${activeContractId}`}
                 className="py-2 px-3 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 title="Clear all snapshot history"
