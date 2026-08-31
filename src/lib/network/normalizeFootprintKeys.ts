@@ -55,8 +55,8 @@ export function normalizeFootprintKeys(
     return { readOnly: [], readWrite: [], keys: [] }
   }
 
-  const readOnly = normalizeSection(footprint.readOnly)
-  const readWrite = normalizeSection(footprint.readWrite)
+  const readOnly = normalizeFootprintSection(footprint.readOnly)
+  const readWrite = normalizeFootprintSection(footprint.readWrite)
 
   const writeSet = new Set(readWrite)
   const keys: Array<FootprintKey> = [
@@ -72,7 +72,9 @@ export function normalizeFootprintKeys(
 /**
  * Trims, drops blanks, deduplicates, and lexically sorts a footprint section.
  */
-function normalizeSection(section: Array<string> | undefined): Array<string> {
+export function normalizeFootprintSection(
+  section: Array<string> | undefined,
+): Array<string> {
   if (!section) {
     return []
   }

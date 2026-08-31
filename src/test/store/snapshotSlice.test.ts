@@ -42,6 +42,33 @@ describe('snapshotSlice', () => {
     expect(snapshots[0].id).toBeTypeOf('string')
   })
 
+  it('addSnapshot trims whitespace-only labels and preserves meaningful text', () => {
+    const { addSnapshot, getSnapshots } = useLensStore.getState()
+
+    addSnapshot('c1', {}, '   padded label   ')
+    addSnapshot('c2', {}, '   \n  \t  ')
+
+    expect(getSnapshots('c1')[0].label).toBe('padded label')
+    expect(getSnapshots('c2')[0].label).toBeUndefined()
+  })
+
+  it('changing contracts clears selected path and prior snapshots', () => {
+    const {
+      setActiveContractId,
+      setSelectedKeyPath,
+      addSnapshot,
+      getSnapshots,
+    } = useLensStore.getState()
+
+    setSelectedKeyPath('old.path')
+    addSnapshot('old-contract', { a: makeEntry('a', 'old-contract') })
+    setActiveContractId('new-contract')
+
+    expect(getStoreState().selectedKeyPath).toBeNull()
+    expect(getSnapshots('old-contract')).toEqual([])
+    expect(getStoreState().activeContractId).toBe('new-contract')
+  })
+
   it('addSnapshot stores a shallow copy of entries', () => {
     const { addSnapshot, getSnapshots } = useLensStore.getState()
     const entries = { key1: makeEntry('key1', 'c1') }

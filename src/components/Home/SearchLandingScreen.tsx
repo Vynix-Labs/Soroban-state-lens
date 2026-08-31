@@ -104,6 +104,7 @@ const SearchLandingScreen = () => {
                     }}
                     className="w-full bg-transparent border-none text-white placeholder-gray-600 focus:ring-0 focus:outline-none font-mono text-sm h-full placeholder:font-mono"
                     placeholder="Search Contract ID (C...) or Ledger Key"
+                    aria-label="Contract ID or ledger key"
                     type="text"
                   />
                   <div className="pr-2 flex items-center">
