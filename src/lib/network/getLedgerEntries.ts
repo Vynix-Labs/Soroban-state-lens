@@ -3,6 +3,7 @@ import { isJsonRpcErrorResponse } from '../rpc/isJsonRpcErrorResponse'
 import { isJsonRpcSuccessResponse } from '../rpc/isJsonRpcSuccessResponse'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
 import { withRpcRetries } from '../rpc/withRpcRetries'
+import { normalizeRpcUrl } from '../validation/normalizeRpcUrl'
 import { deduplicateKeys } from './deduplicateKeys'
 
 export interface GetLedgerEntriesParams {
@@ -71,16 +72,19 @@ export async function getLedgerEntries(
   // Deduplicate keys while preserving first-seen order
   const keys = deduplicateKeys(inputKeys)
 
+  if (signal?.aborted) {
+    throw new AbortError()
+  }
+
   // Stable guard: an empty keys array never reaches the RPC endpoint and
   // resolves to a handled empty result instead of an untyped request error.
   if (keys.length === 0) {
     return { entries: [], latestLedger: 0 }
   }
-
-  if (signal?.aborted) {
-    throw new AbortError()
+  const normalized = normalizeRpcUrl(rpcUrl)
+  if (normalized === '') {
+    throw new Error('Invalid RPC URL')
   }
-
   const requestId = toRpcRequestId()
 
   const result = await withRpcRetries<LedgerEntriesOpResult>(async () => {
@@ -88,7 +92,7 @@ export async function getLedgerEntries(
 
     let response: Response
     try {
-      response = await fetch(rpcUrl, {
+      response = await fetch(normalized, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -97,10 +101,7 @@ export async function getLedgerEntries(
         signal,
       })
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.name === 'AbortError'
-      ) {
+      if (error instanceof Error && error.name === 'AbortError') {
         throw new AbortError()
       }
       // Surfaced as a retryable network error to the retry classifier.
@@ -128,34 +129,78 @@ export async function getLedgerEntries(
       throw new AbortError()
     }
 
-    if (isJsonRpcErrorResponse(data)) {
+    if (isJsonRpcErrorResponse(data, requestId)) {
       return {
         message: `RPC Error (${data.error.code}): ${data.error.message}`,
         code: data.error.code,
       }
     }
 
-    if (!isJsonRpcSuccessResponse(data)) {
+    if (!isJsonRpcSuccessResponse(data, requestId)) {
       return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
     }
 
-    const opResult = data.result as {
-      entries: Array<{
-        key: string
-        xdr: string
-        lastModifiedLedgerSeq?: number
-        liveUntilLedgerSeq?: number
-      }> | null
-      latestLedger: number
+    const rawResult = data.result
+    if (typeof rawResult !== 'object' || rawResult === null) {
+      return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
+    }
+
+    const opResult = rawResult as {
+      entries?: unknown
+      latestLedger?: unknown
+    }
+
+    if (
+      !('entries' in opResult) ||
+      !(opResult.entries === null || Array.isArray(opResult.entries)) ||
+      typeof opResult.latestLedger !== 'number' ||
+      !Number.isFinite(opResult.latestLedger) ||
+      !Number.isInteger(opResult.latestLedger) ||
+      opResult.latestLedger < 0
+    ) {
+      return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
+    }
+
+    if (Array.isArray(opResult.entries)) {
+      const isValidEntries = opResult.entries.every((entry: unknown) => {
+        if (!entry || typeof entry !== 'object') {
+          return false
+        }
+
+        return (
+          typeof (entry as { key?: unknown }).key === 'string' &&
+          typeof (entry as { xdr?: unknown }).xdr === 'string'
+        )
+      })
+
+      if (!isValidEntries) {
+        return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
+      }
+    }
+
+    // Deduplicate by key, keep first-seen records
+    const seen = new Set<string>()
+    const deduped = [] as Array<{
+      key: string
+      xdr: string
+      lastModifiedLedgerSeq?: number
+      liveUntilLedgerSeq?: number
+    }>
+
+    for (const entry of opResult.entries || []) {
+      if (!seen.has(entry.key)) {
+        seen.add(entry.key)
+        deduped.push({
+          key: entry.key,
+          xdr: entry.xdr,
+          lastModifiedLedgerSeq: entry.lastModifiedLedgerSeq,
+          liveUntilLedgerSeq: entry.liveUntilLedgerSeq,
+        })
+      }
     }
 
     return {
-      entries: (opResult.entries ?? []).map((entry) => ({
-        key: entry.key,
-        xdr: entry.xdr,
-        lastModifiedLedgerSeq: entry.lastModifiedLedgerSeq,
-        liveUntilLedgerSeq: entry.liveUntilLedgerSeq,
-      })),
+      entries: deduped,
       latestLedger: opResult.latestLedger,
     }
   })

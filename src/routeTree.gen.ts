@@ -72,12 +72,6 @@ const ContractsContractIdHistoryRoute =
     path: '/history',
     getParentRoute: () => ContractsContractIdRoute,
   } as any)
-const ContractsContractIdHistoryRoute =
-  ContractsContractIdHistoryRouteImport.update({
-    id: '/contracts/$contractId/history',
-    path: '/contracts/$contractId/history',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ContractsContractIdExplorerRoute =
   ContractsContractIdExplorerRouteImport.update({
     id: '/explorer',
@@ -265,13 +259,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/contracts/$contractId/history'
       preLoaderRoute: typeof ContractsContractIdHistoryRouteImport
       parentRoute: typeof ContractsContractIdRoute
-    }
-    '/contracts/$contractId/history': {
-      id: '/contracts/$contractId/history'
-      path: '/contracts/$contractId/history'
-      fullPath: '/contracts/$contractId/history'
-      preLoaderRoute: typeof ContractsContractIdHistoryRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/contracts/$contractId/explorer': {
       id: '/contracts/$contractId/explorer'

@@ -1,4 +1,10 @@
+import { normalizeContractIdInput } from '../lib/validation/normalizeContractIdInput'
 import type { ContractSpecSlice, LensStore } from './types'
+
+function normalizeContractSpecKey(contractId: string): string | null {
+  const normalized = normalizeContractIdInput(contractId)
+  return normalized.length > 0 ? normalized : null
+}
 
 export const createContractSpecSlice = (
   set: (fn: (state: LensStore) => Partial<LensStore>) => void,
@@ -6,16 +12,37 @@ export const createContractSpecSlice = (
 ): ContractSpecSlice => ({
   contractSpecs: {},
 
-  setContractSpec: (contractId: string, spec: unknown) =>
-    set((state) => ({
-      contractSpecs: { ...state.contractSpecs, [contractId]: spec },
-    })),
+  setContractSpec: (contractId: string, spec: unknown) => {
+    const normalizedContractId = normalizeContractSpecKey(contractId)
+    if (!normalizedContractId) {
+      return
+    }
 
-  getContractSpec: (contractId: string) => get().contractSpecs[contractId],
+    set((state) => ({
+      contractSpecs: {
+        ...state.contractSpecs,
+        [normalizedContractId]: spec,
+      },
+    }))
+  },
+
+  getContractSpec: (contractId: string) => {
+    const normalizedContractId = normalizeContractSpecKey(contractId)
+    if (!normalizedContractId) {
+      return undefined
+    }
+
+    return get().contractSpecs[normalizedContractId]
+  },
 
   clearContractSpec: (contractId: string) =>
     set((state) => {
-      const { [contractId]: _, ...rest } = state.contractSpecs
+      const normalizedContractId = normalizeContractSpecKey(contractId)
+      if (!normalizedContractId) {
+        return state
+      }
+
+      const { [normalizedContractId]: _, ...rest } = state.contractSpecs
       return { contractSpecs: rest }
     }),
 })
