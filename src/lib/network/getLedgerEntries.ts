@@ -161,53 +161,6 @@ export async function getLedgerEntries(
       return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
     }
 
-    if (Array.isArray(opResult.entries)) {
-      const isValidEntries = opResult.entries.every((entry: unknown) => {
-        if (!entry || typeof entry !== 'object') {
-          return false
-        }
-
-        return (
-          typeof (entry as { key?: unknown }).key === 'string' &&
-          typeof (entry as { xdr?: unknown }).xdr === 'string'
-        )
-      })
-
-      if (!isValidEntries) {
-        return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
-      }
-    }
-
-    // Deduplicate by key, keep first-seen records
-    const seen = new Set<string>()
-    const deduped = [] as Array<{
-      key: string
-      xdr: string
-      lastModifiedLedgerSeq?: number
-      liveUntilLedgerSeq?: number
-    }>
-
-    for (const entry of opResult.entries || []) {
-      if (!seen.has(entry.key)) {
-        seen.add(entry.key)
-        deduped.push({
-          key: entry.key,
-          xdr: entry.xdr,
-          lastModifiedLedgerSeq: entry.lastModifiedLedgerSeq,
-          liveUntilLedgerSeq: entry.liveUntilLedgerSeq,
-        })
-      }
-    }
-
-    if (
-      !opResult ||
-      (opResult.entries !== null && !Array.isArray(opResult.entries)) ||
-      typeof opResult.latestLedger !== 'number' ||
-      !Number.isFinite(opResult.latestLedger)
-    ) {
-      return { message: 'Invalid JSON-RPC response format', code: 'INVALID' }
-    }
-
     const filteredEntries =
       opResult.entries === null
         ? []
@@ -231,6 +184,27 @@ export async function getLedgerEntries(
               xdr.trim() !== ''
             )
           })
+
+    // Deduplicate by key, keep first-seen records
+    const seen = new Set<string>()
+    const deduped = [] as Array<{
+      key: string
+      xdr: string
+      lastModifiedLedgerSeq?: number
+      liveUntilLedgerSeq?: number
+    }>
+
+    for (const entry of filteredEntries) {
+      if (!seen.has(entry.key)) {
+        seen.add(entry.key)
+        deduped.push({
+          key: entry.key,
+          xdr: entry.xdr,
+          lastModifiedLedgerSeq: entry.lastModifiedLedgerSeq,
+          liveUntilLedgerSeq: entry.liveUntilLedgerSeq,
+        })
+      }
+    }
 
     return {
       entries: deduped,

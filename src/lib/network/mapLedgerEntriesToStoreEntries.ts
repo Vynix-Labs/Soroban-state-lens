@@ -37,6 +37,7 @@ export function mapLedgerEntriesToStoreEntries(
 ): Array<StoreLedgerEntry> {
   const { contractId, entries, decodedValuesByKey = {} } = params
   return entries.map((entry) => {
+    const type = inferLedgerEntryType(entry.key)
     const last = entry.lastModifiedLedgerSeq
     const live = entry.liveUntilLedgerSeq
 
@@ -51,9 +52,9 @@ export function mapLedgerEntriesToStoreEntries(
         : undefined
 
     return {
-      key: makeLedgerEntryKey(contractId, 'Other', entry.key),
+      key: makeLedgerEntryKey(contractId, type, entry.key),
       contractId,
-      type: 'Other',
+      type,
       value:
         decodedValuesByKey[entry.key] !== undefined
           ? decodedValuesByKey[entry.key]
