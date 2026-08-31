@@ -8,6 +8,7 @@ export interface LedgerHeadPollOptions {
   rpcConfig: RpcConfig
   intervalMs?: number
   onLedgerChange: (sequence: number) => void
+  onError?: (error: RpcError) => void
 }
 
 const DEFAULT_INTERVAL_MS = 5000
@@ -28,6 +29,7 @@ export function startLedgerHeadPoll(
     rpcConfig,
     intervalMs = DEFAULT_INTERVAL_MS,
     onLedgerChange,
+    onError,
   } = options
 
   let lastSequence: number | null = null
@@ -57,7 +59,10 @@ export function startLedgerHeadPoll(
 
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- stop() can run during await
       if (stoppedRef.current) return
-      if (isRpcError(response)) return
+      if (isRpcError(response)) {
+        onError?.(response)
+        return
+      }
 
       const result = response.result
       if (

@@ -102,6 +102,7 @@ export default function NetworkSelector() {
       setCustomRpcUrl('')
       setCustomNetworkPassphrase('')
       setIsOpen(false)
+      triggerRef.current?.focus()
     } else {
       // Custom: restore last custom URL or set up for new input
       const urlToUse =

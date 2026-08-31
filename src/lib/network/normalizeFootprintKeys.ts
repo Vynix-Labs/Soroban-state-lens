@@ -37,6 +37,23 @@ export interface NormalizedFootprint {
 }
 
 /**
+ * Compares strings using explicit UTF-16 code-unit ordering so output is
+ * deterministic across runtimes and independent of locale settings.
+ */
+export function compareCodeUnitStrings(a: string, b: string): number {
+  const limit = Math.min(a.length, b.length)
+
+  for (let i = 0; i < limit; i += 1) {
+    const diff = a.charCodeAt(i) - b.charCodeAt(i)
+    if (diff !== 0) {
+      return diff
+    }
+  }
+
+  return a.length - b.length
+}
+
+/**
  * Extracts and normalizes read and write footprint keys from a simulation
  * result.
  *
@@ -90,5 +107,5 @@ export function normalizeFootprintSection(
     }
   }
 
-  return [...seen].sort()
+  return [...seen].sort(compareCodeUnitStrings)
 }

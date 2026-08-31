@@ -302,6 +302,32 @@ describe('callRpc', () => {
     })
   })
 
+  it('rejects a streamed response after the configured byte limit', async () => {
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"result":"'))
+        controller.enqueue(new TextEncoder().encode('too-large"}'))
+        controller.close()
+      },
+    })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers(),
+      body,
+    })
+
+    const result = await callRpc(
+      { ...defaultConfig, maxResponseBytes: 10 },
+      { method: 'test' },
+    )
+
+    expect(result).toMatchObject({
+      message: 'RPC response exceeds maximum size of 10 bytes',
+      code: 'RESPONSE_TOO_LARGE',
+      details: { maxResponseBytes: 10 },
+      isTimeout: false,
+    })
+  })
   it('should treat an empty 200 response body as an invalid RPC response', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,

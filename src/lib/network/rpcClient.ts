@@ -2,6 +2,75 @@ import { normalizeTimeoutMs } from '../rpc/normalizeTimeoutMs'
 import { normalizeRpcUrl } from '../validation/normalizeRpcUrl'
 import type { RpcConfig, RpcError } from './types'
 
+const DEFAULT_MAX_RESPONSE_BYTES = 1024 * 1024
+
+class RpcResponseTooLargeError extends Error {
+  constructor(readonly maxBytes: number) {
+    super(`RPC response exceeds maximum size of ${maxBytes} bytes`)
+    this.name = 'RpcResponseTooLargeError'
+  }
+}
+
+function getMaxResponseBytes(config: RpcConfig): number {
+  const value = config.maxResponseBytes
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+    ? value
+    : DEFAULT_MAX_RESPONSE_BYTES
+}
+
+async function readResponseJson(
+  response: Response,
+  maxResponseBytes: number,
+): Promise<unknown> {
+  // Test doubles may omit headers even though a real Response always has them.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const contentLength = response.headers?.get('content-length') ?? null
+  if (contentLength !== null) {
+    const declaredLength = Number(contentLength)
+    if (
+      Number.isSafeInteger(declaredLength) &&
+      declaredLength > maxResponseBytes
+    ) {
+      throw new RpcResponseTooLargeError(maxResponseBytes)
+    }
+  }
+
+  if (!response.body) {
+    return response.json()
+  }
+
+  const reader = response.body.getReader()
+  const chunks: Array<Uint8Array> = []
+  let totalBytes = 0
+
+  try {
+    let hasMore = true
+    while (hasMore) {
+      const result = await reader.read()
+      hasMore = !result.done
+      if (result.done) break
+      const { value } = result
+      totalBytes += value.byteLength
+      if (totalBytes > maxResponseBytes) {
+        await reader.cancel()
+        throw new RpcResponseTooLargeError(maxResponseBytes)
+      }
+      chunks.push(value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  const bytes = new Uint8Array(totalBytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+
+  return JSON.parse(new TextDecoder().decode(bytes))
+}
+
 function isAbortError(error: unknown): boolean {
   if (error instanceof Error && error.name === 'AbortError') {
     return true
@@ -69,12 +138,9 @@ export async function callRpc<T = unknown>(
       }
     }
 
-    // A successful (2xx) response with no body is not a parseable RPC
-    // payload. This commonly happens during proxy or maintenance failures
-    // (e.g. a bare 204, or a 200 with an empty body). Peek at the body via
-    // a clone so `response.json()` below is unaffected when this check
-    // can't be performed (e.g. in test doubles that don't implement
-    // `clone`/`text`).
+    // Detect successful responses with no usable body before streaming or JSON
+    // parsing. Cloning keeps the original response available to the bounded
+    // reader and supports lightweight test doubles.
     let bodyText: string | undefined
     try {
       bodyText = await response.clone().text()
@@ -90,7 +156,7 @@ export async function callRpc<T = unknown>(
       }
     }
 
-    const data = await response.json()
+    const data = await readResponseJson(response, getMaxResponseBytes(config))
     return data as T
   } catch (error) {
     if (isAbortError(error)) {
@@ -129,6 +195,15 @@ export async function callRpc<T = unknown>(
         message: 'Network error',
         code: 'NETWORK_ERROR',
         details: error.message,
+        isTimeout: false,
+      }
+    }
+
+    if (error instanceof RpcResponseTooLargeError) {
+      return {
+        message: error.message,
+        code: 'RESPONSE_TOO_LARGE',
+        details: { maxResponseBytes: error.maxBytes },
         isTimeout: false,
       }
     }

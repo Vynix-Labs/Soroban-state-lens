@@ -332,7 +332,7 @@ const createContractLoadSlice = (
         for (const entry of entries) {
           const result = await worker.decodeScVal({ xdr: entry.xdr })
           decodedValuesByKey[entry.key] = isDecoderWorkerError(result)
-            ? entry.xdr
+            ? { kind: 'raw-xdr', xdr: entry.xdr }
             : result
         }
 

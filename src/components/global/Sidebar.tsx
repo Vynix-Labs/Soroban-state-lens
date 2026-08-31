@@ -478,6 +478,7 @@ function HistoryPanel() {
               </button>
               <button
                 onClick={handleClearSnapshots}
+                aria-label={`Clear all snapshots for ${activeContractId}`}
                 className="py-2 px-3 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 title="Clear all snapshot history"
               >
@@ -517,6 +518,7 @@ function HistoryPanel() {
                 </div>
                 <button
                   onClick={() => removeSnapshot(activeContractId, snap.id)}
+                  aria-label={`Delete snapshot ${snap.label || `Snapshot #${idx + 1}`} for ${activeContractId}`}
                   className="text-text-muted hover:text-red-400 p-1.5 rounded-md hover:bg-red-500/10 transition-all cursor-pointer shrink-0"
                   title="Delete snapshot"
                 >

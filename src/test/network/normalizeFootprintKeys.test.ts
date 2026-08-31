@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { normalizeFootprintKeys } from '../../lib/network/normalizeFootprintKeys'
 import type { SimulateTransactionResult } from '../../lib/network/simulateTransaction'
 
-function success(
-  footprint: { readOnly?: Array<string>; readWrite?: Array<string> },
-): SimulateTransactionResult {
+function success(footprint: {
+  readOnly?: Array<string>
+  readWrite?: Array<string>
+}): SimulateTransactionResult {
   return {
     success: true,
     footprint: {
@@ -136,6 +137,18 @@ describe('normalizeFootprintKeys', () => {
       )
       expect(result.readOnly).toEqual(['key1'])
       expect(result.readWrite).toEqual([])
+    })
+
+    it('uses explicit code-unit ordering for punctuation, casing, and Unicode', () => {
+      const result = normalizeFootprintKeys(
+        success({
+          readOnly: ['é', 'A', '!', 'a', 'É', 'Z'],
+          readWrite: ['ß', '_'],
+        }),
+      )
+
+      expect(result.readOnly).toEqual(['!', 'A', 'Z', 'a', 'É', 'é'])
+      expect(result.readWrite).toEqual(['_', 'ß'])
     })
   })
 })

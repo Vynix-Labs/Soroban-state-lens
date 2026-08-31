@@ -12,6 +12,7 @@ const SearchLandingScreen = () => {
   const navigate = useNavigate()
   const [inputValue, setInputValue] = useState('')
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [historyNotice, setHistoryNotice] = useState<string | null>(null)
 
   const networkConfig = useLensStore((state) => state.networkConfig)
   const connectionStatus = useLensStore((state) => state.connectionStatus)
@@ -140,13 +141,26 @@ const SearchLandingScreen = () => {
                 </span>
                 <span className="text-xs">Load Sample Contract</span>
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-surface-dark hover:bg-[#1f262e] border border-border-dark hover:border-primary/40 rounded text-xs text-gray-300 font-mono font-medium transition-all group">
+              <button
+                type="button"
+                onClick={() =>
+                  setHistoryNotice(
+                    'Load a contract to view its recent history.',
+                  )
+                }
+                className="flex items-center gap-2 px-4 py-2 bg-surface-dark hover:bg-[#1f262e] border border-border-dark hover:border-primary/40 rounded text-xs text-gray-300 font-mono font-medium transition-all group"
+              >
                 <span className="material-symbols-outlined text-[16px] text-gray-500 group-hover:text-primary transition-colors">
                   history
                 </span>
                 <span className="text-xs">Recent History</span>
               </button>
             </div>
+            {historyNotice && (
+              <p role="status" className="text-xs text-gray-400 font-mono">
+                {historyNotice}
+              </p>
+            )}
           </div>
         </div>
       </main>
