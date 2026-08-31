@@ -23,6 +23,12 @@ function ContractLookUpInput() {
     return () => document.removeEventListener('keydown', handleShortcut)
   }, [])
 
+  useEffect(() => {
+    if (validationError && !isValidating) {
+      inputRef.current?.focus()
+    }
+  }, [isValidating, validationError])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setInputValue(value)

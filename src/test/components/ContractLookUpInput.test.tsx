@@ -33,6 +33,11 @@ describe('ContractLookUpInput validation accessibility', () => {
       expect(screen.getByText('Invalid contract ID').id).toBe(
         'contract-lookup-error',
       )
+      expect((input as HTMLInputElement).value).toBe('invalid')
+    })
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(input)
     })
 
     fireEvent.change(input, { target: { value: 'still-invalid' } })

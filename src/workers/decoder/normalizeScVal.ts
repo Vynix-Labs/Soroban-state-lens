@@ -99,10 +99,12 @@ export type NormalizedValue =
 function createUnsupportedFallback(
   variant: string,
   rawData: unknown,
+  sourceType?: string,
 ): NormalizedUnsupported {
   return {
     kind: 'unsupported',
     variant,
+    sourceType: sourceType ?? variant,
     rawData: rawData === undefined ? null : rawData,
   }
 }
@@ -315,6 +317,20 @@ function parts256ToString(value: unknown, signed: boolean): string | null {
 export interface NormalizeScValOptions {
   /** When set, nodes at this depth or deeper are replaced with a truncated marker. */
   maxDepth?: number
+  /** When set, vec/map children beyond this count are replaced with a truncated marker. */
+  maxChildren?: number
+}
+
+function normalizeMaxChildren(value: unknown): number | undefined {
+  if (
+    typeof value !== 'number' ||
+    !Number.isFinite(value) ||
+    !Number.isInteger(value) ||
+    value < 0
+  ) {
+    return undefined
+  }
+  return value
 }
 
 function createTruncatedMarker(depth: number): NormalizedTruncated {
@@ -568,11 +584,22 @@ export function normalizeScVal(
 
     case ScValType.SCV_VEC:
       if (Array.isArray(scVal.value)) {
+        const maxChildren = normalizeMaxChildren(options?.maxChildren)
+        const childCount =
+          maxChildren === undefined
+            ? scVal.value.length
+            : Math.min(scVal.value.length, maxChildren)
+        const items = scVal.value
+          .slice(0, childCount)
+          .map((item) => normalizeScVal(item, visited, options, depth + 1))
+
+        if (childCount < scVal.value.length) {
+          items.push(createTruncatedMarker(depth + 1))
+        }
+
         return {
           kind: 'vec',
-          items: scVal.value.map((item) =>
-            normalizeScVal(item, visited, options, depth + 1),
-          ),
+          items,
         }
       }
       return {
@@ -584,29 +611,43 @@ export function normalizeScVal(
       // Map keys in Soroban can be complex objects, so we preserve them as
       // explicit key/value pairs in a normalized map structure.
       if (Array.isArray(scVal.value)) {
+        const maxChildren = normalizeMaxChildren(options?.maxChildren)
+        const childCount =
+          maxChildren === undefined
+            ? scVal.value.length
+            : Math.min(scVal.value.length, maxChildren)
+        const entries = scVal.value
+          .slice(0, childCount)
+          .map((entry: { key: ScVal; val: ScVal } | null | undefined) => {
+            const rawKey = entry?.key
+            const rawValue = entry?.val
+
+            try {
+              return {
+                key: normalizeScVal(rawKey, visited, options, depth + 1),
+                value: normalizeScVal(rawValue, visited, options, depth + 1),
+              } satisfies NormalizedMapEntry
+            } catch {
+              return {
+                key: createUnsupportedFallback('MapEntryKeyError', rawKey),
+                value: createUnsupportedFallback(
+                  'MapEntryValueError',
+                  rawValue,
+                ),
+              } satisfies NormalizedMapEntry
+            }
+          })
+
+        if (childCount < scVal.value.length) {
+          entries.push({
+            key: createTruncatedMarker(depth + 1),
+            value: createTruncatedMarker(depth + 1),
+          })
+        }
+
         return {
           kind: 'map',
-          entries: scVal.value.map(
-            (entry: { key: ScVal; val: ScVal } | null | undefined) => {
-              const rawKey = entry?.key
-              const rawValue = entry?.val
-
-              try {
-                return {
-                  key: normalizeScVal(rawKey, visited, options, depth + 1),
-                  value: normalizeScVal(rawValue, visited, options, depth + 1),
-                } satisfies NormalizedMapEntry
-              } catch {
-                return {
-                  key: createUnsupportedFallback('MapEntryKeyError', rawKey),
-                  value: createUnsupportedFallback(
-                    'MapEntryValueError',
-                    rawValue,
-                  ),
-                } satisfies NormalizedMapEntry
-              }
-            },
-          ),
+          entries,
         }
       }
       // null/undefined value means an empty map

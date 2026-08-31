@@ -65,6 +65,8 @@ export interface UnsupportedFallback {
   __unsupported: true
   /** The ScVal switch name, e.g. "ScvU64". */
   variant: string
+  /** Optional original source type, preserved for diagnosis. */
+  sourceType?: string
   /** Raw payload from the original ScVal, or null when absent. */
   rawData: unknown
 }
@@ -170,6 +172,7 @@ export interface NormalizedTruncated {
 export interface NormalizedUnsupported {
   kind: 'unsupported'
   variant: string
+  sourceType?: string
   rawData: unknown
 }
 
