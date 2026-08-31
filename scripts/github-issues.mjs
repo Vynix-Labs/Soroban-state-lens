@@ -305,43 +305,64 @@ function listIssues(argv) {
   console.log(`\nListed ${selected.length} issues.`)
 }
 
+function isDryRun(argv) {
+  return argv.includes('--dry-run')
+}
+
 function publishIssues(argv) {
+  const dryRun = isDryRun(argv)
   const selected = getSelectedIssues(argv)
   validatePublisherLabelPolicy(selected)
-  ensureLabels()
-  const existingTitles = getExistingTitles()
+
+  if (!dryRun) {
+    ensureLabels()
+    const existingTitles = getExistingTitles()
+  }
 
   let created = 0
   let skipped = 0
 
   for (const issue of selected) {
-    if (existingTitles.has(issue.title)) {
-      console.log(`skip\t${issue.id}\t${issue.title}`)
-      skipped += 1
-      continue
+    const labels = getLabels(issue)
+
+    if (!dryRun) {
+      const existingTitles = getExistingTitles()
+      if (existingTitles.has(issue.title)) {
+        console.log(`skip\t${issue.id}\t${issue.title}`)
+        skipped += 1
+        continue
+      }
     }
 
-    const args = [
-      'issue',
-      'create',
-      '--title',
-      issue.title,
-      '--body',
-      renderIssueBody(issue),
-    ]
-    for (const label of getLabels(issue)) {
-      args.push('--label', label)
-    }
+    console.log(`plan\t${issue.id}\t${issue.title}`)
+    console.log(`  labels: ${labels.join(', ')}`)
 
-    const output = gh(args)
-    console.log(`create\t${issue.id}\t${output}`)
-    existingTitles.add(issue.title)
-    created += 1
+    if (!dryRun) {
+      const args = [
+        'issue',
+        'create',
+        '--title',
+        issue.title,
+        '--body',
+        renderIssueBody(issue),
+      ]
+      for (const label of labels) {
+        args.push('--label', label)
+      }
+
+      const output = gh(args)
+      console.log(`create\t${issue.id}\t${output}`)
+      created += 1
+    }
   }
 
-  console.log(
-    `\nCreated ${created} issues, skipped ${skipped} existing titles.`,
-  )
+  if (dryRun) {
+    console.log(`\nDry run: would create ${selected.length} issues.`)
+  } else {
+    console.log(
+      `\nCreated ${created} issues, skipped ${skipped} existing titles.`,
+    )
+  }
 }
 
 function main() {
