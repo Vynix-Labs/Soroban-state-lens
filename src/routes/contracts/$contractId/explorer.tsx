@@ -184,6 +184,14 @@ function ContractExplorer() {
     setContractLoadStatus,
   ])
 
+  const errorRetryButtonId = 'contract-explorer-retry'
+
+  useEffect(() => {
+    if (contractLoadStatus === ContractLoadStatus.ERROR) {
+      document.getElementById(errorRetryButtonId)?.focus()
+    }
+  }, [contractLoadStatus, errorRetryButtonId])
+
   const handleRetry = () => {
     if (keys.length === 0) {
       setContractLoadError(null)
@@ -268,7 +276,12 @@ function ContractExplorer() {
               {contractLoadError || 'An unknown error occurred while loading.'}
             </p>
             <div>
-              <Button variant="secondary" size="sm" onClick={handleRetry}>
+              <Button
+                id={errorRetryButtonId}
+                variant="secondary"
+                size="sm"
+                onClick={handleRetry}
+              >
                 Retry
               </Button>
             </div>

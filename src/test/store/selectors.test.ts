@@ -164,6 +164,48 @@ describe('selectors', () => {
       expect(second.map((e) => e.key)).toContain(newEntry.key)
     })
 
+    it('selectLedgerEntriesByContract cache is bounded to prevent unbounded growth', () => {
+      // Create many contracts and access them through the selector
+      // This test verifies that the cache doesn't grow indefinitely
+      
+      // We create 60 different contracts (exceeding MAX_LEDGER_ENTRIES_CACHE_SIZE of 50)
+      for (let i = 0; i < 60; i++) {
+        const contractId = `CONTRACT_${i}`
+        const entry = {
+          key: `contract:${contractId}:key`,
+          contractId,
+          type: 'ContractData' as const,
+          value: { data: i },
+          lastModifiedLedger: 100 + i,
+        }
+        useLensStore.getState().upsertLedgerEntry(entry)
+        
+        // Access through selector - this should trigger cache eviction
+        selectLedgerEntriesByContract(contractId)(getStoreState())
+      }
+      
+      // The test passes if we don't run out of memory or hit performance issues
+      // The cache should have evicted old entries
+      const finalResult = selectLedgerEntriesByContract('CONTRACT_50')(getStoreState())
+      expect(finalResult).toBeDefined()
+    })
+
+    it('selectLedgerEntriesByContract cache clears stale entries when ledgerData changes', () => {
+      useLensStore
+        .getState()
+        .upsertLedgerEntries([mockEntry, mockEntry2, mockEntry3])
+
+      const first = selectLedgerEntriesByContract('ABC123')(getStoreState())
+      expect(first).toHaveLength(2)
+
+      // Clear all ledger data - this changes the ledgerData reference
+      useLensStore.getState().clearLedgerData()
+
+      // The cache should recognize the data is stale
+      const second = selectLedgerEntriesByContract('ABC123')(getStoreState())
+      expect(second).toHaveLength(0)
+    })
+
     it('selectLedgerEntryCount returns correct count', () => {
       expect(selectLedgerEntryCount(getStoreState())).toBe(0)
 

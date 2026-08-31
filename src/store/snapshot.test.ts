@@ -411,4 +411,78 @@ describe('Snapshot Slice', () => {
     // Snapshot should not be affected
     expect(capturedValue.bytes[0]).toBe(1)
   })
+
+  it('should ignore empty contract IDs in addSnapshot', () => {
+    const { addSnapshot, getSnapshots } = useLensStore.getState()
+
+    const entries: Record<string, LedgerEntry> = {
+      'key-1': {
+        key: 'key-1',
+        contractId: '',
+        type: 'ContractData',
+        value: { data: 'value1' },
+        lastModifiedLedger: 100,
+      },
+    }
+
+    // Attempt to add snapshot with empty contract ID
+    addSnapshot('', entries)
+    addSnapshot('  ', entries)
+
+    const snapshotsEmpty = getSnapshots('')
+    const snapshotsWhitespace = getSnapshots('  ')
+
+    expect(snapshotsEmpty).toHaveLength(0)
+    expect(snapshotsWhitespace).toHaveLength(0)
+  })
+
+  it('should ignore removeSnapshot with empty contract ID', () => {
+    const { addSnapshot, removeSnapshot, getSnapshots } =
+      useLensStore.getState()
+
+    const entries: Record<string, LedgerEntry> = {
+      'key-1': {
+        key: 'key-1',
+        contractId: 'contract-1',
+        type: 'ContractData',
+        value: { data: 'value1' },
+        lastModifiedLedger: 100,
+      },
+    }
+
+    addSnapshot('contract-1', entries)
+
+    // Attempt to remove with empty contract ID should be ignored
+    removeSnapshot('', 'any-id')
+    removeSnapshot('  ', 'any-id')
+
+    // Original snapshot should still exist
+    const snapshots = getSnapshots('contract-1')
+    expect(snapshots).toHaveLength(1)
+  })
+
+  it('should ignore clearSnapshots with empty contract ID', () => {
+    const { addSnapshot, clearSnapshots, getSnapshots } =
+      useLensStore.getState()
+
+    const entries: Record<string, LedgerEntry> = {
+      'key-1': {
+        key: 'key-1',
+        contractId: 'contract-1',
+        type: 'ContractData',
+        value: { data: 'value1' },
+        lastModifiedLedger: 100,
+      },
+    }
+
+    addSnapshot('contract-1', entries)
+
+    // Attempt to clear with empty contract ID should be ignored
+    clearSnapshots('')
+    clearSnapshots('  ')
+
+    // Original snapshots should still exist
+    const snapshots = getSnapshots('contract-1')
+    expect(snapshots).toHaveLength(1)
+  })
 })
