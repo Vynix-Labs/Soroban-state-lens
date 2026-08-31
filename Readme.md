@@ -57,10 +57,16 @@ The project is split into three main layers:
 
 ## **🗺 Roadmap**
 
-- \[ \] **Phase 1:** Basic ScVal to JSON decoding and tree view.
-- \[ \] **Phase 2:** Support for persistent storage types (Persistent vs. Temporary vs. Instance).
-- \[ \] **Phase 3:** Desktop Distribution — Implementing **Tauri** to provide a standalone cross-platform app.
-- \[ \] **Phase 4:** Integration with stellar-cli to launch the lens directly from a local environment.
+The backlog is organized around the [phase:0](https://github.com/Vynix-Labs/Soroban-state-lens/labels/phase%3A0) through [phase:7](https://github.com/Vynix-Labs/Soroban-state-lens/labels/phase%3A7) labels. Each phase groups related work so contributors can pick tasks that match their skills and the current milestone.
+
+- **Phase 0 — Test Foundation:** Restore and stabilize the Vitest browser-mode test harness.
+- **Phase 1 — Explorer Scaffolding:** Scaffold the contract explorer route, validate inputs, and persist user preferences and watchlists.
+- **Phase 2 — Decoding Utilities:** Build formatting helpers and worker-driven ScVal decoding for maps, vectors, and primitive types.
+- **Phase 3 — Explorer Interaction:** Add tree controls, row previews, and navigation between explorer and inspect views.
+- **Phase 4 — Spec & Labeling:** Parse contract specs from WASM, resolve struct/enum labels, and surface schema-mismatch warnings.
+- **Phase 5 — Discovery & Simulation:** Simulate transactions, extract footprints, and provide a discovery UI for callable contract functions.
+- **Phase 6 — History & Diff:** Capture snapshots, compute semantic diffs, and present history empty states and summary cards.
+- **Phase 7 — Polish & Tests:** Add component-level tests, pull-request templates, and other repository hygiene.
 
 ## **🤝 Contributing**
 
