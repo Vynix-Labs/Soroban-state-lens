@@ -42,6 +42,8 @@ function ContractLookUpInput() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (isValidating) return
+
     if (!inputValue.trim()) {
       setValidationError('Please enter a contract ID')
       return
