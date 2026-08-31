@@ -2,8 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { dedupeExplorerKeys } from '../../routes/contracts/$contractId/explorer'
 import {
-  buildDiscoveryLoadState,
   DiscoveryStateView,
+  buildDiscoveryLoadState,
 } from '../../routes/contracts/$contractId/discovery'
 
 vi.mock('@stellar/design-system', () => ({

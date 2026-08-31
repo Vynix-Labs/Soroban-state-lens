@@ -1,5 +1,6 @@
+import { useCallback, useMemo, useState } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Card, Heading, IconButton } from '@stellar/design-system'
+import { Button, Card, Heading, IconButton } from '@stellar/design-system'
 import { useLensStore } from '../../../store/lensStore'
 import { validateContractRouteParam } from './-validateContractRouteParam'
 
@@ -17,13 +18,18 @@ export interface DiscoveryLoadState {
   requestedKeyCount: number
 }
 
+const DEFAULT_DISCOVERED_KEYS: Array<DiscoveredKey> = [
+  { keyPath: '/contracts/key1', type: 'ContractData' },
+  { keyPath: '/contracts/key2', type: 'ContractData' },
+  { keyPath: '/contracts/key3', type: 'ContractCode' },
+]
+
 export function dedupeDiscoveryKeys(
   keys: Array<DiscoveredKey> | undefined,
 ): Array<DiscoveredKey> {
   const seen = new Set<string>()
   return (keys ?? []).filter((item) => {
     if (
-      !item ||
       typeof item.keyPath !== 'string' ||
       item.keyPath.length === 0
     ) {
@@ -94,7 +100,7 @@ export function DiscoveryStateView({
   }
 
   if (state.status === 'empty') {
-    const requestCount = state.requestedKeyCount ?? keys.length
+    const requestCount = state.requestedKeyCount
     return (
       <Card>
         <div className="p-6 space-y-3">
@@ -193,15 +199,15 @@ export const Route = createFileRoute('/contracts/$contractId/discovery')({
 
 function DiscoveryRoute() {
   const { contractId } = Route.useParams()
-  const { normalizedContractId, discoveryLoadState } = Route.useRouteContext()
+  const { normalizedContractId } = Route.useRouteContext()
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
-
-  // Mock discovered keys for demonstration
-  const discoveredKeys: Array<DiscoveredKey> = [
-    { keyPath: '/contracts/key1', type: 'ContractData' },
-    { keyPath: '/contracts/key2', type: 'ContractData' },
-    { keyPath: '/contracts/key3', type: 'ContractCode' },
-  ]
+  const [state, setState] = useState(() =>
+    buildDiscoveryLoadState({
+      status: 'success',
+      keys: DEFAULT_DISCOVERED_KEYS,
+      requestedKeyCount: DEFAULT_DISCOVERED_KEYS.length,
+    }),
+  )
 
   const handlePinKey = (keyPath: string) => {
     addToWatchlist(contractId, keyPath)
@@ -211,22 +217,11 @@ function DiscoveryRoute() {
     setState((current) =>
       buildDiscoveryLoadState({
         ...current,
-        status: 'loading',
+        status: 'success',
         error: null,
       }),
     )
   }, [])
-
-  const discoveredKeys = useMemo(
-    () =>
-      buildDiscoveryLoadState({
-        status: state.status,
-        keys: state.keys,
-        error: state.error,
-        requestedKeyCount: state.requestedKeyCount,
-      }),
-    [state],
-  )
 
   return (
     <div className="flex flex-col gap-6 p-6 lg:p-10 max-w-6xl mx-auto w-full">
@@ -248,38 +243,11 @@ function DiscoveryRoute() {
         </div>
       </header>
 
-      <div className="space-y-4">
-        <Heading size="sm" as="h2" className="text-text-muted uppercase tracking-widest text-[11px] font-bold">
-          Discovered Keys
-        </Heading>
-
-        <div className="grid gap-3">
-          {discoveredKeys.length > 0 ? (
-            discoveredKeys.map((item) => (
-              <Card key={item.keyPath}>
-                <div className="p-4 flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-mono text-white truncate">{item.keyPath}</div>
-                    <div className="text-xs text-text-muted mt-1">{item.type}</div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <IconButton
-                      icon="pin"
-                      altText="Add to watchlist"
-                      onClick={() => handlePinKey(item.keyPath)}
-                      aria-label="Add to watchlist"
-                    />
-                  </div>
-                </div>
-              </Card>
-            ))
-          ) : (
-            <div className="text-center py-8 text-text-muted">
-              No keys discovered yet
-            </div>
-          )}
-        </div>
-      </div>
+      <DiscoveryStateView
+        state={state}
+        onRetry={handleRetry}
+        onPinKey={handlePinKey}
+      />
     </div>
   )
 }
