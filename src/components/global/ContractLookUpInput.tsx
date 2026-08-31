@@ -23,6 +23,12 @@ function ContractLookUpInput() {
     return () => document.removeEventListener('keydown', handleShortcut)
   }, [])
 
+  useEffect(() => {
+    if (validationError && !isValidating) {
+      inputRef.current?.focus()
+    }
+  }, [isValidating, validationError])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setInputValue(value)
@@ -35,6 +41,8 @@ function ContractLookUpInput() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (isValidating) return
 
     if (!inputValue.trim()) {
       setValidationError('Please enter a contract ID')
@@ -115,10 +123,7 @@ function ContractLookUpInput() {
         </div>
       </div>
       {validationError && (
-        <p
-          id="contract-lookup-error"
-          className="mt-2 text-sm text-red-500"
-        >
+        <p id="contract-lookup-error" className="mt-2 text-sm text-red-500">
           {validationError}
         </p>
       )}

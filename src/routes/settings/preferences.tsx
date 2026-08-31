@@ -26,10 +26,13 @@ function PreferencesSettings() {
         <Card>
           <div className="p-4 flex flex-col gap-6">
             <div>
-              <Heading size="sm" as="h3" className="mb-2">
-                Byte Display Mode
-              </Heading>
+              <label htmlFor="byte-display-mode" className="block mb-2">
+                <Heading size="sm" as="h3">
+                  Byte Display Mode
+                </Heading>
+              </label>
               <select
+                id="byte-display-mode"
                 value={byteDisplayMode}
                 onChange={(e) =>
                   setByteDisplayMode(e.target.value as ByteDisplayMode)
@@ -43,10 +46,13 @@ function PreferencesSettings() {
             </div>
 
             <div>
-              <Heading size="sm" as="h3" className="mb-2">
-                BigInt Display Mode
-              </Heading>
+              <label htmlFor="bigint-display-mode" className="block mb-2">
+                <Heading size="sm" as="h3">
+                  BigInt Display Mode
+                </Heading>
+              </label>
               <select
+                id="bigint-display-mode"
                 value={bigIntDisplayMode}
                 onChange={(e) =>
                   setBigIntDisplayMode(e.target.value as BigIntDisplayMode)
