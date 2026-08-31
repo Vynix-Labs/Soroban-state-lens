@@ -1,4 +1,5 @@
 import { normalizeTimeoutMs } from '../rpc/normalizeTimeoutMs'
+import { normalizeRpcUrl } from '../validation/normalizeRpcUrl'
 import type { RpcConfig, RpcError } from './types'
 
 const DEFAULT_MAX_RESPONSE_BYTES = 1024 * 1024
@@ -83,6 +84,7 @@ export async function callRpc<T = unknown>(
   config: RpcConfig,
   body?: unknown,
 ): Promise<T | RpcError> {
+  const normalized = normalizeRpcUrl(config.url)
   const normalizedTimeout = normalizeTimeoutMs(config.timeout)
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), normalizedTimeout)
@@ -106,17 +108,20 @@ export async function callRpc<T = unknown>(
   }
 
   try {
-    const response = await fetch(config.url, {
+    const headers: Record<string, string> = {}
+    for (const [key, value] of Object.entries(config.headers ?? {})) {
+      if (key.toLowerCase() !== 'content-type') {
+        headers[key] = value
+      }
+    }
+    headers['Content-Type'] = 'application/json'
+
+    const response = await fetch(normalized, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...config.headers,
-      },
+      headers,
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     })
-
-    clearTimeout(timeoutId)
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error')
@@ -128,11 +133,27 @@ export async function callRpc<T = unknown>(
       }
     }
 
+    // Detect successful responses with no usable body before streaming or JSON
+    // parsing. Cloning keeps the original response available to the bounded
+    // reader and supports lightweight test doubles.
+    let bodyText: string | undefined
+    try {
+      bodyText = await response.clone().text()
+    } catch {
+      bodyText = undefined
+    }
+    if (bodyText !== undefined && bodyText.trim().length === 0) {
+      return {
+        message: 'Empty RPC response body',
+        code: 'INVALID_RESPONSE',
+        details: `Received HTTP ${response.status} with an empty response body`,
+        isTimeout: false,
+      }
+    }
+
     const data = await readResponseJson(response, getMaxResponseBytes(config))
     return data as T
   } catch (error) {
-    clearTimeout(timeoutId)
-
     if (isAbortError(error)) {
       if (callerAborted) {
         return {
@@ -147,6 +168,20 @@ export async function callRpc<T = unknown>(
         code: 'TIMEOUT',
         details: `Request timed out after ${normalizedTimeout}ms`,
         isTimeout: true,
+      }
+    }
+
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error'
+    if (
+      error instanceof SyntaxError ||
+      (typeof errorMessage === 'string' && /JSON/i.test(errorMessage))
+    ) {
+      return {
+        message: 'Invalid JSON response',
+        code: 'INVALID_JSON',
+        details: errorMessage,
+        isTimeout: false,
       }
     }
 
@@ -169,12 +204,13 @@ export async function callRpc<T = unknown>(
     }
 
     return {
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: errorMessage,
       code: 'UNKNOWN_ERROR',
       details: error,
       isTimeout: false,
     }
   } finally {
+    clearTimeout(timeoutId)
     if (callerSignal) {
       callerSignal.removeEventListener('abort', onCallerAbort)
     }

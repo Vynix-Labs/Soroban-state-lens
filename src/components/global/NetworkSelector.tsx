@@ -36,6 +36,7 @@ export default function NetworkSelector() {
   const [isHydrated, setIsHydrated] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const currentTestRequestId = useRef(0)
 
   const networkConfig = useLensStore((state) => state.networkConfig)
   const lastCustomUrl = useLensStore((state) => state.lastCustomUrl)
@@ -65,10 +66,15 @@ export default function NetworkSelector() {
 
   // Auto-focus the input whenever the custom panel becomes visible
   useEffect(() => {
-    if (showCustomInput) {
-      // Small delay to allow the DOM to paint before focusing
-      setTimeout(() => inputRef.current?.focus(), 50)
+    if (!showCustomInput) {
+      return
     }
+
+    const timeoutId = window.setTimeout(() => {
+      inputRef.current?.focus()
+    }, 50)
+
+    return () => window.clearTimeout(timeoutId)
   }, [showCustomInput])
 
   // Don't render until hydrated to prevent SSR mismatches
@@ -97,7 +103,10 @@ export default function NetworkSelector() {
       setIsOpen(false)
     } else {
       // Custom: restore last custom URL or set up for new input
-      const urlToUse = lastCustomUrl || (networkConfig.networkId === 'custom' ? networkConfig.rpcUrl : '') || ''
+      const urlToUse =
+        lastCustomUrl ||
+        (networkConfig.networkId === 'custom' ? networkConfig.rpcUrl : '') ||
+        ''
       const passphraseToUse =
         networkConfig.networkId === 'custom'
           ? networkConfig.networkPassphrase || ''
@@ -146,10 +155,17 @@ export default function NetworkSelector() {
       return
     }
 
+    const requestId = ++currentTestRequestId.current
+    const rpcUrl = customRpcUrl.trim()
+
     setTestStatus('loading')
     setTestError('')
 
-    const result = await testRpcConnection(customRpcUrl.trim())
+    const result = await testRpcConnection(rpcUrl)
+
+    if (requestId !== currentTestRequestId.current) {
+      return
+    }
 
     if (result.success) {
       setTestStatus('success')
@@ -177,6 +193,7 @@ export default function NetworkSelector() {
   }
 
   const handleCustomUrlChange = (url: string) => {
+    currentTestRequestId.current += 1
     setCustomRpcUrl(url)
     const resetState = resetConnectionTestState()
     setTestStatus(resetState.status)
@@ -343,7 +360,11 @@ export default function NetworkSelector() {
               )}
 
               {testStatus === 'error' && testError && (
-                <p className="text-xs text-red-500 flex items-center gap-1">
+                <p
+                  className="text-xs text-red-500 flex items-center gap-1"
+                  role="status"
+                  aria-live="polite"
+                >
                   <span className="material-symbols-outlined text-[14px]">
                     warning
                   </span>
@@ -352,7 +373,11 @@ export default function NetworkSelector() {
               )}
 
               {testStatus === 'success' && (
-                <p className="text-xs text-green-500 flex items-center gap-1">
+                <p
+                  className="text-xs text-green-500 flex items-center gap-1"
+                  role="status"
+                  aria-live="polite"
+                >
                   <span className="material-symbols-outlined text-[14px]">
                     check_circle
                   </span>

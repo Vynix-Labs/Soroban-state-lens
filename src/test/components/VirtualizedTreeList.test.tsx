@@ -124,4 +124,19 @@ describe('VirtualizedTreeList', () => {
       expect.objectContaining({ id: 'row-1' }),
     )
   })
+
+  it('clamps scroll position after rows shrink below the current viewport', () => {
+    const { rerender } = render(
+      <VirtualizedTreeList rows={rows(100)} height={120} rowHeight={30} overscan={1} />,
+    )
+
+    const viewport = screen.getByTestId('virtualized-tree-list')
+    viewport.scrollTop = 2880
+    fireEvent.scroll(viewport)
+
+    rerender(<VirtualizedTreeList rows={rows(20)} height={120} rowHeight={30} overscan={1} />)
+
+    expect(viewport.scrollTop).toBe(480)
+    expect(screen.getByText('row-19')).toBeTruthy()
+  })
 })
