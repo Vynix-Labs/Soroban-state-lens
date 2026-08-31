@@ -3,9 +3,9 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { issues } from './github-issues-data.mjs'
 import { validatePublisherLabelPolicy } from './github-issue-label-policy.mjs'
 import { buildParityReport } from './github-issue-parity.mjs'
+import { issues } from './github-issues-data.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -68,7 +68,44 @@ function renderIssueBody(issue) {
   ].join('\n')
 }
 
+function validateIssueUniqueness() {
+  const ids = new Map()
+  const titles = new Map()
+  const duplicateIds = []
+  const duplicateTitles = []
+
+  for (const issue of issues) {
+    if (ids.has(issue.id)) {
+      duplicateIds.push(issue.id)
+    } else {
+      ids.set(issue.id, issue.title)
+    }
+
+    if (titles.has(issue.title)) {
+      duplicateTitles.push(issue.title)
+    } else {
+      titles.set(issue.title, issue.id)
+    }
+  }
+
+  if (duplicateIds.length > 0 || duplicateTitles.length > 0) {
+    const errors = []
+    if (duplicateIds.length > 0) {
+      errors.push(
+        `Duplicate issue IDs: ${[...new Set(duplicateIds)].join(', ')}`,
+      )
+    }
+    if (duplicateTitles.length > 0) {
+      errors.push(
+        `Duplicate issue titles: ${[...new Set(duplicateTitles)].join(', ')}`,
+      )
+    }
+    throw new Error(`Issue data validation failed:\n${errors.join('\n')}`)
+  }
+}
+
 function writeBacklogJson() {
+  validateIssueUniqueness()
   mkdirSync(backlogDir, { recursive: true })
   const payload = {
     generatedAt: new Date().toISOString(),
