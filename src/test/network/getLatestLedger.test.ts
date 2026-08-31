@@ -160,14 +160,14 @@ describe('getLatestLedgerConnectionCheck', () => {
   )
 
   it('accepts protocolVersion of zero', async () => {
-    vi.spyOn(rpcClient, 'callRpc').mockResolvedValue({
+    vi.spyOn(rpcClient, 'callRpc').mockImplementation(async (_config, body) => ({
       jsonrpc: '2.0',
-      id: 1,
+      id: (body as { id?: number }).id ?? 1,
       result: {
         sequence: 100,
         protocolVersion: 0,
       },
-    })
+    }))
 
     const result = await getLatestLedgerConnectionCheck('https://valid-rpc.com')
 
@@ -178,13 +178,13 @@ describe('getLatestLedgerConnectionCheck', () => {
   })
 
   it('omits protocolVersion when the field is absent', async () => {
-    vi.spyOn(rpcClient, 'callRpc').mockResolvedValue({
+    vi.spyOn(rpcClient, 'callRpc').mockImplementation(async (_config, body) => ({
       jsonrpc: '2.0',
-      id: 1,
+      id: (body as { id?: number }).id ?? 1,
       result: {
         sequence: 100,
       },
-    })
+    }))
 
     const result = await getLatestLedgerConnectionCheck('https://valid-rpc.com')
 
