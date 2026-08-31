@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Button, Card, Heading } from '@stellar/design-system'
 import { VirtualizedTreeList } from '../../../components/explorer/VirtualizedTreeList'
+import { LoadingSkeleton } from '../../../components/explorer/LoadingSkeleton'
 import {
   collectExpandableNodeIds,
   flattenTree,
@@ -21,10 +22,27 @@ function isNodeLike(value: unknown): value is Node {
   )
 }
 
+export function dedupeExplorerKeys(value: string): string {
+  const seen = new Set<string>()
+  return value
+    .split(',')
+    .map((key) => key.trim())
+    .filter((key) => key.length > 0)
+    .filter((key) => {
+      if (seen.has(key)) {
+        return false
+      }
+      seen.add(key)
+      return true
+    })
+    .join(',')
+}
+
 export const Route = createFileRoute('/contracts/$contractId/explorer')({
   component: ContractExplorer,
   validateSearch: (search: Record<string, unknown>) => ({
-    keys: typeof search.keys === 'string' ? search.keys : '',
+    keys:
+      typeof search.keys === 'string' ? dedupeExplorerKeys(search.keys) : '',
   }),
   beforeLoad: ({ params }) => {
     const result = validateContractRouteParam(params.contractId)
@@ -47,7 +65,9 @@ function ContractExplorer() {
   const setContractLoadStatus = useLensStore(
     (state) => state.setContractLoadStatus,
   )
-  const setContractLoadError = useLensStore((state) => state.setContractLoadError)
+  const setContractLoadError = useLensStore(
+    (state) => state.setContractLoadError,
+  )
   const loadContract = useLensStore((state) => state.loadContract)
   const contractLoadStatus = useLensStore((state) => state.contractLoadStatus)
   const contractLoadError = useLensStore((state) => state.contractLoadError)
@@ -80,11 +100,7 @@ function ContractExplorer() {
   }
 
   const keys = useMemo(
-    () =>
-      search.keys
-        .split(',')
-        .map((key) => key.trim())
-        .filter((key) => key.length > 0),
+    () => dedupeExplorerKeys(search.keys).split(',').filter(Boolean),
     [search.keys],
   )
 
@@ -177,7 +193,12 @@ function ContractExplorer() {
 
         <div className="flex items-center gap-3 shrink-0">
           {contractLoadStatus === ContractLoadStatus.SUCCESS && (
-            <Button variant="primary" size="sm" onClick={handleCaptureSnapshot}>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleCaptureSnapshot}
+              disabled={ledgerEntries.length === 0}
+            >
               Capture Snapshot
             </Button>
           )}
@@ -188,25 +209,7 @@ function ContractExplorer() {
       </header>
 
       {contractLoadStatus === ContractLoadStatus.LOADING && (
-        <Card>
-          <div className="p-6 space-y-4">
-            <Heading
-              size="sm"
-              as="h3"
-              className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
-            >
-              Loading State
-            </Heading>
-            <div className="space-y-3">
-              {Array.from({ length: 6 }).map((_, idx) => (
-                <div
-                  key={idx}
-                  className="h-10 rounded bg-white/5 border border-border-dark animate-pulse"
-                />
-              ))}
-            </div>
-          </div>
-        </Card>
+        <LoadingSkeleton />
       )}
 
       {contractLoadStatus === ContractLoadStatus.EMPTY && (
@@ -217,7 +220,8 @@ function ContractExplorer() {
             </Heading>
             <p className="text-text-muted text-sm">
               The current contract query completed, but no ledger entries were
-              returned.
+              returned for {keys.length} requested key
+              {keys.length === 1 ? '' : 's'}.
             </p>
             {keys.length === 0 && (
               <p className="text-text-muted text-xs">

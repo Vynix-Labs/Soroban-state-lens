@@ -402,6 +402,27 @@ describe('normalizeNode – Unsupported Node', () => {
 
     expect(result.kind).toBe('unsupported')
     expect((result as UnsupportedNode).variant).toBe('Invalid')
+    expect((result as UnsupportedNode).sourceType).toBe('Invalid')
+  })
+
+  it('bounds vec children when maxChildren is exceeded', () => {
+    const scVal = makeScVal(
+      ScValType.SCV_VEC,
+      Array.from({ length: 5 }, (_, index) =>
+        makeScVal(ScValType.SCV_U32, index),
+      ),
+    )
+
+    const result = normalizeNode(scVal, EMPTY_PATH, undefined, {
+      maxChildren: 3,
+    }) as VecNode
+
+    expect(result.kind).toBe('vec')
+    expect(result.items).toHaveLength(4)
+    expect(result.items[0].kind).toBe('primitive')
+    expect(result.items[2].kind).toBe('primitive')
+    expect(result.items[3].kind).toBe('truncated')
+    expect((result.items[3] as TruncatedNode).depth).toBe(1)
   })
 
   it('returns unsupported for unrecognized switch', () => {

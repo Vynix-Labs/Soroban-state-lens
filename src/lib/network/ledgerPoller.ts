@@ -34,39 +34,55 @@ export function startLedgerHeadPoll(
 
   let lastSequence: number | null = null
   const stoppedRef = { current: false }
+  const inFlightRef = { current: false }
 
   const tick = async (): Promise<void> => {
     if (stoppedRef.current) return
+    if (inFlightRef.current) return
     // Skip RPC call while the tab is hidden; lastSequence is preserved so the
     // next visible tick can detect a sequence change correctly.
     if (document.visibilityState === 'hidden') return
 
-    const body = buildJsonRpcRequest('getLatestLedger', {}, toRpcRequestId())
-    const response = await callRpc<{ result?: LatestLedgerResult }>(
-      rpcConfig,
-      body,
-    )
+    inFlightRef.current = true
+    try {
+      const body = buildJsonRpcRequest('getLatestLedger', {}, toRpcRequestId())
+      let response: { result?: LatestLedgerResult } | RpcError
+      try {
+        response = await callRpc<{ result?: LatestLedgerResult }>(
+          rpcConfig,
+          body,
+        )
+      } catch {
+        // A transient RPC failure must not terminate the polling loop.
+        return
+      }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- stop() can run during await
-    if (stoppedRef.current) return
-    if (isRpcError(response)) {
-      onError?.(response)
-      return
-    }
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- stop() can run during await
+      if (stoppedRef.current) return
+      if (isRpcError(response)) {
+        onError?.(response)
+        return
+      }
 
-    const result = response.result
-    if (
-      result == null ||
-      typeof result !== 'object' ||
-      typeof result.sequence !== 'number'
-    ) {
-      return
-    }
+      const result = response.result
+      if (
+        result == null ||
+        typeof result !== 'object' ||
+        typeof result.sequence !== 'number' ||
+        !Number.isFinite(result.sequence) ||
+        !Number.isInteger(result.sequence) ||
+        result.sequence < 0
+      ) {
+        return
+      }
 
-    const { sequence } = result
-    if (lastSequence === null || sequence > lastSequence) {
-      lastSequence = sequence
-      onLedgerChange(sequence)
+      const { sequence } = result
+      if (lastSequence === null || sequence > lastSequence) {
+        lastSequence = sequence
+        onLedgerChange(sequence)
+      }
+    } finally {
+      inFlightRef.current = false
     }
   }
 
