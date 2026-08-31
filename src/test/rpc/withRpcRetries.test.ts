@@ -94,6 +94,23 @@ describe('withRpcRetries', () => {
     expect(fn).toHaveBeenCalledTimes(2)
   })
 
+  it('should abort retry backoff when caller signal aborts', async () => {
+    const controller = new AbortController()
+    const fn = vi.fn().mockRejectedValueOnce({ code: 'TIMEOUT', message: 'timeout' })
+
+    const promise = withRpcRetries(fn, {
+      maxAttempts: 3,
+      baseDelayMs: 100,
+      jitterRatio: 0,
+      signal: controller.signal,
+    })
+
+    controller.abort()
+
+    await expect(promise).rejects.toThrow(/aborted/i)
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
   it('should not retry a non-retryable returned Network RpcError (e.g. 400)', async () => {
     const networkError = { message: 'HTTP 400', code: 400, isTimeout: false }
     const fn = vi.fn().mockResolvedValue(networkError)
@@ -120,5 +137,26 @@ describe('withRpcRetries', () => {
     })
     expect(result).toBe('success')
     expect(fn).toHaveBeenCalledTimes(2)
+  })
+
+  it('stops retries if aborted between attempts', async () => {
+    const controller = new AbortController()
+
+    const networkError = { message: 'Timeout', code: 'TIMEOUT', isTimeout: true }
+    const fn = vi.fn().mockResolvedValue(networkError)
+
+    const promise = withRpcRetries(fn, {
+      maxAttempts: 3,
+      baseDelayMs: 50,
+      jitterRatio: 0,
+      signal: controller.signal,
+    })
+
+    // Abort between attempts
+    setTimeout(() => controller.abort(), 10)
+
+    await expect(promise).rejects.toThrow(/aborted/i)
+    // Only the initial call should have occurred
+    expect(fn).toHaveBeenCalledTimes(1)
   })
 })
