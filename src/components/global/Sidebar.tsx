@@ -1,4 +1,14 @@
-import { ChevronDown, ChevronRight, ChevronUp, Filter, GitCompare, History as HistoryIcon, PlusCircle, Trash2, X } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Filter,
+  GitCompare,
+  History as HistoryIcon,
+  PlusCircle,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
 import { useLensStore } from '../../store/lensStore'
 import { resolveDiffStatus } from '../../lib/diff/resolveDiffStatus'
@@ -224,7 +234,7 @@ export default function Sidebar({
 function HistoryPanel() {
   const activeContractId = useLensStore((state) => state.activeContractId)
   const allSnapshots = useLensStore((state) => state.snapshots)
-  
+
   const snapshots = useMemo(() => {
     if (!activeContractId) return EMPTY_ARRAY
     return allSnapshots[activeContractId] ?? EMPTY_ARRAY
@@ -245,12 +255,26 @@ function HistoryPanel() {
 
   const handleCapture = () => {
     if (!activeContractId || ledgerEntries.length === 0) return
-    const entriesDict: Record<string, typeof ledgerEntries[0]> = {}
+    const entriesDict: Record<string, (typeof ledgerEntries)[0]> = {}
     ledgerEntries.forEach((entry) => {
       entriesDict[entry.key] = entry
     })
     const label = `Snapshot #${snapshots.length + 1}`
     addSnapshot(activeContractId, entriesDict, label)
+  }
+
+  const handleClearSnapshots = () => {
+    if (!activeContractId) return
+
+    if (
+      !window.confirm(
+        `Clear all snapshots for ${activeContractId}? This action cannot be undone.`,
+      )
+    ) {
+      return
+    }
+
+    clearSnapshots(activeContractId)
   }
 
   // Formatting helper for timestamps
@@ -312,8 +336,13 @@ function HistoryPanel() {
   if (!activeContractId) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center px-4 font-mono select-none">
-        <HistoryIcon size={36} className="text-text-muted mb-4 opacity-40 animate-pulse" />
-        <div className="text-white text-xs font-semibold uppercase tracking-wider mb-2">No Active Contract</div>
+        <HistoryIcon
+          size={36}
+          className="text-text-muted mb-4 opacity-40 animate-pulse"
+        />
+        <div className="text-white text-xs font-semibold uppercase tracking-wider mb-2">
+          No Active Contract
+        </div>
         <p className="text-[11px] text-text-muted max-w-[200px] leading-relaxed">
           Load a contract in the explorer first to inspect and track history.
         </p>
@@ -327,23 +356,25 @@ function HistoryPanel() {
         // Empty State / Capture First View
         <div className="flex flex-col gap-4 p-4 bg-surface-dark/45 border border-border-dark/60 rounded-xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
-          
+
           <div className="flex items-center gap-2 text-primary font-semibold text-xs uppercase tracking-wider">
             <HistoryIcon size={16} className="animate-spin-slow" />
             <span>Capture First</span>
           </div>
-          
+
           <p className="text-[11px] text-text-muted leading-relaxed">
-            No history comparison available. Capture at least <strong>two</strong> snapshots of the contract state to compare and view changes.
+            No history comparison available. Capture at least{' '}
+            <strong>two</strong> snapshots of the contract state to compare and
+            view changes.
           </p>
-          
+
           <div className="flex items-center justify-between text-xs border-t border-border-dark/30 pt-3">
             <span className="text-text-muted">Snapshots captured:</span>
             <span className="text-white font-bold bg-white/5 border border-border-dark/60 px-2 py-0.5 rounded font-mono">
               {snapshots.length} / 2
             </span>
           </div>
-          
+
           <button
             onClick={handleCapture}
             disabled={ledgerEntries.length === 0}
@@ -356,10 +387,11 @@ function HistoryPanel() {
             <PlusCircle size={14} />
             Capture Snapshot
           </button>
-          
+
           {ledgerEntries.length === 0 && (
             <p className="text-[10px] text-amber-500/80 text-center leading-relaxed">
-              * Query keys and load contract entries successfully to enable capturing.
+              * Query keys and load contract entries successfully to enable
+              capturing.
             </p>
           )}
         </div>
@@ -368,21 +400,29 @@ function HistoryPanel() {
         <div className="flex flex-col gap-4">
           <div className="p-4 bg-surface-dark border border-border-dark rounded-xl space-y-4 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
-            
+
             <div className="flex items-center justify-between border-b border-border-dark/50 pb-2">
               <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                 <GitCompare size={14} className="text-primary" />
                 Diff Summary
               </span>
-              <span className="text-[10px] text-text-muted font-bold px-1.5 py-0.5 rounded bg-white/5 border border-border-dark/40">Compare</span>
+              <span className="text-[10px] text-text-muted font-bold px-1.5 py-0.5 rounded bg-white/5 border border-border-dark/40">
+                Compare
+              </span>
             </div>
-            
+
             <div className="text-xs text-text-muted flex items-center justify-between bg-background-dark/50 p-2 rounded-lg border border-border-dark/30">
-              <span className="text-white font-semibold truncate max-w-[80px]" title={diffSummary?.prevLabel}>
+              <span
+                className="text-white font-semibold truncate max-w-[80px]"
+                title={diffSummary?.prevLabel}
+              >
                 {diffSummary?.prevLabel}
               </span>
               <span className="text-text-muted font-bold">➔</span>
-              <span className="text-white font-semibold truncate max-w-[80px]" title={diffSummary?.nextLabel}>
+              <span
+                className="text-white font-semibold truncate max-w-[80px]"
+                title={diffSummary?.nextLabel}
+              >
                 {diffSummary?.nextLabel}
               </span>
             </div>
@@ -390,20 +430,36 @@ function HistoryPanel() {
             {/* Counts Grid */}
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="p-2.5 rounded-lg bg-green-500/10 border border-green-500/20 flex flex-col gap-0.5 hover:bg-green-500/15 transition-colors">
-                <span className="text-green-400 font-bold text-base font-mono">+{diffSummary?.created}</span>
-                <span className="text-[9px] text-green-300/80 uppercase font-bold tracking-wider">Created</span>
+                <span className="text-green-400 font-bold text-base font-mono">
+                  +{diffSummary?.created}
+                </span>
+                <span className="text-[9px] text-green-300/80 uppercase font-bold tracking-wider">
+                  Created
+                </span>
               </div>
               <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 flex flex-col gap-0.5 hover:bg-red-500/15 transition-colors">
-                <span className="text-red-400 font-bold text-base font-mono">-{diffSummary?.deleted}</span>
-                <span className="text-[9px] text-red-300/80 uppercase font-bold tracking-wider">Deleted</span>
+                <span className="text-red-400 font-bold text-base font-mono">
+                  -{diffSummary?.deleted}
+                </span>
+                <span className="text-[9px] text-red-300/80 uppercase font-bold tracking-wider">
+                  Deleted
+                </span>
               </div>
               <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 flex flex-col gap-0.5 hover:bg-amber-500/15 transition-colors">
-                <span className="text-amber-400 font-bold text-base font-mono">~{diffSummary?.modified}</span>
-                <span className="text-[9px] text-amber-300/80 uppercase font-bold tracking-wider">Modified</span>
+                <span className="text-amber-400 font-bold text-base font-mono">
+                  ~{diffSummary?.modified}
+                </span>
+                <span className="text-[9px] text-amber-300/80 uppercase font-bold tracking-wider">
+                  Modified
+                </span>
               </div>
               <div className="p-2.5 rounded-lg bg-white/5 border border-border-dark/50 flex flex-col gap-0.5 hover:bg-white/10 transition-colors">
-                <span className="text-text-muted font-bold text-base font-mono">{diffSummary?.unchanged}</span>
-                <span className="text-[9px] text-text-muted uppercase font-bold tracking-wider">Unchanged</span>
+                <span className="text-text-muted font-bold text-base font-mono">
+                  {diffSummary?.unchanged}
+                </span>
+                <span className="text-[9px] text-text-muted uppercase font-bold tracking-wider">
+                  Unchanged
+                </span>
               </div>
             </div>
 
@@ -421,7 +477,7 @@ function HistoryPanel() {
                 Capture
               </button>
               <button
-                onClick={() => clearSnapshots(activeContractId)}
+                onClick={handleClearSnapshots}
                 className="py-2 px-3 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 title="Clear all snapshot history"
               >
@@ -447,7 +503,10 @@ function HistoryPanel() {
                 className="p-2.5 bg-surface-dark border border-border-dark/60 rounded-lg flex items-center justify-between text-xs hover:border-border-dark hover:bg-surface-dark/80 transition-all"
               >
                 <div className="flex flex-col min-w-0 gap-0.5">
-                  <span className="text-white font-medium truncate" title={snap.label}>
+                  <span
+                    className="text-white font-medium truncate"
+                    title={snap.label}
+                  >
                     {snap.label || `Snapshot #${idx + 1}`}
                   </span>
                   <span className="text-[9px] text-text-muted flex gap-1.5 font-mono">
