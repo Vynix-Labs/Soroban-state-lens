@@ -264,6 +264,8 @@ function HistoryPanel() {
   }
 
   const handleClearSnapshots = () => {
+    if (!activeContractId) return
+
     if (
       !window.confirm(
         `Clear all snapshots for ${activeContractId}? This action cannot be undone.`,
