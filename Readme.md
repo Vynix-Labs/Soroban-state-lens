@@ -57,10 +57,16 @@ The project is split into three main layers:
 
 ## **🗺 Roadmap**
 
-- \[ \] **Phase 1:** Basic ScVal to JSON decoding and tree view.
-- \[ \] **Phase 2:** Support for persistent storage types (Persistent vs. Temporary vs. Instance).
-- \[ \] **Phase 3:** Desktop Distribution — Implementing **Tauri** to provide a standalone cross-platform app.
-- \[ \] **Phase 4:** Integration with stellar-cli to launch the lens directly from a local environment.
+The roadmap tracks the same phase labels used in the backlog (`phase:0` through `phase:7`). Each phase groups related issues from the [issue catalog](scripts/github-issues-data.mjs).
+
+- \[ \] **Phase 0:** Repository health and test infrastructure.
+- \[ \] **Phase 1:** Network configuration, landing entry state, and contract lookup validation.
+- \[ \] **Phase 2:** ScVal decoding and normalization inside the Web Worker.
+- \[ \] **Phase 3:** Explorer tree, inspector view, and ledger-entry browsing.
+- \[ \] **Phase 4:** WASM spec parsing and human-readable field/enum labels.
+- \[ \] **Phase 5:** Transaction simulation and discovery route.
+- \[ \] **Phase 6:** State snapshots, history, and diff visualization.
+- \[ \] **Phase 7:** Watchlist, settings, and final polish.
 
 ## **🤝 Contributing**
 
