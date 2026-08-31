@@ -192,6 +192,7 @@ export default function NetworkSelector() {
     // Restore the last successfully applied URL so re-opening Custom shows it
     setCustomRpcUrl(lastCustomUrl || '')
     setCustomNetworkPassphrase(networkConfig.networkPassphrase || '')
+    triggerRef.current?.focus()
   }
 
   const handleCustomUrlChange = (url: string) => {

@@ -276,4 +276,15 @@ describe('NetworkSelector Component', () => {
     expect(document.activeElement).toBe(trigger)
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
   })
+
+  it('returns focus to the trigger after closing the custom RPC panel', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('option', { name: /custom/i }))
+    fireEvent.click(screen.getByRole('button', { name: /cancel custom rpc/i }))
+
+    expect(document.activeElement).toBe(trigger)
+  })
 })
