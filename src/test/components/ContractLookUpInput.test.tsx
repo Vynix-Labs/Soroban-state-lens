@@ -35,7 +35,9 @@ describe('ContractLookUpInput validation accessibility', () => {
       expect((input as HTMLInputElement).value).toBe('invalid')
     })
 
-    expect(document.activeElement).toBe(input)
+    await waitFor(() => {
+      expect(document.activeElement).toBe(input)
+    })
 
     fireEvent.change(input, { target: { value: 'still-invalid' } })
 
