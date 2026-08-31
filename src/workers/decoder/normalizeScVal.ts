@@ -6,8 +6,8 @@ import {
 } from '../../lib/format/bytesToHex'
 import { VisitedTracker, createVisitedTracker } from './guards'
 import type {
-  CycleMarker,
   NormalizedAddress,
+  NormalizedCycle,
   NormalizedError,
   NormalizedMap,
   NormalizedMapEntry,
@@ -23,6 +23,7 @@ export { VisitedTracker, createVisitedTracker }
 
 // Re-export normalized types so consumers can import from a single location
 export type {
+  NormalizedCycle,
   NormalizedError,
   NormalizedMapEntry,
   NormalizedTruncated,
@@ -81,7 +82,7 @@ export type NormalizedValue =
   | number
   | string
   | null
-  | CycleMarker
+  | NormalizedCycle
   | NormalizedTruncated
   | NormalizedError
   | NormalizedUnsupported
@@ -265,7 +266,14 @@ function parts256ToString(value: unknown, signed: boolean): string | null {
     if (hiHi < minI64 || hiHi > maxI64) {
       return null
     }
-    if (hiLo < 0n || hiLo > maxU64 || loHi < 0n || loHi > maxU64 || loLo < 0n || loLo > maxU64) {
+    if (
+      hiLo < 0n ||
+      hiLo > maxU64 ||
+      loHi < 0n ||
+      loHi > maxU64 ||
+      loLo < 0n ||
+      loLo > maxU64
+    ) {
       return null
     }
 
@@ -333,7 +341,13 @@ export function normalizeScVal(
   currentDepth?: number,
 ): any {
   const depth = currentDepth ?? 0
-  const maxDepth = options?.maxDepth ?? MAX_DEPTH_DEFAULT
+  const maxDepth =
+    typeof options?.maxDepth === 'number' &&
+    Number.isFinite(options.maxDepth) &&
+    options.maxDepth >= 0 &&
+    Number.isInteger(options.maxDepth)
+      ? options.maxDepth
+      : MAX_DEPTH_DEFAULT
 
   if (depth >= maxDepth) {
     return createTruncatedMarker(depth)
@@ -573,10 +587,25 @@ export function normalizeScVal(
         return {
           kind: 'map',
           entries: scVal.value.map(
-            (entry: { key: ScVal; val: ScVal }): NormalizedMapEntry => ({
-              key: normalizeScVal(entry.key, visited, options, depth + 1),
-              value: normalizeScVal(entry.val, visited, options, depth + 1),
-            }),
+            (entry: { key: ScVal; val: ScVal } | null | undefined) => {
+              const rawKey = entry?.key
+              const rawValue = entry?.val
+
+              try {
+                return {
+                  key: normalizeScVal(rawKey, visited, options, depth + 1),
+                  value: normalizeScVal(rawValue, visited, options, depth + 1),
+                } satisfies NormalizedMapEntry
+              } catch {
+                return {
+                  key: createUnsupportedFallback('MapEntryKeyError', rawKey),
+                  value: createUnsupportedFallback(
+                    'MapEntryValueError',
+                    rawValue,
+                  ),
+                } satisfies NormalizedMapEntry
+              }
+            },
           ),
         }
       }

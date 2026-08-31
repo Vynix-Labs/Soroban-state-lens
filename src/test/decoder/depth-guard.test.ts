@@ -241,6 +241,39 @@ describe('Depth Guard - maxDepth', () => {
     })
   })
 
+  describe('input normalization', () => {
+    it('uses the default maxDepth for negative, fractional, or non-finite values', () => {
+      const scVal = {
+        switch: ScValType.SCV_VEC,
+        value: [{ switch: ScValType.SCV_I32, value: 1 }],
+      }
+
+      const negative = normalizeScVal(scVal, undefined, { maxDepth: -1 })
+      const fractional = normalizeScVal(scVal, undefined, { maxDepth: 1.5 })
+      const nan = normalizeScVal(scVal, undefined, { maxDepth: Number.NaN })
+      const infinity = normalizeScVal(scVal, undefined, { maxDepth: Number.POSITIVE_INFINITY })
+
+      expect(isTruncatedValue(negative)).toBe(false)
+      expect(isTruncatedValue(fractional)).toBe(false)
+      expect(isTruncatedValue(nan)).toBe(false)
+      expect(isTruncatedValue(infinity)).toBe(false)
+    })
+
+    it('preserves zero and positive integers as valid maxDepth values', () => {
+      const scVal = {
+        switch: ScValType.SCV_VEC,
+        value: [{ switch: ScValType.SCV_I32, value: 1 }],
+      }
+
+      const zero = normalizeScVal(scVal, undefined, { maxDepth: 0 })
+      const positive = normalizeScVal(scVal, undefined, { maxDepth: 2 })
+
+      expect(isTruncatedValue(zero)).toBe(true)
+      expect((zero as NormalizedTruncated).depth).toBe(0)
+      expect(isTruncatedValue(positive)).toBe(false)
+    })
+  })
+
   describe('Sensible Defaults', () => {
     it('uses default maxDepth when not provided in normalizeScVal', () => {
       // Create a very deep structure (> 32)

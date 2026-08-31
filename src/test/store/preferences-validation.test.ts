@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useLensStore } from '../../store/lensStore'
 import {
   clearPersistedPreferences,
   isValidBigIntDisplayMode,
@@ -263,6 +264,25 @@ describe('Display Preferences Validation', () => {
         expect.any(Object),
       )
       warnSpy.mockRestore()
+    })
+  })
+
+  describe('runtime setters', () => {
+    it('should ignore invalid runtime display-mode values while preserving valid preferences', () => {
+      const current = useLensStore.getState()
+
+      current.setByteDisplayMode(ByteDisplayMode.BASE64)
+      current.setBigIntDisplayMode(BigIntDisplayMode.HEX)
+
+      current.setByteDisplayMode('not-a-mode' as ByteDisplayMode)
+      current.setBigIntDisplayMode('still-invalid' as BigIntDisplayMode)
+
+      expect(useLensStore.getState().preferences.byteDisplayMode).toBe(
+        ByteDisplayMode.BASE64,
+      )
+      expect(useLensStore.getState().preferences.bigIntDisplayMode).toBe(
+        BigIntDisplayMode.HEX,
+      )
     })
   })
 

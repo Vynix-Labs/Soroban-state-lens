@@ -10,6 +10,11 @@ export interface GetLatestLedgerConnectionResult {
   error?: string
 }
 
+export interface LatestLedgerConnectionCheckOptions {
+  timeout?: number
+  signal?: AbortSignal
+}
+
 function isRpcError(value: unknown): value is RpcError {
   return (
     typeof value === 'object' &&
@@ -51,10 +56,27 @@ function parseLatestLedgerResult(value: unknown): LatestLedgerResult | null {
 
 export async function getLatestLedgerConnectionCheck(
   url: string,
-  timeoutMs?: number,
+): Promise<GetLatestLedgerConnectionResult>
+export async function getLatestLedgerConnectionCheck(
+  url: string,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<GetLatestLedgerConnectionResult>
+export async function getLatestLedgerConnectionCheck(
+  url: string,
+  options?: LatestLedgerConnectionCheckOptions,
+): Promise<GetLatestLedgerConnectionResult>
+export async function getLatestLedgerConnectionCheck(
+  url: string,
+  timeoutOrOptions?: number | LatestLedgerConnectionCheckOptions,
   signal?: AbortSignal,
 ): Promise<GetLatestLedgerConnectionResult> {
-  if (signal?.aborted) {
+  const resolvedOptions =
+    typeof timeoutOrOptions === 'number'
+      ? { timeout: timeoutOrOptions, signal }
+      : timeoutOrOptions
+
+  if (resolvedOptions?.signal?.aborted || signal?.aborted) {
     return {
       success: false,
       error: 'Connection check aborted',
@@ -62,13 +84,14 @@ export async function getLatestLedgerConnectionCheck(
   }
 
   try {
+    const requestId = toRpcRequestId()
     const response = await callRpc(
       {
         url,
-        timeout: timeoutMs ?? 5000,
-        signal,
+        timeout: resolvedOptions?.timeout ?? 5000,
+        signal: resolvedOptions?.signal ?? signal,
       },
-      buildJsonRpcRequest('getLatestLedger', {}, toRpcRequestId()),
+      buildJsonRpcRequest('getLatestLedger', {}, requestId),
     )
 
     if (isRpcError(response)) {
@@ -78,7 +101,7 @@ export async function getLatestLedgerConnectionCheck(
       }
     }
 
-    if (!isJsonRpcSuccessResponse(response)) {
+    if (!isJsonRpcSuccessResponse(response, requestId)) {
       return {
         success: false,
         error: 'Invalid response from RPC server',
@@ -100,11 +123,12 @@ export async function getLatestLedgerConnectionCheck(
   } catch (error) {
     return {
       success: false,
-      error: signal?.aborted
-        ? 'Connection check aborted'
-        : error instanceof Error
-          ? error.message
-          : 'Connection failed',
+      error:
+        resolvedOptions?.signal?.aborted || signal?.aborted
+          ? 'Connection check aborted'
+          : error instanceof Error
+            ? error.message
+            : 'Connection failed',
     }
   }
 }
