@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Button, Card, Heading } from '@stellar/design-system'
 import { VirtualizedTreeList } from '../../../components/explorer/VirtualizedTreeList'
@@ -184,6 +184,16 @@ function ContractExplorer() {
     setContractLoadStatus,
   ])
 
+  // Focus management for error state retry control
+  const errorRetryButtonRef = useRef<HTMLButtonElement>(null)
+  
+  useEffect(() => {
+    // Move focus to retry button when error occurs
+    if (contractLoadStatus === ContractLoadStatus.ERROR) {
+      errorRetryButtonRef.current?.focus()
+    }
+  }, [contractLoadStatus])
+
   const handleRetry = () => {
     if (keys.length === 0) {
       setContractLoadError(null)
@@ -268,7 +278,12 @@ function ContractExplorer() {
               {contractLoadError || 'An unknown error occurred while loading.'}
             </p>
             <div>
-              <Button variant="secondary" size="sm" onClick={handleRetry}>
+              <Button
+                ref={errorRetryButtonRef}
+                variant="secondary"
+                size="sm"
+                onClick={handleRetry}
+              >
                 Retry
               </Button>
             </div>

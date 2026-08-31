@@ -219,6 +219,13 @@ const createSnapshotSlice = (
     maxSnapshots: number = DEFAULT_SNAPSHOT_RETENTION_LIMIT,
   ) =>
     set((state) => {
+      const normalizedContractId = contractId.trim()
+
+      // Reject empty contract IDs
+      if (!normalizedContractId) {
+        return state
+      }
+
       // Deep clone entries to ensure immutability
       const clonedEntries: Record<string, LedgerEntry> = {}
       for (const [key, entry] of Object.entries(entries)) {
@@ -230,11 +237,11 @@ const createSnapshotSlice = (
 
       const normalizedLabel =
         typeof label === 'string' ? label.trim() || undefined : label
-      const existing = state.snapshots[contractId] ?? []
+      const existing = state.snapshots[normalizedContractId] ?? []
       const timestamp = Date.now()
       const nextSnapshot = {
         id: `${timestamp}-${crypto.randomUUID()}`,
-        contractId,
+        contractId: normalizedContractId,
         timestamp,
         ledgerData: clonedEntries,
         label: normalizedLabel,
@@ -246,7 +253,7 @@ const createSnapshotSlice = (
       return {
         snapshots: {
           ...state.snapshots,
-          [contractId]: trimmedSnapshots,
+          [normalizedContractId]: trimmedSnapshots,
         },
       }
     }),
@@ -256,18 +263,34 @@ const createSnapshotSlice = (
   },
 
   removeSnapshot: (contractId: string, snapshotId: string) =>
-    set((state) => ({
-      snapshots: {
-        ...state.snapshots,
-        [contractId]: (state.snapshots[contractId] ?? []).filter(
-          (s) => s.id !== snapshotId,
-        ),
-      },
-    })),
+    set((state) => {
+      const normalizedContractId = contractId.trim()
+
+      // Reject empty contract IDs
+      if (!normalizedContractId) {
+        return state
+      }
+
+      return {
+        snapshots: {
+          ...state.snapshots,
+          [normalizedContractId]: (state.snapshots[normalizedContractId] ?? []).filter(
+            (s) => s.id !== snapshotId,
+          ),
+        },
+      }
+    }),
 
   clearSnapshots: (contractId: string) =>
     set((state) => {
-      const { [contractId]: _, ...rest } = state.snapshots
+      const normalizedContractId = contractId.trim()
+
+      // Reject empty contract IDs
+      if (!normalizedContractId) {
+        return state
+      }
+
+      const { [normalizedContractId]: _, ...rest } = state.snapshots
       return { snapshots: rest }
     }),
 })

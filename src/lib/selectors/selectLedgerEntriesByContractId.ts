@@ -25,5 +25,6 @@ export function selectLedgerEntriesByContractId(
     (entry) => entry.contractId === contractId,
   )
 
-  return entries.sort((a, b) => compareCodeUnitStrings(a.key, b.key))
+  // Create a copy before sorting to avoid mutating shared arrays
+  return [...entries].sort((a, b) => compareCodeUnitStrings(a.key, b.key))
 }
