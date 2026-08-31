@@ -22,6 +22,8 @@ async function readResponseJson(
   response: Response,
   maxResponseBytes: number,
 ): Promise<unknown> {
+  // Test doubles may omit headers even though a real Response always has them.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const contentLength = response.headers?.get('content-length') ?? null
   if (contentLength !== null) {
     const declaredLength = Number(contentLength)
@@ -42,9 +44,12 @@ async function readResponseJson(
   let totalBytes = 0
 
   try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
+    let hasMore = true
+    while (hasMore) {
+      const result = await reader.read()
+      hasMore = !result.done
+      if (result.done) break
+      const { value } = result
       totalBytes += value.byteLength
       if (totalBytes > maxResponseBytes) {
         await reader.cancel()
