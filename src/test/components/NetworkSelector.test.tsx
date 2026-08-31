@@ -5,6 +5,10 @@ import * as connectionModule from '../../lib/network/testConnection'
 import { resetStore, useLensStore } from '../../store/lensStore'
 import { DEFAULT_NETWORKS } from '../../store/types'
 
+vi.mock('../../lib/network/testConnection', () => ({
+  testRpcConnection: vi.fn(),
+}))
+
 describe('NetworkSelector Component', () => {
   beforeEach(() => {
     resetStore()
@@ -84,6 +88,27 @@ describe('NetworkSelector Component', () => {
 
     const state = useLensStore.getState()
     expect(state.networkConfig.networkPassphrase).toBe('Custom Network')
+  })
+
+  it('announces connection test results as a polite status', async () => {
+    vi.mocked(connectionModule.testRpcConnection).mockResolvedValueOnce({
+      success: true,
+    })
+    render(<NetworkSelector />)
+
+    fireEvent.click(screen.getByRole('button', { name: /select network/i }))
+    fireEvent.click(screen.getByRole('option', { name: /custom/i }))
+    fireEvent.change(screen.getByLabelText('Custom RPC URL input'), {
+      target: { value: 'https://custom-rpc.example.com' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /test connection/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('status').textContent).toContain(
+        'Connection successful',
+      )
+    })
+    expect(screen.getByRole('status').getAttribute('aria-live')).toBe('polite')
   })
 
   it('toggles the dropdown once for native Enter activation', () => {

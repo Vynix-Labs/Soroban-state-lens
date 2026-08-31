@@ -360,7 +360,11 @@ export default function NetworkSelector() {
               )}
 
               {testStatus === 'error' && testError && (
-                <p className="text-xs text-red-500 flex items-center gap-1">
+                <p
+                  className="text-xs text-red-500 flex items-center gap-1"
+                  role="status"
+                  aria-live="polite"
+                >
                   <span className="material-symbols-outlined text-[14px]">
                     warning
                   </span>
@@ -369,7 +373,11 @@ export default function NetworkSelector() {
               )}
 
               {testStatus === 'success' && (
-                <p className="text-xs text-green-500 flex items-center gap-1">
+                <p
+                  className="text-xs text-green-500 flex items-center gap-1"
+                  role="status"
+                  aria-live="polite"
+                >
                   <span className="material-symbols-outlined text-[14px]">
                     check_circle
                   </span>
