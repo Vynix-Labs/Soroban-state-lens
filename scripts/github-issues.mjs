@@ -3,9 +3,9 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { issues } from './github-issues-data.mjs'
 import { validatePublisherLabelPolicy } from './github-issue-label-policy.mjs'
 import { buildParityReport } from './github-issue-parity.mjs'
+import { issues } from './github-issues-data.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -68,7 +68,44 @@ function renderIssueBody(issue) {
   ].join('\n')
 }
 
+function validateIssueUniqueness() {
+  const ids = new Map()
+  const titles = new Map()
+  const duplicateIds = []
+  const duplicateTitles = []
+
+  for (const issue of issues) {
+    if (ids.has(issue.id)) {
+      duplicateIds.push(issue.id)
+    } else {
+      ids.set(issue.id, issue.title)
+    }
+
+    if (titles.has(issue.title)) {
+      duplicateTitles.push(issue.title)
+    } else {
+      titles.set(issue.title, issue.id)
+    }
+  }
+
+  if (duplicateIds.length > 0 || duplicateTitles.length > 0) {
+    const errors = []
+    if (duplicateIds.length > 0) {
+      errors.push(
+        `Duplicate issue IDs: ${[...new Set(duplicateIds)].join(', ')}`,
+      )
+    }
+    if (duplicateTitles.length > 0) {
+      errors.push(
+        `Duplicate issue titles: ${[...new Set(duplicateTitles)].join(', ')}`,
+      )
+    }
+    throw new Error(`Issue data validation failed:\n${errors.join('\n')}`)
+  }
+}
+
 function writeBacklogJson() {
+  validateIssueUniqueness()
   mkdirSync(backlogDir, { recursive: true })
   const payload = {
     generatedAt: new Date().toISOString(),
@@ -268,43 +305,64 @@ function listIssues(argv) {
   console.log(`\nListed ${selected.length} issues.`)
 }
 
+function isDryRun(argv) {
+  return argv.includes('--dry-run')
+}
+
 function publishIssues(argv) {
+  const dryRun = isDryRun(argv)
   const selected = getSelectedIssues(argv)
   validatePublisherLabelPolicy(selected)
-  ensureLabels()
-  const existingTitles = getExistingTitles()
+
+  if (!dryRun) {
+    ensureLabels()
+    const existingTitles = getExistingTitles()
+  }
 
   let created = 0
   let skipped = 0
 
   for (const issue of selected) {
-    if (existingTitles.has(issue.title)) {
-      console.log(`skip\t${issue.id}\t${issue.title}`)
-      skipped += 1
-      continue
+    const labels = getLabels(issue)
+
+    if (!dryRun) {
+      const existingTitles = getExistingTitles()
+      if (existingTitles.has(issue.title)) {
+        console.log(`skip\t${issue.id}\t${issue.title}`)
+        skipped += 1
+        continue
+      }
     }
 
-    const args = [
-      'issue',
-      'create',
-      '--title',
-      issue.title,
-      '--body',
-      renderIssueBody(issue),
-    ]
-    for (const label of getLabels(issue)) {
-      args.push('--label', label)
-    }
+    console.log(`plan\t${issue.id}\t${issue.title}`)
+    console.log(`  labels: ${labels.join(', ')}`)
 
-    const output = gh(args)
-    console.log(`create\t${issue.id}\t${output}`)
-    existingTitles.add(issue.title)
-    created += 1
+    if (!dryRun) {
+      const args = [
+        'issue',
+        'create',
+        '--title',
+        issue.title,
+        '--body',
+        renderIssueBody(issue),
+      ]
+      for (const label of labels) {
+        args.push('--label', label)
+      }
+
+      const output = gh(args)
+      console.log(`create\t${issue.id}\t${output}`)
+      created += 1
+    }
   }
 
-  console.log(
-    `\nCreated ${created} issues, skipped ${skipped} existing titles.`,
-  )
+  if (dryRun) {
+    console.log(`\nDry run: would create ${selected.length} issues.`)
+  } else {
+    console.log(
+      `\nCreated ${created} issues, skipped ${skipped} existing titles.`,
+    )
+  }
 }
 
 function main() {

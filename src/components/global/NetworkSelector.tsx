@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { testRpcConnection } from '../../lib/network/testConnection'
 import { resetConnectionTestState } from '../../lib/network/connectionTestState'
+import { testRpcConnection } from '../../lib/network/testConnection'
 import { validateRpcUrl } from '../../lib/network/validation'
 import { useLensStore } from '../../store/lensStore'
 import { DEFAULT_NETWORKS } from '../../store/types'
@@ -34,9 +34,11 @@ export default function NetworkSelector() {
   >('idle')
   const [testError, setTestError] = useState('')
   const [isHydrated, setIsHydrated] = useState(false)
+  const [focusedOptionIndex, setFocusedOptionIndex] = useState<number>(-1)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const currentTestRequestId = useRef(0)
 
   const networkConfig = useLensStore((state) => state.networkConfig)
@@ -77,6 +79,24 @@ export default function NetworkSelector() {
 
     return () => window.clearTimeout(timeoutId)
   }, [showCustomInput])
+
+  // Reset focused option when dropdown opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setFocusedOptionIndex(-1)
+      optionRefs.current = []
+    }
+  }, [isOpen])
+
+  // Focus the option when focusedOptionIndex changes
+  useEffect(() => {
+    if (
+      focusedOptionIndex >= 0 &&
+      focusedOptionIndex < NETWORK_OPTIONS.length
+    ) {
+      optionRefs.current[focusedOptionIndex]?.focus()
+    }
+  }, [focusedOptionIndex])
 
   // Don't render until hydrated to prevent SSR mismatches
   if (!isHydrated) {
@@ -233,13 +253,70 @@ export default function NetworkSelector() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setIsOpen(false)
+      return
+    }
+
+    if (!isOpen) {
+      return
+    }
+
+    const optionCount = NETWORK_OPTIONS.length
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setFocusedOptionIndex((prev) => {
+          if (prev === -1) return 0
+          return (prev + 1) % optionCount
+        })
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setFocusedOptionIndex((prev) => {
+          if (prev === -1) return optionCount - 1
+          return (prev - 1 + optionCount) % optionCount
+        })
+        break
+      case 'Home':
+        e.preventDefault()
+        setFocusedOptionIndex(0)
+        break
+      case 'End':
+        e.preventDefault()
+        setFocusedOptionIndex(optionCount - 1)
+        break
     }
   }
 
-  const handleOptionKeyDown = (e: React.KeyboardEvent, option: NetworkInfo) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      handleSelect(option)
+  const handleOptionKeyDown = (
+    e: React.KeyboardEvent,
+    option: NetworkInfo,
+    index: number,
+  ) => {
+    const optionCount = NETWORK_OPTIONS.length
+
+    switch (e.key) {
+      case 'Enter':
+      case ' ':
+        e.preventDefault()
+        handleSelect(option)
+        break
+      case 'ArrowDown':
+        e.preventDefault()
+        setFocusedOptionIndex((index + 1) % optionCount)
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setFocusedOptionIndex((index - 1 + optionCount) % optionCount)
+        break
+      case 'Home':
+        e.preventDefault()
+        setFocusedOptionIndex(0)
+        break
+      case 'End':
+        e.preventDefault()
+        setFocusedOptionIndex(optionCount - 1)
+        break
     }
   }
 
@@ -440,14 +517,18 @@ export default function NetworkSelector() {
           role="listbox"
           aria-label="Network options"
         >
-          {NETWORK_OPTIONS.map((option) => (
+          {NETWORK_OPTIONS.map((option, index) => (
             <div key={option.id}>
               <button
                 type="button"
+                ref={(el) => {
+                  optionRefs.current[index] = el
+                  return
+                }}
                 role="option"
                 aria-selected={currentNetwork.id === option.id}
                 onClick={() => handleSelect(option)}
-                onKeyDown={(e) => handleOptionKeyDown(e, option)}
+                onKeyDown={(e) => handleOptionKeyDown(e, option, index)}
                 className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-white/5 transition-colors ${
                   currentNetwork.id === option.id
                     ? 'bg-primary/10 text-primary'

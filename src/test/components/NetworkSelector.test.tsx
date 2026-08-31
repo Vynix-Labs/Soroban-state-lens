@@ -287,4 +287,121 @@ describe('NetworkSelector Component', () => {
 
     expect(document.activeElement).toBe(trigger)
   })
+
+  it('navigates options with ArrowDown key with wrap-around', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+
+    const options = screen.getAllByRole('option')
+
+    // ArrowDown from trigger focuses first option
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(options[0])
+
+    // ArrowDown moves to next option
+    fireEvent.keyDown(options[0], { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(options[1])
+
+    // ArrowDown from last option wraps to first
+    fireEvent.keyDown(options[3], { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(options[0])
+  })
+
+  it('navigates options with ArrowUp key with wrap-around', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+
+    const options = screen.getAllByRole('option')
+
+    // ArrowUp from trigger focuses last option
+    fireEvent.keyDown(trigger, { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(options[3])
+
+    // ArrowUp moves to previous option
+    fireEvent.keyDown(options[3], { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(options[2])
+
+    // ArrowUp from first option wraps to last
+    fireEvent.keyDown(options[0], { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(options[3])
+  })
+
+  it('navigates to first option with Home key', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+
+    const options = screen.getAllByRole('option')
+
+    // Navigate to last option
+    fireEvent.keyDown(trigger, { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(options[3])
+
+    // Home key focuses first option
+    fireEvent.keyDown(options[3], { key: 'Home' })
+    expect(document.activeElement).toBe(options[0])
+  })
+
+  it('navigates to last option with End key', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+
+    const options = screen.getAllByRole('option')
+
+    // Navigate to first option
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(options[0])
+
+    // End key focuses last option
+    fireEvent.keyDown(options[0], { key: 'End' })
+    expect(document.activeElement).toBe(options[3])
+  })
+
+  it('selects focused option with Enter key', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+
+    const options = screen.getAllByRole('option')
+
+    // Navigate to mainnet
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(options[0])
+
+    // Select with Enter
+    fireEvent.keyDown(options[0], { key: 'Enter' })
+
+    const state = useLensStore.getState()
+    expect(state.networkConfig).toEqual(DEFAULT_NETWORKS.mainnet)
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('selects focused option with Space key', () => {
+    render(<NetworkSelector />)
+
+    const trigger = screen.getByRole('button', { name: /select network/i })
+    fireEvent.click(trigger)
+
+    const options = screen.getAllByRole('option')
+
+    // Navigate to testnet
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+    fireEvent.keyDown(options[0], { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(options[1])
+
+    // Select with Space
+    fireEvent.keyDown(options[1], { key: ' ' })
+
+    const state = useLensStore.getState()
+    expect(state.networkConfig).toEqual(DEFAULT_NETWORKS.testnet)
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
 })
