@@ -45,6 +45,21 @@ describe('contractSpecSlice', () => {
     expect(getStoreState().getContractSpec('CONTRACT_B')).toEqual({ name: 'B' })
   })
 
+  it('normalizes equivalent contract IDs to the same cache entry', () => {
+    getStoreState().setContractSpec('  c123   ', { name: 'A' })
+
+    expect(getStoreState().getContractSpec('C123')).toEqual({ name: 'A' })
+  })
+
+  it('ignores blank contract IDs when storing specs', () => {
+    getStoreState().setContractSpec('   ', { name: 'A' })
+    getStoreState().setContractSpec('\n\t', { name: 'B' })
+
+    expect(getStoreState().contractSpecs).toEqual({})
+    expect(getStoreState().getContractSpec('   ')).toBeUndefined()
+    expect(getStoreState().getContractSpec('\n\t')).toBeUndefined()
+  })
+
   it('does not affect other store state when setting a spec', () => {
     const before = getStoreState()
     const ledgerDataBefore = before.ledgerData

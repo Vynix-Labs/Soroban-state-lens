@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, ChevronUp, Filter, GitCompare, History as Hi
 import { useEffect, useMemo, useRef } from 'react'
 import { useLensStore } from '../../store/lensStore'
 import { resolveDiffStatus } from '../../lib/diff/resolveDiffStatus'
+import { formatContractIdShort } from '../../lib/format/formatContractIdShort'
 
 interface SidebarProps {
   open: boolean
@@ -20,6 +21,10 @@ export default function Sidebar({
 }: SidebarProps) {
   const isPinned = variant === 'pinned'
   const isHistory = activeNavItem === 'history'
+  const activeContractId = useLensStore((state) => state.activeContractId)
+  const activeContractLabel = activeContractId
+    ? formatContractIdShort(activeContractId)
+    : null
 
   // Pinned variant: inline panel
   if (isPinned) {
@@ -33,9 +38,19 @@ export default function Sidebar({
         <div className="w-100 flex flex-col h-full">
           {/* Panel Header */}
           <div className="h-10 border-b border-border-dark flex items-center justify-between px-4 bg-surface-dark/50 shrink-0">
-            <span className="text-xs font-bold text-text-muted uppercase tracking-wider font-mono">
-              {isHistory ? 'Compare History' : 'Ledger State'}
-            </span>
+            <div className="min-w-0 flex flex-col">
+              <span className="text-xs font-bold text-text-muted uppercase tracking-wider font-mono">
+                {isHistory ? 'Compare History' : 'Ledger State'}
+              </span>
+              {!isHistory && activeContractLabel ? (
+                <span
+                  className="text-[11px] font-mono text-white truncate max-w-[14rem]"
+                  title={activeContractId ?? undefined}
+                >
+                  {activeContractLabel}
+                </span>
+              ) : null}
+            </div>
             {!isHistory && (
               <div className="flex gap-2">
                 <button
@@ -162,9 +177,19 @@ export default function Sidebar({
       >
         {/* Panel Header */}
         <div className="h-10 border-b border-border-dark flex items-center justify-between px-4 bg-surface-dark/50 shrink-0">
-          <span className="text-xs font-bold text-text-muted uppercase tracking-wider font-mono">
-            {isHistory ? 'Compare History' : 'Ledger State'}
-          </span>
+          <div className="min-w-0 flex flex-col">
+            <span className="text-xs font-bold text-text-muted uppercase tracking-wider font-mono">
+              {isHistory ? 'Compare History' : 'Ledger State'}
+            </span>
+            {!isHistory && activeContractLabel ? (
+              <span
+                className="text-[11px] font-mono text-white truncate max-w-[14rem]"
+                title={activeContractId ?? undefined}
+              >
+                {activeContractLabel}
+              </span>
+            ) : null}
+          </div>
           <div className="flex gap-2">
             {!isHistory && (
               <button

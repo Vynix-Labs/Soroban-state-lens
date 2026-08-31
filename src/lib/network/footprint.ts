@@ -3,6 +3,8 @@
  * Parses read/write keys from simulation responses
  */
 
+import { normalizeFootprintSection } from './normalizeFootprintKeys'
+
 export interface FootprintKeys {
   readOnly: Array<string>
   readWrite: Array<string>
@@ -22,9 +24,8 @@ export function extractFootprintKeys(
     return { readOnly: [], readWrite: [] }
   }
 
-  // Deduplicate and sort for stable ordering
-  const readOnly = [...new Set(footprint.readOnly ?? [])].sort()
-  const readWrite = [...new Set(footprint.readWrite ?? [])].sort()
+  const readOnly = normalizeFootprintSection(footprint.readOnly)
+  const readWrite = normalizeFootprintSection(footprint.readWrite)
 
   return { readOnly, readWrite }
 }
