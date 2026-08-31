@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Button, Card, Heading } from '@stellar/design-system'
 import { VirtualizedTreeList } from '../../../components/explorer/VirtualizedTreeList'
@@ -184,15 +184,13 @@ function ContractExplorer() {
     setContractLoadStatus,
   ])
 
-  // Focus management for error state retry control
-  const errorRetryButtonRef = useRef<HTMLButtonElement>(null)
-  
+  const errorRetryButtonId = 'contract-explorer-retry'
+
   useEffect(() => {
-    // Move focus to retry button when error occurs
     if (contractLoadStatus === ContractLoadStatus.ERROR) {
-      errorRetryButtonRef.current?.focus()
+      document.getElementById(errorRetryButtonId)?.focus()
     }
-  }, [contractLoadStatus])
+  }, [contractLoadStatus, errorRetryButtonId])
 
   const handleRetry = () => {
     if (keys.length === 0) {
@@ -279,7 +277,7 @@ function ContractExplorer() {
             </p>
             <div>
               <Button
-                ref={errorRetryButtonRef}
+                id={errorRetryButtonId}
                 variant="secondary"
                 size="sm"
                 onClick={handleRetry}
