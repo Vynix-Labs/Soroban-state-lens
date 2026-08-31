@@ -24,11 +24,6 @@ export const PERSISTED_STATE_VERSION = 1
 export const PREFERENCES_STORAGE_KEY = 'ssl.preferences.v1'
 
 /**
- * Storage key for preferences persistence
- */
-export const PREFERENCES_STORAGE_KEY = 'ssl.preferences.v1'
-
-/**
  * Default network config used when storage is missing or corrupt
  */
 export const DEFAULT_NETWORK_CONFIG: NetworkConfig = DEFAULT_NETWORKS.futurenet
