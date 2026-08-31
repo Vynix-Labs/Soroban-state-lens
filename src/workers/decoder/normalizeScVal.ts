@@ -585,20 +585,21 @@ export function normalizeScVal(
     case ScValType.SCV_VEC:
       if (Array.isArray(scVal.value)) {
         const maxChildren = normalizeMaxChildren(options?.maxChildren)
-        const items = scVal.value.flatMap((item, index) => {
-          if (maxChildren !== undefined && index >= maxChildren) {
-            return [createTruncatedMarker(depth + 1)]
-          }
-          return [normalizeScVal(item, visited, options, depth + 1)]
-        })
+        const childCount =
+          maxChildren === undefined
+            ? scVal.value.length
+            : Math.min(scVal.value.length, maxChildren)
+        const items = scVal.value
+          .slice(0, childCount)
+          .map((item) => normalizeScVal(item, visited, options, depth + 1))
+
+        if (childCount < scVal.value.length) {
+          items.push(createTruncatedMarker(depth + 1))
+        }
+
         return {
           kind: 'vec',
-          items:
-            maxChildren !== undefined && scVal.value.length > maxChildren
-              ? items
-                  .slice(0, maxChildren)
-                  .concat(createTruncatedMarker(depth + 1))
-              : items,
+          items,
         }
       }
       return {
@@ -611,60 +612,42 @@ export function normalizeScVal(
       // explicit key/value pairs in a normalized map structure.
       if (Array.isArray(scVal.value)) {
         const maxChildren = normalizeMaxChildren(options?.maxChildren)
-        const entries = scVal.value.flatMap(
-          (entry: { key: ScVal; val: ScVal }, index) => {
-            if (maxChildren !== undefined && index >= maxChildren) {
-              return [
-                {
-                  key: createTruncatedMarker(depth + 1),
-                  value: createTruncatedMarker(depth + 1),
-                },
-              ]
-            }
+        const childCount =
+          maxChildren === undefined
+            ? scVal.value.length
+            : Math.min(scVal.value.length, maxChildren)
+        const entries = scVal.value
+          .slice(0, childCount)
+          .map((entry: { key: ScVal; val: ScVal } | null | undefined) => {
+            const rawKey = entry?.key
+            const rawValue = entry?.val
 
             try {
-              return [
-                {
-                  key: normalizeScVal(entry.key, visited, options, depth + 1),
-                  value: normalizeScVal(entry.val, visited, options, depth + 1),
-                } satisfies NormalizedMapEntry,
-              ]
+              return {
+                key: normalizeScVal(rawKey, visited, options, depth + 1),
+                value: normalizeScVal(rawValue, visited, options, depth + 1),
+              } satisfies NormalizedMapEntry
             } catch {
-              return [
-                {
-                  key: createUnsupportedFallback('MapEntryKeyError', entry.key),
-                  value: createUnsupportedFallback(
-                    'MapEntryValueError',
-                    entry.val,
-                  ),
-                } satisfies NormalizedMapEntry,
-              ]
+              return {
+                key: createUnsupportedFallback('MapEntryKeyError', rawKey),
+                value: createUnsupportedFallback(
+                  'MapEntryValueError',
+                  rawValue,
+                ),
+              } satisfies NormalizedMapEntry
             }
-          },
-        )
+          })
+
+        if (childCount < scVal.value.length) {
+          entries.push({
+            key: createTruncatedMarker(depth + 1),
+            value: createTruncatedMarker(depth + 1),
+          })
+        }
+
         return {
           kind: 'map',
-          entries: scVal.value.map(
-            (entry: { key: ScVal; val: ScVal } | null | undefined) => {
-              const rawKey = entry?.key
-              const rawValue = entry?.val
-
-              try {
-                return {
-                  key: normalizeScVal(rawKey, visited, options, depth + 1),
-                  value: normalizeScVal(rawValue, visited, options, depth + 1),
-                } satisfies NormalizedMapEntry
-              } catch {
-                return {
-                  key: createUnsupportedFallback('MapEntryKeyError', rawKey),
-                  value: createUnsupportedFallback(
-                    'MapEntryValueError',
-                    rawValue,
-                  ),
-                } satisfies NormalizedMapEntry
-              }
-            },
-          ),
+          entries,
         }
       }
       // null/undefined value means an empty map

@@ -631,11 +631,20 @@ export function normalizeNode(
         } satisfies VecNode
       }
 
-      // Pre-allocate array with known size for better performance
-      const items: Array<Node> = new Array(normalizedScVal.value.length)
+      const maxChildren = normalizeMaxChildren(options?.maxChildren)
+      const childCount =
+        maxChildren === undefined
+          ? normalizedScVal.value.length
+          : Math.min(normalizedScVal.value.length, maxChildren)
+      const isTruncated = childCount < normalizedScVal.value.length
 
-      // Use for loop with better error handling for large arrays
-      for (let i = 0; i < normalizedScVal.value.length; i++) {
+      // Pre-allocate the bounded result array.
+      const items: Array<Node> = new Array(
+        childCount + (isTruncated ? 1 : 0),
+      )
+
+      // Use a bounded loop with per-item error handling.
+      for (let i = 0; i < childCount; i++) {
         try {
           const childPath = appendPath(path, { type: 'index', index: i })
           items[i] = normalizeNode(
@@ -655,6 +664,13 @@ export function normalizeNode(
         }
       }
 
+      if (isTruncated) {
+        items[childCount] = createTruncatedNode(
+          appendPath(path, { type: 'index', index: childCount }),
+          currentDepth + 1,
+        )
+      }
+
       return {
         kind: 'vec',
         path,
@@ -666,7 +682,14 @@ export function normalizeNode(
     case ScValType.SCV_MAP: {
       const entries: Array<{ key: Node; value: Node }> = []
       if (Array.isArray(normalizedScVal.value)) {
-        for (const entry of normalizedScVal.value) {
+        const maxChildren = normalizeMaxChildren(options?.maxChildren)
+        const childCount =
+          maxChildren === undefined
+            ? normalizedScVal.value.length
+            : Math.min(normalizedScVal.value.length, maxChildren)
+
+        for (let index = 0; index < childCount; index += 1) {
+          const entry = normalizedScVal.value[index]
           // js-xdr exposes struct fields via accessor methods (e.g.
           // `entry.key()`), while plain test fixtures use `entry.key`.
           // Read both shapes so map decoding works for XDR-originated
@@ -691,6 +714,11 @@ export function normalizeNode(
             currentDepth + 1,
           )
           entries.push({ key: keyNode, value: valueNode })
+        }
+
+        if (childCount < normalizedScVal.value.length) {
+          const truncation = createTruncatedNode(path, currentDepth + 1)
+          entries.push({ key: truncation, value: truncation })
         }
       }
       return {
