@@ -60,12 +60,6 @@ const ContractsContractIdWatchlistRoute =
     path: '/watchlist',
     getParentRoute: () => ContractsContractIdRoute,
   } as any)
-const ContractsContractIdWatchlistRoute =
-  ContractsContractIdWatchlistRouteImport.update({
-    id: '/contracts/$contractId/watchlist',
-    path: '/contracts/$contractId/watchlist',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ContractsContractIdInspectRoute =
   ContractsContractIdInspectRouteImport.update({
     id: '/inspect',
@@ -77,12 +71,6 @@ const ContractsContractIdHistoryRoute =
     id: '/history',
     path: '/history',
     getParentRoute: () => ContractsContractIdRoute,
-  } as any)
-const ContractsContractIdHistoryRoute =
-  ContractsContractIdHistoryRouteImport.update({
-    id: '/contracts/$contractId/history',
-    path: '/contracts/$contractId/history',
-    getParentRoute: () => rootRouteImport,
   } as any)
 const ContractsContractIdExplorerRoute =
   ContractsContractIdExplorerRouteImport.update({
@@ -258,13 +246,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContractsContractIdWatchlistRouteImport
       parentRoute: typeof ContractsContractIdRoute
     }
-    '/contracts/$contractId/watchlist': {
-      id: '/contracts/$contractId/watchlist'
-      path: '/contracts/$contractId/watchlist'
-      fullPath: '/contracts/$contractId/watchlist'
-      preLoaderRoute: typeof ContractsContractIdWatchlistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/contracts/$contractId/inspect': {
       id: '/contracts/$contractId/inspect'
       path: '/inspect'
@@ -278,13 +259,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/contracts/$contractId/history'
       preLoaderRoute: typeof ContractsContractIdHistoryRouteImport
       parentRoute: typeof ContractsContractIdRoute
-    }
-    '/contracts/$contractId/history': {
-      id: '/contracts/$contractId/history'
-      path: '/contracts/$contractId/history'
-      fullPath: '/contracts/$contractId/history'
-      preLoaderRoute: typeof ContractsContractIdHistoryRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/contracts/$contractId/explorer': {
       id: '/contracts/$contractId/explorer'
