@@ -16,6 +16,7 @@ export function normalizeUnsupportedFallback(
     return {
       __unsupported: true,
       variant: value.variant,
+      sourceType: value.sourceType ?? value.variant,
       rawData: value.rawData,
     }
   }
@@ -23,6 +24,7 @@ export function normalizeUnsupportedFallback(
   return {
     __unsupported: true,
     variant: 'unknown',
+    sourceType: 'unknown',
     rawData: null,
   }
 }

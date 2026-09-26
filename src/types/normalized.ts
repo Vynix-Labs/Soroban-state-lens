@@ -65,6 +65,8 @@ export interface UnsupportedFallback {
   __unsupported: true
   /** The ScVal switch name, e.g. "ScvU64". */
   variant: string
+  /** Optional original source type, preserved for diagnosis. */
+  sourceType?: string
   /** Raw payload from the original ScVal, or null when absent. */
   rawData: unknown
 }
@@ -155,6 +157,13 @@ export interface NormalizedAddress {
   value: string
 }
 
+// Cycle marker for detecting repeated object references
+export interface NormalizedCycle {
+  kind: 'cycle'
+  depth?: number
+}
+
+// Truncated marker for max-depth cutoff
 export interface NormalizedTruncated {
   kind: 'truncated'
   depth?: number
@@ -163,6 +172,7 @@ export interface NormalizedTruncated {
 export interface NormalizedUnsupported {
   kind: 'unsupported'
   variant: string
+  sourceType?: string
   rawData: unknown
 }
 
@@ -171,6 +181,7 @@ export type NormalizedValue =
   | NormalizedVec
   | NormalizedMap
   | NormalizedAddress
+  | NormalizedCycle
   | NormalizedTruncated
   | NormalizedError
   | NormalizedUnsupported

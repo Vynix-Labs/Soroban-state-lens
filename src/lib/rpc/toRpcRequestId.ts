@@ -8,7 +8,13 @@ let lastId = 0
  */
 export function toRpcRequestId(seed?: number): number {
   if (seed === undefined) {
-    return ++lastId
+    if (lastId >= Number.MAX_SAFE_INTEGER) {
+      lastId = 0
+      return 1
+    }
+
+    lastId += 1
+    return lastId
   }
 
   // Handle non-finite or NaN seeds
@@ -18,7 +24,8 @@ export function toRpcRequestId(seed?: number): number {
 
   // Clamp invalid values and guarantee finite positive integer
   const absoluteValue = Math.abs(Math.trunc(seed))
+  const safeValue = Math.min(absoluteValue, Number.MAX_SAFE_INTEGER)
 
   // Guarantee positive (non-zero) integer
-  return absoluteValue || 1
+  return safeValue || 1
 }

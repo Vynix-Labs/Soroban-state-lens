@@ -7,6 +7,19 @@
  * @param tail Number of characters at the end
  * @returns Shortened string or "-" if invalid/blank
  */
+function normalizeLength(value: unknown, fallback: number): number {
+  if (
+    typeof value !== 'number' ||
+    !Number.isFinite(value) ||
+    !Number.isInteger(value) ||
+    value < 0
+  ) {
+    return fallback
+  }
+
+  return Math.floor(value)
+}
+
 export function formatContractIdShort(
   contractId: string,
   head = 6,
@@ -20,13 +33,16 @@ export function formatContractIdShort(
     return '-'
   }
 
+  const normalizedHead = normalizeLength(head, 6)
+  const normalizedTail = normalizeLength(tail, 4)
   const length = contractId.length
-  if (length <= head + tail) {
+
+  if (length <= normalizedHead + normalizedTail) {
     return contractId
   }
 
-  const firstPart = contractId.substring(0, head)
-  const lastPart = contractId.substring(length - tail)
+  const firstPart = contractId.substring(0, normalizedHead)
+  const lastPart = contractId.substring(length - normalizedTail)
 
   return `${firstPart}...${lastPart}`
 }

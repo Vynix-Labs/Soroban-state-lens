@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Sidebar from '../../components/global/Sidebar'
 import { resetStore, useLensStore } from '../../store/lensStore'
+import { formatContractIdShort } from '../../lib/format/formatContractIdShort'
 import type { LedgerEntry } from '../../store/types'
 
 const makeEntry = (key: string, contractId: string, value: unknown = 'value'): LedgerEntry => ({
@@ -23,6 +24,23 @@ describe('Sidebar History Panel', () => {
     expect(screen.getByText('Ledger State')).toBeTruthy()
     expect(screen.getByText('Contract_Registry')).toBeTruthy()
     expect(screen.queryByText('Capture First')).toBeNull()
+  })
+
+  it('shows a shortened active contract label in the sidebar header', () => {
+    const activeContractId = 'CDLZFC3SYQJ4S7HBE6A5PTLQO7N4M3YX2WT4EFQ4PTJX3S7PZN6MTEST'
+    useLensStore.getState().setActiveContractId(activeContractId)
+
+    render(<Sidebar open={true} onClose={vi.fn()} activeNavItem="watchlist" />)
+
+    const label = screen.getByText(formatContractIdShort(activeContractId))
+    expect(label).toBeTruthy()
+    expect(label.getAttribute('title')).toBe(activeContractId)
+  })
+
+  it('hides the active contract label when no contract is active', () => {
+    render(<Sidebar open={true} onClose={vi.fn()} activeNavItem="watchlist" />)
+
+    expect(screen.queryByText('-')).toBeNull()
   })
 
   it('renders no active contract message when activeNavItem is history but activeContractId is null', () => {

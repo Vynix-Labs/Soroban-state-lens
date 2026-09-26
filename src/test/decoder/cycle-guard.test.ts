@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  
   ScValType,
   VisitedTracker,
   createVisitedTracker,
-  normalizeScVal,
+  normalizeScVal
 } from '../../workers/decoder/normalizeScVal'
-import type { ScVal } from '../../workers/decoder/normalizeScVal'
+import type {ScVal} from '../../workers/decoder/normalizeScVal';
 // (NormalizedValue type import removed — unused in tests)
 
 describe('Cycle Guard - Visited Node Tracking', () => {
@@ -53,7 +54,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
 
     it('should create cycle markers', () => {
       const marker = VisitedTracker.createCycleMarker()
-      expect((marker as any).kind).toBe('truncated')
+      expect((marker as any).kind).toBe('cycle')
       expect(VisitedTracker.isCycleMarker(marker)).toBe(true)
     })
 
@@ -63,15 +64,17 @@ describe('Cycle Guard - Visited Node Tracking', () => {
     })
 
     it('should correctly identify cycle markers', () => {
-      const validMarker = { kind: 'truncated' }
+      const validMarker = { kind: 'cycle' }
       const invalidMarker1 = { kind: 'primitive' }
-      const invalidMarker2 = { other: true }
-      const invalidMarker3 = null
+      const invalidMarker2 = { kind: 'truncated' }
+      const invalidMarker3 = { other: true }
+      const invalidMarker4 = null
 
       expect(VisitedTracker.isCycleMarker(validMarker)).toBe(true)
       expect(VisitedTracker.isCycleMarker(invalidMarker1)).toBe(false)
       expect(VisitedTracker.isCycleMarker(invalidMarker2)).toBe(false)
       expect(VisitedTracker.isCycleMarker(invalidMarker3)).toBe(false)
+      expect(VisitedTracker.isCycleMarker(invalidMarker4)).toBe(false)
     })
 
     it('should maintain depth count', () => {
@@ -312,7 +315,7 @@ describe('Cycle Guard - Visited Node Tracking', () => {
       const json = JSON.stringify(marker)
       const parsed = JSON.parse(json)
 
-      expect(parsed.kind).toBe('truncated')
+      expect(parsed.kind).toBe('cycle')
       expect(parsed.depth).toBe(3)
     })
   })

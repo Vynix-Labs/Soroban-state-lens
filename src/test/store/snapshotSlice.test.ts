@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getStoreState, resetStore, useLensStore } from '../../store/lensStore'
 
@@ -40,6 +40,33 @@ describe('snapshotSlice', () => {
     expect(snapshots[0].ledgerData).toEqual(entries)
     expect(snapshots[0].timestamp).toBeTypeOf('number')
     expect(snapshots[0].id).toBeTypeOf('string')
+  })
+
+  it('addSnapshot trims whitespace-only labels and preserves meaningful text', () => {
+    const { addSnapshot, getSnapshots } = useLensStore.getState()
+
+    addSnapshot('c1', {}, '   padded label   ')
+    addSnapshot('c2', {}, '   \n  \t  ')
+
+    expect(getSnapshots('c1')[0].label).toBe('padded label')
+    expect(getSnapshots('c2')[0].label).toBeUndefined()
+  })
+
+  it('changing contracts clears selected path and prior snapshots', () => {
+    const {
+      setActiveContractId,
+      setSelectedKeyPath,
+      addSnapshot,
+      getSnapshots,
+    } = useLensStore.getState()
+
+    setSelectedKeyPath('old.path')
+    addSnapshot('old-contract', { a: makeEntry('a', 'old-contract') })
+    setActiveContractId('new-contract')
+
+    expect(getStoreState().selectedKeyPath).toBeNull()
+    expect(getSnapshots('old-contract')).toEqual([])
+    expect(getStoreState().activeContractId).toBe('new-contract')
   })
 
   it('addSnapshot stores a shallow copy of entries', () => {
@@ -132,5 +159,35 @@ describe('snapshotSlice', () => {
     clearSnapshots('nonexistent')
 
     expect(getSnapshots('c1')).toHaveLength(1)
+  })
+
+  it('drops oldest snapshots first once the retention limit is exceeded', () => {
+    const { addSnapshot, getSnapshots } = useLensStore.getState()
+
+    for (let index = 1; index <= 30; index += 1) {
+      addSnapshot(
+        'c1',
+        { [`key-${index}`]: makeEntry(`key-${index}`, 'c1') },
+        `Snapshot ${index}`,
+      )
+    }
+
+    const snapshots = getSnapshots('c1')
+    expect(snapshots).toHaveLength(25)
+    expect(snapshots[0].label).toBe('Snapshot 6')
+    expect(snapshots[snapshots.length - 1].label).toBe('Snapshot 30')
+  })
+
+  it('uses a single clock value for the snapshot timestamp and id prefix', () => {
+    const { addSnapshot, getSnapshots } = useLensStore.getState()
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(123456)
+
+    addSnapshot('c1', { key1: makeEntry('key1', 'c1') })
+
+    const snapshot = getSnapshots('c1')[0]
+    expect(snapshot.timestamp).toBe(123456)
+    expect(snapshot.id.startsWith('123456-')).toBe(true)
+
+    nowSpy.mockRestore()
   })
 })

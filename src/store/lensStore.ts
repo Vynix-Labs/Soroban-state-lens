@@ -1,17 +1,14 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useShallow } from 'zustand/react/shallow'
 
 import { deepClone } from '../lib/deepClone'
 import { getLedgerEntries } from '../lib/network/getLedgerEntries'
 import { mapLedgerEntriesToStoreEntries } from '../lib/network/mapLedgerEntriesToStoreEntries'
 import { isDecoderWorkerError } from '../types/decoder-worker'
 import { createDecoderWorkerSafe } from '../workers/createDecoderWorkerSafe'
-import {
-  ConnectionStatus,
-  ContractLoadStatus,
-  DEFAULT_NETWORKS,
-  DEFAULT_PREFERENCES,
-} from './types'
+import { createContractSlice } from './contractSlice'
+import { createContractSpecSlice } from './contractSpecSlice'
 import {
   DEFAULT_NETWORK_CONFIG,
   NETWORK_CONFIG_STORAGE_KEY,
@@ -20,9 +17,13 @@ import {
   mergePreferences,
   serializeNetworkConfigForStorage,
 } from './persistence'
-import { createContractSlice } from './contractSlice'
-import { createContractSpecSlice } from './contractSpecSlice'
 import { createPreferencesSlice } from './preferencesSlice'
+import {
+  ConnectionStatus,
+  ContractLoadStatus,
+  DEFAULT_NETWORKS,
+  DEFAULT_PREFERENCES,
+} from './types'
 
 import type { PersistedState } from './persistence'
 import type {
@@ -62,6 +63,8 @@ const createNetworkConfigSlice = (
   resetNetworkConfig: () =>
     set(() => ({
       networkConfig: DEFAULT_NETWORK_CONFIG,
+      connectionStatus: ConnectionStatus.IDLE,
+      lastCustomUrl: undefined,
     })),
 
   setConnectionStatus: (status: ConnectionStatus) =>
@@ -155,7 +158,9 @@ const createExpandedNodesSlice = (
         return { expandedNodes: [...state.expandedNodes, normalizedNodeId] }
       } else {
         return {
-          expandedNodes: state.expandedNodes.filter((id) => id !== normalizedNodeId),
+          expandedNodes: state.expandedNodes.filter(
+            (id) => id !== normalizedNodeId,
+          ),
         }
       }
     }),
@@ -169,7 +174,9 @@ const createExpandedNodesSlice = (
 
       if (state.expandedNodes.includes(normalizedNodeId)) {
         return {
-          expandedNodes: state.expandedNodes.filter((id) => id !== normalizedNodeId),
+          expandedNodes: state.expandedNodes.filter(
+            (id) => id !== normalizedNodeId,
+          ),
         }
       }
       return { expandedNodes: [...state.expandedNodes, normalizedNodeId] }
@@ -181,7 +188,10 @@ const createExpandedNodesSlice = (
         .map((nodeId) => nodeId.trim())
         .filter((nodeId) => nodeId.length > 0)
 
-      const newExpanded = new Set([...state.expandedNodes, ...normalizedNodeIds])
+      const newExpanded = new Set([
+        ...state.expandedNodes,
+        ...normalizedNodeIds,
+      ])
       return { expandedNodes: Array.from(newExpanded) }
     }),
 
@@ -190,6 +200,8 @@ const createExpandedNodesSlice = (
       expandedNodes: [],
     })),
 })
+
+export const DEFAULT_SNAPSHOT_RETENTION_LIMIT = 25
 
 /**
  * Snapshot slice creator
@@ -204,8 +216,16 @@ const createSnapshotSlice = (
     contractId: string,
     entries: Record<string, LedgerEntry>,
     label?: string,
+    maxSnapshots: number = DEFAULT_SNAPSHOT_RETENTION_LIMIT,
   ) =>
     set((state) => {
+      const normalizedContractId = contractId.trim()
+
+      // Reject empty contract IDs
+      if (!normalizedContractId) {
+        return state
+      }
+
       // Deep clone entries to ensure immutability
       const clonedEntries: Record<string, LedgerEntry> = {}
       for (const [key, entry] of Object.entries(entries)) {
@@ -215,19 +235,25 @@ const createSnapshotSlice = (
         }
       }
 
+      const normalizedLabel =
+        typeof label === 'string' ? label.trim() || undefined : label
+      const existing = state.snapshots[normalizedContractId] ?? []
+      const timestamp = Date.now()
+      const nextSnapshot = {
+        id: `${timestamp}-${crypto.randomUUID()}`,
+        contractId: normalizedContractId,
+        timestamp,
+        ledgerData: clonedEntries,
+        label: normalizedLabel,
+      }
+
+      const trimmedSnapshots =
+        maxSnapshots > 0 ? [...existing, nextSnapshot].slice(-maxSnapshots) : []
+
       return {
         snapshots: {
           ...state.snapshots,
-          [contractId]: [
-            ...(state.snapshots[contractId] ?? []),
-            {
-              id: crypto.randomUUID(),
-              contractId,
-              timestamp: Date.now(),
-              ledgerData: clonedEntries,
-              label,
-            },
-          ],
+          [normalizedContractId]: trimmedSnapshots,
         },
       }
     }),
@@ -237,18 +263,34 @@ const createSnapshotSlice = (
   },
 
   removeSnapshot: (contractId: string, snapshotId: string) =>
-    set((state) => ({
-      snapshots: {
-        ...state.snapshots,
-        [contractId]: (state.snapshots[contractId] ?? []).filter(
-          (s) => s.id !== snapshotId,
-        ),
-      },
-    })),
+    set((state) => {
+      const normalizedContractId = contractId.trim()
+
+      // Reject empty contract IDs
+      if (!normalizedContractId) {
+        return state
+      }
+
+      return {
+        snapshots: {
+          ...state.snapshots,
+          [normalizedContractId]: (state.snapshots[normalizedContractId] ?? []).filter(
+            (s) => s.id !== snapshotId,
+          ),
+        },
+      }
+    }),
 
   clearSnapshots: (contractId: string) =>
     set((state) => {
-      const { [contractId]: _, ...rest } = state.snapshots
+      const normalizedContractId = contractId.trim()
+
+      // Reject empty contract IDs
+      if (!normalizedContractId) {
+        return state
+      }
+
+      const { [normalizedContractId]: _, ...rest } = state.snapshots
       return { snapshots: rest }
     }),
 })
@@ -291,7 +333,8 @@ const createContractLoadSlice = (
       const controller = new AbortController()
       activeController = controller
       const { signal } = controller
-      const isRequestStale = () => currentRequestId !== requestId || signal.aborted
+      const isRequestStale = () =>
+        currentRequestId !== requestId || signal.aborted
 
       set((state) => ({
         activeContractId: contractId,
@@ -313,12 +356,25 @@ const createContractLoadSlice = (
         }
 
         const worker = await createDecoderWorkerSafe()
+        if (isRequestStale()) {
+          return
+        }
+
         const decodedValuesByKey: Record<string, unknown> = {}
 
         for (const entry of entries) {
+          if (isRequestStale()) {
+            return
+          }
+
           const result = await worker.decodeScVal({ xdr: entry.xdr })
+
+          if (isRequestStale()) {
+            return
+          }
+
           decodedValuesByKey[entry.key] = isDecoderWorkerError(result)
-            ? entry.xdr
+            ? { kind: 'raw-xdr', xdr: entry.xdr }
             : result
         }
 
@@ -424,19 +480,30 @@ const createWatchlistSlice = (
     }),
 
   removeFromWatchlist: (contractId: string, keyPath: string) =>
-    set((state) => ({
-      watchlist: {
-        ...state.watchlist,
-        [contractId]: deduplicateWatchlistItems(
-          (state.watchlist[contractId] ?? []).filter(
-            (item) => item.keyPath !== keyPath,
-          ),
+    set((state) => {
+      const remainingItems = deduplicateWatchlistItems(
+        (state.watchlist[contractId] ?? []).filter(
+          (item) => item.keyPath !== keyPath,
         ),
-      },
-    })),
+      )
+
+      if (remainingItems.length === 0) {
+        const { [contractId]: _, ...rest } = state.watchlist
+        return { watchlist: rest }
+      }
+
+      return {
+        watchlist: {
+          ...state.watchlist,
+          [contractId]: remainingItems,
+        },
+      }
+    }),
 
   getWatchlistForContract: (contractId: string) => {
-    return deduplicateWatchlistItems(get().watchlist[contractId])
+    return deduplicateWatchlistItems(get().watchlist[contractId]).filter(
+      (item) => item.contractId === contractId,
+    )
   },
 
   clearWatchlist: (contractId: string) =>
@@ -474,12 +541,29 @@ export const useLensStore = create<LensStore>()(
     {
       name: NETWORK_CONFIG_STORAGE_KEY,
       storage: createSafeStorage<PersistedState>(),
+      version: 1,
+      migrate: (persistedState, version) => {
+        if (
+          typeof persistedState !== 'object' ||
+          persistedState === null ||
+          version === 0 ||
+          version === 1
+        ) {
+          return persistedState as PersistedState
+        }
+
+        return {
+          networkConfig: serializeNetworkConfigForStorage(DEFAULT_NETWORK_CONFIG),
+          preferences: DEFAULT_PREFERENCES,
+          watchlist: {},
+        }
+      },
       // Persist networkConfig, preferences, and the watchlist
       partialize: (state): PersistedState => ({
-          networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
-          preferences: state.preferences,
-          watchlist: state.watchlist,
-        }),
+        networkConfig: serializeNetworkConfigForStorage(state.networkConfig),
+        preferences: state.preferences,
+        watchlist: state.watchlist,
+      }),
       // Validate and merge persisted data safely
       merge: (persistedState, currentState) => {
         const mergedNetwork = mergeNetworkConfig(persistedState, currentState)
@@ -514,8 +598,15 @@ export const useContractLoadError = () =>
   useLensStore((state) => state.contractLoadError)
 export const useSnapshots = (contractId: string) =>
   useLensStore((state) => state.snapshots[contractId] ?? EMPTY_ARRAY)
-export const useWatchlist = (contractId: string) =>
-  useLensStore((state) => state.watchlist[contractId] ?? EMPTY_ARRAY)
+export const useWatchlist = (contractId: string) => {
+  return useLensStore(
+    useShallow((state) =>
+      deduplicateWatchlistItems(state.watchlist[contractId]).filter(
+        (item) => item.contractId === contractId,
+      ),
+    ),
+  )
+}
 
 /**
  * Get store state outside of React components (for testing)
@@ -579,14 +670,19 @@ export const lensActions = {
     useLensStore.getState().setContractLoadStatus(status),
   setContractLoadError: (message: string | null) =>
     useLensStore.getState().setContractLoadError(message),
-  resetContractLoadState: () => useLensStore.getState().resetContractLoadState(),
+  resetContractLoadState: () =>
+    useLensStore.getState().resetContractLoadState(),
   loadContract: (contractId: string, keys: Array<string>) =>
     useLensStore.getState().loadContract(contractId, keys),
   addSnapshot: (
     contractId: string,
     entries: Record<string, LedgerEntry>,
     label?: string,
-  ) => useLensStore.getState().addSnapshot(contractId, entries, label),
+    maxSnapshots?: number,
+  ) =>
+    useLensStore
+      .getState()
+      .addSnapshot(contractId, entries, label, maxSnapshots),
   getSnapshots: (contractId: string) =>
     useLensStore.getState().getSnapshots(contractId),
   removeSnapshot: (contractId: string, snapshotId: string) =>

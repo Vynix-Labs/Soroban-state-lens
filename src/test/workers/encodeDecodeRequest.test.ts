@@ -143,4 +143,81 @@ describe('encodeDecodeRequest', () => {
       )
     })
   })
+
+  describe('unknown fields', () => {
+    it('should ignore unknown fields in request object', () => {
+      // Arrange
+      const input = {
+        xdr: 'AAAAAQ==',
+        unknownField: 'should be ignored',
+        anotherUnknown: 123,
+      } as any
+
+      // Act
+      const result = encodeDecodeRequest(input)
+
+      // Assert - unknown fields should be ignored, only known fields encoded
+      expect(result).toBe('{"xdr":"AAAAAQ=="}')
+    })
+
+    it('should ignore unknown fields in options object', () => {
+      // Arrange
+      const input = {
+        xdr: 'AAAAAQ==',
+        options: {
+          maxDepth: 10,
+          unknownOption: 'should be ignored',
+          anotherUnknown: true,
+        },
+      } as any
+
+      // Act
+      const result = encodeDecodeRequest(input)
+
+      // Assert - unknown fields in options should be ignored
+      expect(result).toBe('{"xdr":"AAAAAQ==","options":{"maxDepth":10}}')
+    })
+
+    it('should ignore unknown fields when maxDepth is not present', () => {
+      // Arrange
+      const input = {
+        xdr: 'AAAAAQ==',
+        options: {
+          unknownOption: 'should be ignored',
+        },
+      } as any
+
+      // Act
+      const result = encodeDecodeRequest(input)
+
+      // Assert - unknown fields should be ignored, empty options object created
+      expect(result).toBe('{"xdr":"AAAAAQ==","options":{}}')
+    })
+  })
+
+  describe('missing required fields', () => {
+    it('should reject request missing required xdr field', () => {
+      // Arrange
+      const input = {} as any
+
+      // Act & Assert
+      expect(() => encodeDecodeRequest(input)).toThrow('xdr cannot be empty')
+    })
+
+    it('should reject request with null xdr field', () => {
+      // Arrange
+      const input = { xdr: null } as any
+
+      // Act & Assert
+      expect(() => encodeDecodeRequest(input)).toThrow('xdr cannot be empty')
+    })
+
+    it('should reject request with undefined xdr field', () => {
+      // Arrange
+      const input = { xdr: undefined } as any
+
+      // Act & Assert
+      expect(() => encodeDecodeRequest(input)).toThrow('xdr cannot be empty')
+    })
+  })
 })

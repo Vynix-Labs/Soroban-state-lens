@@ -88,4 +88,43 @@ describe('isJsonRpcSuccessResponse', () => {
     expect(isJsonRpcSuccessResponse(123)).toBe(false)
     expect(isJsonRpcSuccessResponse([])).toBe(false)
   })
+
+  describe('expectedId matching', () => {
+    it('returns true when response id matches the expected numeric id', () => {
+      const response = { jsonrpc: '2.0', id: 42, result: 'ok' }
+      expect(isJsonRpcSuccessResponse(response, 42)).toBe(true)
+    })
+
+    it('returns true when response id matches the expected string id', () => {
+      const response = { jsonrpc: '2.0', id: 'req-1', result: 'ok' }
+      expect(isJsonRpcSuccessResponse(response, 'req-1')).toBe(true)
+    })
+
+    it('returns false when response id does not match the expected numeric id', () => {
+      const response = { jsonrpc: '2.0', id: 99, result: 'ok' }
+      expect(isJsonRpcSuccessResponse(response, 42)).toBe(false)
+    })
+
+    it('returns false when response id does not match the expected string id', () => {
+      const response = { jsonrpc: '2.0', id: 'req-2', result: 'ok' }
+      expect(isJsonRpcSuccessResponse(response, 'req-1')).toBe(false)
+    })
+
+    it('returns false when response id is null and an expectedId is provided', () => {
+      const response = { jsonrpc: '2.0', id: null, result: 'ok' }
+      expect(isJsonRpcSuccessResponse(response, 1)).toBe(false)
+    })
+
+    it('returns true when no expectedId is provided, regardless of response id', () => {
+      expect(
+        isJsonRpcSuccessResponse({ jsonrpc: '2.0', id: 1, result: 'ok' }),
+      ).toBe(true)
+      expect(
+        isJsonRpcSuccessResponse({ jsonrpc: '2.0', id: null, result: 'ok' }),
+      ).toBe(true)
+      expect(
+        isJsonRpcSuccessResponse({ jsonrpc: '2.0', id: 'abc', result: 'ok' }),
+      ).toBe(true)
+    })
+  })
 })

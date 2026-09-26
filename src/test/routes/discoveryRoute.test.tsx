@@ -108,12 +108,16 @@ describe('Discovery route', () => {
   it('shows simulation errors without displaying a successful empty state', async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
-      json: () =>
-        Promise.resolve({
+      json: () => {
+        const request = JSON.parse(
+          vi.mocked(fetch).mock.calls[0][1]?.body as string,
+        )
+        return Promise.resolve({
           jsonrpc: '2.0',
-          id: 1,
+          id: request.id,
           error: { code: -32000, message: 'Simulation failed' },
-        }),
+        })
+      },
     } as Response)
     renderDiscoveryRoute()
     await fillValidForm()

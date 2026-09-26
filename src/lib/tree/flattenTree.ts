@@ -1,8 +1,39 @@
 import type { Node } from '../../types/node'
 import type { FlatTreeRow, FlattenTreeRoot } from './flatTreeRow'
 
+const MAP_KEY_PREVIEW_MAX_LENGTH = 24
+
 function isExpandable(node: Node): boolean {
   return node.kind === 'vec' || node.kind === 'map'
+}
+
+function getMapKeyPreview(node: Node): string | null {
+  let value: string | null = null
+
+  if (node.kind === 'primitive' && node.value !== null) {
+    value = String(node.value)
+  } else if (node.kind === 'address') {
+    value = node.value
+  } else if (node.kind === 'error') {
+    value = `${node.errorType}:${node.code}`
+  }
+
+  const normalized = value?.trim().replace(/\s+/g, ' ')
+  if (!normalized) {
+    return null
+  }
+
+  if (normalized.length <= MAP_KEY_PREVIEW_MAX_LENGTH) {
+    return normalized
+  }
+
+  return `${normalized.slice(0, MAP_KEY_PREVIEW_MAX_LENGTH - 1)}…`
+}
+
+function getMapKeyLabel(node: Node, index: number): string {
+  const baseLabel = `entry[${index}].key`
+  const preview = getMapKeyPreview(node)
+  return preview === null ? baseLabel : `${baseLabel} (${preview})`
 }
 
 function getChildren(node: Node): Array<{ idPart: string; label: string; node: Node }> {
@@ -19,7 +50,7 @@ function getChildren(node: Node): Array<{ idPart: string; label: string; node: N
       return [
         {
           idPart: `entry-${index}-key`,
-          label: `entry[${index}].key`,
+          label: getMapKeyLabel(entry.key, index),
           node: entry.key,
         },
         {

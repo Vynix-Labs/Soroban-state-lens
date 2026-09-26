@@ -20,9 +20,20 @@ export async function withWorkerPingTimeout(
 
     worker
       .ping()
-      .then(() => {
+      .then((response) => {
         clearTimeout(timer)
-        resolve('pong')
+
+        // Validate the ping response shape
+        if (
+          typeof response === 'object' &&
+          response !== null &&
+          'status' in response &&
+          response.status === 'pong'
+        ) {
+          resolve('pong')
+        } else {
+          reject(new Error('Worker ping returned malformed response'))
+        }
       })
       .catch((err) => {
         clearTimeout(timer)

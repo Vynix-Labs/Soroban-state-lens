@@ -39,12 +39,14 @@ describe('normalizeScVal - Address integration tests', () => {
     expect(normalizeScVal(null)).toEqual({
       kind: 'unsupported',
       variant: 'Invalid',
+      sourceType: 'Invalid',
       rawData: null,
     })
 
     expect(normalizeScVal(undefined)).toEqual({
       kind: 'unsupported',
       variant: 'Invalid',
+      sourceType: 'Invalid',
       rawData: null,
     })
   })
@@ -56,6 +58,7 @@ describe('normalizeScVal - Address integration tests', () => {
     expect(normalized).toEqual({
       kind: 'unsupported',
       variant: 'InvalidType',
+      sourceType: 'InvalidType',
       rawData: 'some data',
     })
   })

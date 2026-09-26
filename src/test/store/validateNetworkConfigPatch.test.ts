@@ -25,6 +25,25 @@ describe('validateNetworkConfigPatch', () => {
     expect(result.errors).toBeUndefined()
   })
 
+  it('should trim stable string fields before returning the patch', () => {
+    const input = {
+      networkId: '  testnet  ',
+      networkPassphrase: '  Test SDF Network ; September 2015  ',
+      rpcUrl: '  https://soroban-testnet.stellar.org/  ',
+      horizonUrl: '  https://horizon-testnet.stellar.org/  ',
+    }
+
+    const result = validateNetworkConfigPatch(input)
+
+    expect(result.valid).toBe(true)
+    expect(result.patch).toEqual({
+      networkId: 'testnet',
+      networkPassphrase: 'Test SDF Network ; September 2015',
+      rpcUrl: 'https://soroban-testnet.stellar.org/',
+      horizonUrl: 'https://horizon-testnet.stellar.org/',
+    })
+  })
+
   it('should reject unknown keys', () => {
     const input = {
       networkId: 'testnet',

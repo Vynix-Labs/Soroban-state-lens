@@ -37,7 +37,7 @@ export function validateNetworkConfigPatch(input: unknown): {
     }
   }
 
-  // Check types for allowed keys
+  // Check types for allowed keys and trim stable string fields before storage.
   for (const key of allowedKeys) {
     if (key in patch) {
       const value = patch[key]
@@ -46,9 +46,8 @@ export function validateNetworkConfigPatch(input: unknown): {
           `Invalid type for ${key}: expected string, got ${typeof value}`,
         )
       } else {
-        // If type is correct, add to validated patch
-        // Note: horizonUrl is optional, but if present, it must be a string
-        ;(validatedPatch as any)[key] = value
+        const trimmedValue = value.trim()
+        ;(validatedPatch as any)[key] = trimmedValue
       }
     }
   }

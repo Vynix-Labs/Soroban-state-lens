@@ -1,3 +1,4 @@
+import { compareCodeUnitStrings } from '../network/normalizeFootprintKeys'
 import type { LedgerEntry, LensStore } from '../../store/types'
 
 /**
@@ -24,5 +25,6 @@ export function selectLedgerEntriesByContractId(
     (entry) => entry.contractId === contractId,
   )
 
-  return entries.sort((a, b) => a.key.localeCompare(b.key))
+  // Create a copy before sorting to avoid mutating shared arrays
+  return [...entries].sort((a, b) => compareCodeUnitStrings(a.key, b.key))
 }

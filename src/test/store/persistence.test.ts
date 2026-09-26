@@ -28,6 +28,13 @@ const localStorageMock = (function () {
   }
 })()
 
+const corruptHydrationFixtures: Array<unknown> = [
+  '{"networkConfig":',
+  [],
+  { networkConfig: { kind: 'custom', rpcUrl: 42 } },
+  { networkConfig: { kind: 'preset', networkId: 'unknown' }, watchlist: null },
+]
+
 // Mock window and localStorage globally for this test
 Object.defineProperty(global, 'window', { value: global, writable: true })
 Object.defineProperty(global, 'localStorage', {
@@ -197,9 +204,21 @@ describe('persistence', () => {
       expect(result.networkConfig).toEqual(DEFAULT_NETWORK_CONFIG)
     })
 
+    it.each(corruptHydrationFixtures)(
+      'falls back safely for corrupt hydration fixture %#',
+      (persistedState) => {
+        expect(() =>
+          mergeNetworkConfig(persistedState, currentState),
+        ).not.toThrow()
+        expect(
+          mergeNetworkConfig(persistedState, currentState).networkConfig,
+        ).toEqual(DEFAULT_NETWORK_CONFIG)
+      },
+    )
+
     it('hydrates a sanitized watchlist alongside a valid networkConfig', () => {
       const watchlist = {
-        'C1': [
+        C1: [
           {
             contractId: 'C1',
             keyPath: 'counter',
@@ -226,7 +245,7 @@ describe('persistence', () => {
           networkId: 'testnet',
         },
         watchlist: {
-          'C1': [
+          C1: [
             { contractId: 'C1', keyPath: 'ok', timestamp: 1 },
             { contractId: 'C1', keyPath: 'bad' },
             'not-an-item',
@@ -234,7 +253,7 @@ describe('persistence', () => {
             { contractId: 2, keyPath: 'bad', timestamp: 1 },
           ],
           '': [{ contractId: 'C1', keyPath: 'x', timestamp: 1 }],
-          'C2': 'not-an-array',
+          C2: 'not-an-array',
         },
       }
       const result = mergeNetworkConfig(persistedState, currentState)
@@ -253,9 +272,9 @@ describe('persistence', () => {
 
     it('drops contracts with empty keys or non-array items', () => {
       const result = sanitizeWatchlist({
-        'C1': [{ contractId: 'C1', keyPath: 'k', timestamp: 1 }],
+        C1: [{ contractId: 'C1', keyPath: 'k', timestamp: 1 }],
         '': [{ contractId: 'C1', keyPath: 'k', timestamp: 1 }],
-        'C2': 'nope',
+        C2: 'nope',
       })
       expect(result).toEqual({
         C1: [{ contractId: 'C1', keyPath: 'k', timestamp: 1 }],

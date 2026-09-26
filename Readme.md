@@ -64,6 +64,9 @@ The project is split into three main layers:
 
 ## **🤝 Contributing**
 
+The catalog and publishing checks are documented in the
+[contributor issue-wave workflow](docs/ISSUE_WAVE_WORKFLOW.md).
+
 We love contributors\! Whether you are a Rustacean who loves XDR or a Frontend dev with an eye for UX:
 
 1. Check the [Issues](https://github.com/Vynix-Labs/Soroban-state-lens/issues) for "Good First Issue" tags.

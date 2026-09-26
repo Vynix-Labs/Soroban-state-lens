@@ -29,9 +29,9 @@ function formatPreview(row: FlatTreeRow): string {
     case 'unsupported':
       return row.node.variant
     case 'truncated':
-      return `depth=${row.node.depth}`
+      return `truncated at depth=${row.node.depth}`
     case 'cycle':
-      return `depth=${row.node.depth}`
+      return `cycle detected at depth=${row.node.depth}`
     default:
       return ''
   }
@@ -94,6 +94,7 @@ export function TreeRow({
       }`}
       style={{ height: rowHeight }}
       aria-label={`Open ${row.label}`}
+      aria-expanded={row.hasChildren ? isExpanded : undefined}
     >
       <div style={{ marginLeft: row.depth * 16 }} className="flex items-center gap-2 min-w-0">
         {row.hasChildren ? (

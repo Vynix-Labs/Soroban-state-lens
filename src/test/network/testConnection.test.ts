@@ -16,6 +16,26 @@ describe('testRpcConnection', () => {
     expect(spy).toHaveBeenCalledWith('https://valid-rpc.com')
   })
 
+  it('forwards timeout and signal to the latest ledger check', async () => {
+    const signal = new AbortController().signal
+    const spy = vi
+      .spyOn(latestLedger, 'getLatestLedgerConnectionCheck')
+      .mockResolvedValue({
+        success: true,
+        ledger: { sequence: 12345 },
+      })
+
+    await testRpcConnection('https://valid-rpc.com', {
+      timeout: 1234,
+      signal,
+    })
+
+    expect(spy).toHaveBeenCalledWith('https://valid-rpc.com', {
+      timeout: 1234,
+      signal,
+    })
+  })
+
   it('should return success false if latest ledger check fails', async () => {
     vi.spyOn(latestLedger, 'getLatestLedgerConnectionCheck').mockResolvedValue({
       success: false,

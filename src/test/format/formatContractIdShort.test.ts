@@ -47,4 +47,15 @@ describe('formatContractIdShort', () => {
     // @ts-ignore - testing invalid input
     expect(formatContractIdShort(123)).toBe('-')
   })
+
+  test('uses documented defaults for invalid length options and preserves zero-length handling', () => {
+    const id = '1234567890ABCDEF'
+
+    expect(formatContractIdShort(id, -1, 2)).toBe('123456...EF')
+    expect(formatContractIdShort(id, 2.5, 2)).toBe('123456...EF')
+    expect(formatContractIdShort(id, Number.NaN, 2)).toBe('123456...EF')
+    expect(formatContractIdShort(id, Number.POSITIVE_INFINITY, 2)).toBe('123456...EF')
+    expect(formatContractIdShort(id, 0, 2)).toBe('...EF')
+    expect(formatContractIdShort(id, 2, 0)).toBe('12...')
+  })
 })

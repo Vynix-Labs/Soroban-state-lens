@@ -282,6 +282,27 @@ describe('lensStore', () => {
       expect(getStoreState().selectedKeyPath).toBe('contract.entry-0-value')
     })
 
+    it('setActiveContractId clears previous selected path and snapshots for prior contract', () => {
+      const { addSnapshot, setSelectedKeyPath, setActiveContractId } =
+        useLensStore.getState()
+
+      addSnapshot('old-contract', {
+        a: {
+          key: 'a',
+          contractId: 'old-contract',
+          type: 'ContractData',
+          value: { ok: true },
+          lastModifiedLedger: 1,
+        },
+      })
+      setSelectedKeyPath('contract.entry-0-value')
+      setActiveContractId('new-contract')
+
+      expect(getStoreState().selectedKeyPath).toBeNull()
+      expect(getStoreState().snapshots['old-contract']).toBeUndefined()
+      expect(getStoreState().activeContractId).toBe('new-contract')
+    })
+
     it('setSelectedKeyPath replaces existing selected path', () => {
       const { setSelectedKeyPath } = useLensStore.getState()
 
@@ -291,7 +312,8 @@ describe('lensStore', () => {
     })
 
     it('clearSelectedKeyPath clears selected path', () => {
-      const { setSelectedKeyPath, clearSelectedKeyPath } = useLensStore.getState()
+      const { setSelectedKeyPath, clearSelectedKeyPath } =
+        useLensStore.getState()
 
       setSelectedKeyPath('first.path')
       clearSelectedKeyPath()

@@ -38,13 +38,21 @@ export function mapScvMapEntry(
 
     // Convert normalized key to string for object property
     // Use JSON.stringify for complex keys to ensure uniqueness
-    const stringKey =
-      typeof normalizedKey === 'string'
-        ? normalizedKey
-        : typeof normalizedKey === 'number' ||
-            typeof normalizedKey === 'boolean'
-          ? String(normalizedKey)
-          : JSON.stringify(normalizedKey)
+    let stringKey: string
+    if (typeof normalizedKey === 'string') {
+      stringKey = normalizedKey
+    } else if (
+      typeof normalizedKey === 'number' ||
+      typeof normalizedKey === 'boolean'
+    ) {
+      stringKey = String(normalizedKey)
+    } else {
+      const serializedKey = JSON.stringify(normalizedKey)
+      if (typeof serializedKey !== 'string') {
+        return undefined
+      }
+      stringKey = serializedKey
+    }
 
     return [stringKey, normalizedValue]
   } catch {

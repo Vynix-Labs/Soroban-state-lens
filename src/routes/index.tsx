@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { probeDecoderWorker } from './initializeDecoderWorkerPing'
 import SearchLandingScreen from '@/components/Home/SearchLandingScreen'
-import { createDecoderWorker } from '@/workers/createDecoderWorker'
 
 export const Route = createFileRoute('/')({
   component: App,
@@ -9,8 +9,7 @@ export const Route = createFileRoute('/')({
 
 function App() {
   useEffect(() => {
-    const worker = createDecoderWorker()
-    worker.ping().then((res) => console.log('Worker integrated:', res))
+    void probeDecoderWorker()
   }, [])
 
   return (

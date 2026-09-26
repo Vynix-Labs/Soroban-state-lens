@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { toRpcRequestId } from '../../lib/rpc/toRpcRequestId'
 
 describe('toRpcRequestId', () => {
@@ -41,6 +41,17 @@ describe('toRpcRequestId', () => {
   it('should handle large safe integers', () => {
     const largeSeed = Number.MAX_SAFE_INTEGER
     expect(toRpcRequestId(largeSeed)).toBe(largeSeed)
+  })
+
+  it('wraps the generated counter before it exceeds the safe integer range', async () => {
+    vi.resetModules()
+    const { toRpcRequestId } = await import('../../lib/rpc/toRpcRequestId')
+
+    const seededId = toRpcRequestId(Number.MAX_SAFE_INTEGER - 1)
+    const wrappedId = toRpcRequestId()
+
+    expect(seededId).toBe(Number.MAX_SAFE_INTEGER - 1)
+    expect(wrappedId).toBe(1)
   })
 
   it('should return 1 for negative zero', () => {

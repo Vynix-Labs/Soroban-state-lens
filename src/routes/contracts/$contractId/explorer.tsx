@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Button, Card, Heading } from '@stellar/design-system'
 import { VirtualizedTreeList } from '../../../components/explorer/VirtualizedTreeList'
+import { LoadingSkeleton } from '../../../components/explorer/LoadingSkeleton'
 import {
   collectExpandableNodeIds,
   flattenTree,
@@ -12,6 +13,21 @@ import { validateContractRouteParam } from './-validateContractRouteParam'
 import type { FlattenTreeRoot } from '../../../lib/tree/flatTreeRow'
 import type { Node } from '../../../types/node'
 
+export function resolveSelectedKeyPath(
+  selectedKeyPath: string | null,
+  rows: Array<{ id?: string; keyPath?: string }>,
+): string | null {
+  if (!selectedKeyPath) {
+    return null
+  }
+
+  return rows.some(
+    (row) => row.id === selectedKeyPath || row.keyPath === selectedKeyPath,
+  )
+    ? selectedKeyPath
+    : null
+}
+
 function isNodeLike(value: unknown): value is Node {
   return (
     typeof value === 'object' &&
@@ -21,10 +37,27 @@ function isNodeLike(value: unknown): value is Node {
   )
 }
 
+export function dedupeExplorerKeys(value: string): string {
+  const seen = new Set<string>()
+  return value
+    .split(',')
+    .map((key) => key.trim())
+    .filter((key) => key.length > 0)
+    .filter((key) => {
+      if (seen.has(key)) {
+        return false
+      }
+      seen.add(key)
+      return true
+    })
+    .join(',')
+}
+
 export const Route = createFileRoute('/contracts/$contractId/explorer')({
   component: ContractExplorer,
   validateSearch: (search: Record<string, unknown>) => ({
-    keys: typeof search.keys === 'string' ? search.keys : '',
+    keys:
+      typeof search.keys === 'string' ? dedupeExplorerKeys(search.keys) : '',
   }),
   beforeLoad: ({ params }) => {
     const result = validateContractRouteParam(params.contractId)
@@ -47,7 +80,9 @@ function ContractExplorer() {
   const setContractLoadStatus = useLensStore(
     (state) => state.setContractLoadStatus,
   )
-  const setContractLoadError = useLensStore((state) => state.setContractLoadError)
+  const setContractLoadError = useLensStore(
+    (state) => state.setContractLoadError,
+  )
   const loadContract = useLensStore((state) => state.loadContract)
   const contractLoadStatus = useLensStore((state) => state.contractLoadStatus)
   const contractLoadError = useLensStore((state) => state.contractLoadError)
@@ -57,6 +92,9 @@ function ContractExplorer() {
   const collapseAll = useLensStore((state) => state.collapseAll)
   const selectedKeyPath = useLensStore((state) => state.selectedKeyPath)
   const setSelectedKeyPath = useLensStore((state) => state.setSelectedKeyPath)
+  const clearSelectedKeyPath = useLensStore(
+    (state) => state.clearSelectedKeyPath,
+  )
 
   const ledgerData = useLensStore((state) => state.ledgerData)
   const ledgerEntries = useMemo(() => {
@@ -80,11 +118,7 @@ function ContractExplorer() {
   }
 
   const keys = useMemo(
-    () =>
-      search.keys
-        .split(',')
-        .map((key) => key.trim())
-        .filter((key) => key.length > 0),
+    () => dedupeExplorerKeys(search.keys).split(',').filter(Boolean),
     [search.keys],
   )
 
@@ -125,6 +159,13 @@ function ContractExplorer() {
   }
 
   useEffect(() => {
+    const nextSelection = resolveSelectedKeyPath(selectedKeyPath, flatRows)
+    if (selectedKeyPath !== nextSelection) {
+      clearSelectedKeyPath()
+    }
+  }, [clearSelectedKeyPath, flatRows, selectedKeyPath])
+
+  useEffect(() => {
     setActiveContractId(contractId)
 
     if (keys.length === 0) {
@@ -142,6 +183,14 @@ function ContractExplorer() {
     setContractLoadError,
     setContractLoadStatus,
   ])
+
+  const errorRetryButtonId = 'contract-explorer-retry'
+
+  useEffect(() => {
+    if (contractLoadStatus === ContractLoadStatus.ERROR) {
+      document.getElementById(errorRetryButtonId)?.focus()
+    }
+  }, [contractLoadStatus, errorRetryButtonId])
 
   const handleRetry = () => {
     if (keys.length === 0) {
@@ -177,7 +226,12 @@ function ContractExplorer() {
 
         <div className="flex items-center gap-3 shrink-0">
           {contractLoadStatus === ContractLoadStatus.SUCCESS && (
-            <Button variant="primary" size="sm" onClick={handleCaptureSnapshot}>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleCaptureSnapshot}
+              disabled={ledgerEntries.length === 0}
+            >
               Capture Snapshot
             </Button>
           )}
@@ -188,25 +242,7 @@ function ContractExplorer() {
       </header>
 
       {contractLoadStatus === ContractLoadStatus.LOADING && (
-        <Card>
-          <div className="p-6 space-y-4">
-            <Heading
-              size="sm"
-              as="h3"
-              className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
-            >
-              Loading State
-            </Heading>
-            <div className="space-y-3">
-              {Array.from({ length: 6 }).map((_, idx) => (
-                <div
-                  key={idx}
-                  className="h-10 rounded bg-white/5 border border-border-dark animate-pulse"
-                />
-              ))}
-            </div>
-          </div>
-        </Card>
+        <LoadingSkeleton />
       )}
 
       {contractLoadStatus === ContractLoadStatus.EMPTY && (
@@ -217,7 +253,8 @@ function ContractExplorer() {
             </Heading>
             <p className="text-text-muted text-sm">
               The current contract query completed, but no ledger entries were
-              returned.
+              returned for {keys.length} requested key
+              {keys.length === 1 ? '' : 's'}.
             </p>
             {keys.length === 0 && (
               <p className="text-text-muted text-xs">
@@ -239,7 +276,12 @@ function ContractExplorer() {
               {contractLoadError || 'An unknown error occurred while loading.'}
             </p>
             <div>
-              <Button variant="secondary" size="sm" onClick={handleRetry}>
+              <Button
+                id={errorRetryButtonId}
+                variant="secondary"
+                size="sm"
+                onClick={handleRetry}
+              >
                 Retry
               </Button>
             </div>

@@ -76,9 +76,18 @@ export function simulateTransactionAdapter(
     return { success: false, error: response.error }
   }
 
+  const latestLedger =
+    response.latestLedger !== undefined &&
+    (typeof response.latestLedger !== 'number' ||
+      !Number.isFinite(response.latestLedger) ||
+      !Number.isInteger(response.latestLedger) ||
+      response.latestLedger < 0)
+      ? undefined
+      : response.latestLedger
+
   return {
     success: true,
-    latestLedger: response.latestLedger,
+    latestLedger,
     results: response.results ?? [],
     footprint: {
       readOnly: sanitizeFootprintSection(response.footprint?.readOnly),
@@ -128,14 +137,14 @@ export async function simulateTransaction(
     }
   }
 
-  if (isJsonRpcErrorResponse(data)) {
+  if (isJsonRpcErrorResponse(data, requestId)) {
     return {
       success: false,
       error: `RPC Error (${data.error.code}): ${data.error.message}`,
     }
   }
 
-  if (!isJsonRpcSuccessResponse(data)) {
+  if (!isJsonRpcSuccessResponse(data, requestId)) {
     return { success: false, error: 'Invalid JSON-RPC response format' }
   }
 

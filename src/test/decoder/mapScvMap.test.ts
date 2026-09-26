@@ -279,4 +279,19 @@ describe('mapScvMap', () => {
       zero: 0,
     })
   })
+
+  it('skips entries whose normalized keys cannot be serialized', () => {
+    const circular: Record<string, unknown> = {}
+    circular.self = circular
+
+    const result = mapScvMap(
+      [
+        { key: circular, val: 'invalid' },
+        { key: 'valid', val: 'kept' },
+      ],
+      identityNormalize,
+    )
+
+    expect(result).toEqual({ valid: 'kept' })
+  })
 })

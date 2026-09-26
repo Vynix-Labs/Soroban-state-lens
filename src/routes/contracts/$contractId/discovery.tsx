@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
 import { normalizeFootprintKeys } from '../../../lib/network/normalizeFootprintKeys'
@@ -6,6 +6,179 @@ import { simulateTransaction } from '../../../lib/network/simulateTransaction'
 import { isFunctionName } from '../../../lib/validation/isFunctionName'
 import { useLensStore } from '../../../store/lensStore'
 import { validateContractRouteParam } from './-validateContractRouteParam'
+
+export type DiscoveryLoadStatus = 'loading' | 'empty' | 'error' | 'success'
+
+export interface DiscoveredKey {
+  keyPath: string
+  type: string
+}
+
+export interface DiscoveryLoadState {
+  status: DiscoveryLoadStatus
+  keys: Array<DiscoveredKey>
+  error: string | null
+  requestedKeyCount: number
+}
+
+export function dedupeDiscoveryKeys(
+  keys: Array<DiscoveredKey> | undefined,
+): Array<DiscoveredKey> {
+  const seen = new Set<string>()
+  return (keys ?? []).filter((item) => {
+    if (typeof item.keyPath !== 'string' || item.keyPath.length === 0) {
+      return false
+    }
+    if (seen.has(item.keyPath)) {
+      return false
+    }
+    seen.add(item.keyPath)
+    return true
+  })
+}
+
+export function buildDiscoveryLoadState(
+  partial: Partial<DiscoveryLoadState> = {},
+): DiscoveryLoadState {
+  const keys = dedupeDiscoveryKeys(partial.keys)
+  const requestedKeyCount =
+    typeof partial.requestedKeyCount === 'number'
+      ? partial.requestedKeyCount
+      : keys.length
+
+  return {
+    status: partial.status ?? (keys.length === 0 ? 'empty' : 'success'),
+    keys,
+    error: partial.error ?? null,
+    requestedKeyCount,
+  }
+}
+
+export function DiscoveryStateView({
+  state,
+  onRetry,
+  onPinKey,
+  emptyMessage,
+}: {
+  state: DiscoveryLoadState
+  onRetry?: () => void
+  onPinKey?: (keyPath: string) => void
+  emptyMessage?: string
+}) {
+  const handleRetry = useCallback(() => {
+    onRetry?.()
+  }, [onRetry])
+
+  const keys = useMemo(() => dedupeDiscoveryKeys(state.keys), [state.keys])
+
+  if (state.status === 'loading') {
+    return (
+      <Card>
+        <div className="p-6 space-y-4">
+          <Heading
+            size="sm"
+            as="h3"
+            className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
+          >
+            Loading discovered keys…
+          </Heading>
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="h-10 rounded bg-white/5 border border-border-dark animate-pulse"
+              />
+            ))}
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
+  if (state.status === 'empty') {
+    const requestCount = state.requestedKeyCount
+    return (
+      <Card>
+        <div className="p-6 space-y-3">
+          <Heading size="sm" as="h3" className="text-white">
+            No keys discovered yet
+          </Heading>
+          <p className="text-text-muted text-sm">
+            {emptyMessage ??
+              (requestCount === 0
+                ? 'No keys were requested for discovery.'
+                : `${requestCount} requested key${requestCount === 1 ? '' : 's'} produced no discoverable results.`)}
+          </p>
+        </div>
+      </Card>
+    )
+  }
+
+  if (state.status === 'error') {
+    return (
+      <Card>
+        <div className="p-6 space-y-4 border border-red-500/20 bg-red-500/5 rounded-xl">
+          <Heading size="sm" as="h3" className="text-red-300">
+            Discovery failed
+          </Heading>
+          <p className="text-text-muted text-sm">
+            {state.error || 'An unknown error occurred while discovering keys.'}
+          </p>
+          {onRetry && (
+            <div>
+              <Button variant="secondary" size="sm" onClick={handleRetry}>
+                Retry
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <Heading
+        size="sm"
+        as="h2"
+        className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
+      >
+        Discovered Keys
+      </Heading>
+
+      <div className="grid gap-3">
+        {keys.length > 0 ? (
+          keys.map((item, idx) => (
+            <Card key={`${item.keyPath}-${idx}`}>
+              <div className="p-4 flex items-center justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-mono text-white truncate">
+                    {item.keyPath}
+                  </div>
+                  <div className="text-xs text-text-muted mt-1">
+                    {item.type}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <IconButton
+                    icon="pin"
+                    altText="Add to watchlist"
+                    onClick={() => onPinKey?.(item.keyPath)}
+                    aria-label="Add to watchlist"
+                  />
+                </div>
+              </div>
+            </Card>
+          ))
+        ) : (
+          <div className="text-center py-8 text-text-muted">
+            No keys discovered yet
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export const Route = createFileRoute('/contracts/$contractId/discovery')({
   beforeLoad({ params }) {
@@ -21,11 +194,6 @@ export const Route = createFileRoute('/contracts/$contractId/discovery')({
   component: DiscoveryRoute,
 })
 
-interface DiscoveredKey {
-  keyPath: string
-  type: string
-}
-
 function DiscoveryRoute() {
   const { contractId } = Route.useParams()
   const { normalizedContractId } = Route.useRouteContext()
@@ -34,12 +202,12 @@ function DiscoveryRoute() {
   const [functionName, setFunctionName] = useState('')
   const [transaction, setTransaction] = useState('')
   const [attemptedSubmit, setAttemptedSubmit] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [hasSimulated, setHasSimulated] = useState(false)
   const [simulatedFunction, setSimulatedFunction] = useState('')
-  const [discoveredKeys, setDiscoveredKeys] = useState<Array<DiscoveredKey>>([])
-  const [error, setError] = useState<string | null>(null)
   const activeRequest = useRef<AbortController | null>(null)
+  const [state, setState] = useState(() =>
+    buildDiscoveryLoadState({ status: 'empty', requestedKeyCount: 0 }),
+  )
+  const isSubmitting = state.status === 'loading'
 
   useEffect(
     () => () => {
@@ -63,45 +231,65 @@ function DiscoveryRoute() {
     addToWatchlist(contractId, keyPath)
   }
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setAttemptedSubmit(true)
-    if (!functionNameIsValid || transaction.trim() === '') return
-
+  const runSimulation = async (
+    requestedFunctionName: string,
+    requestedTransaction: string,
+  ) => {
     activeRequest.current?.abort()
     const controller = new AbortController()
     activeRequest.current = controller
-    setError(null)
-    setDiscoveredKeys([])
-    setHasSimulated(false)
-    setIsSubmitting(true)
+    setSimulatedFunction('')
+    setState(buildDiscoveryLoadState({ status: 'loading' }))
 
     try {
       const result = await simulateTransaction({
         rpcUrl,
-        transaction: transaction.trim(),
+        transaction: requestedTransaction.trim(),
         signal: controller.signal,
       })
       if (controller.signal.aborted) return
 
       if (!result.success) {
-        setError(result.error ?? 'Simulation failed.')
+        setState(
+          buildDiscoveryLoadState({
+            status: 'error',
+            error: result.error ?? 'Simulation failed.',
+          }),
+        )
         return
       }
 
-      setHasSimulated(true)
-      setSimulatedFunction(functionName.trim())
-      setDiscoveredKeys(
-        normalizeFootprintKeys(result).keys.map(({ id, access }) => ({
+      const keys = normalizeFootprintKeys(result).keys.map(
+        ({ id, access }) => ({
           keyPath: id,
           type: access === 'read' ? 'Read-only' : 'Read-write',
-        })),
+        }),
+      )
+      setSimulatedFunction(requestedFunctionName.trim())
+      setState(
+        buildDiscoveryLoadState({
+          status: keys.length > 0 ? 'success' : 'empty',
+          keys,
+          requestedKeyCount: keys.length,
+        }),
       )
     } finally {
       if (!controller.signal.aborted) {
         activeRequest.current = null
-        setIsSubmitting(false)
       }
+    }
+  }
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setAttemptedSubmit(true)
+    if (!functionNameIsValid || transaction.trim() === '') return
+    void runSimulation(functionName, transaction)
+  }
+
+  const handleRetry = () => {
+    if (functionNameIsValid && transaction.trim() !== '') {
+      void runSimulation(functionName, transaction)
     }
   }
 
@@ -198,61 +386,19 @@ function DiscoveryRoute() {
           >
             {isSubmitting ? 'Simulating…' : 'Simulate transaction'}
           </Button>
-          {error && (
-            <p className="text-sm text-red-400" role="alert">
-              {error}
-            </p>
-          )}
         </div>
       </form>
 
-      <div className="space-y-4">
-        <Heading
-          size="sm"
-          as="h2"
-          className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
-        >
-          Discovered Keys
-        </Heading>
-        {simulatedFunction && (
-          <p className="text-sm text-text-muted">
-            Function: {simulatedFunction}
-          </p>
-        )}
-
-        <div className="grid gap-3">
-          {discoveredKeys.length > 0 ? (
-            discoveredKeys.map((item) => (
-              <Card key={item.keyPath}>
-                <div className="p-4 flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-mono text-white truncate">
-                      {item.keyPath}
-                    </div>
-                    <div className="text-xs text-text-muted mt-1">
-                      {item.type}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <IconButton
-                      icon="pin"
-                      altText="Add to watchlist"
-                      onClick={() => handlePinKey(item.keyPath)}
-                      aria-label="Add to watchlist"
-                    />
-                  </div>
-                </div>
-              </Card>
-            ))
-          ) : (
-            <div className="text-center py-8 text-text-muted">
-              {hasSimulated
-                ? 'No keys found in the transaction footprint.'
-                : 'No keys discovered yet.'}
-            </div>
-          )}
-        </div>
-      </div>
+      <DiscoveryStateView
+        state={state}
+        onRetry={handleRetry}
+        onPinKey={handlePinKey}
+        emptyMessage={
+          simulatedFunction
+            ? 'No keys found in the transaction footprint.'
+            : undefined
+        }
+      />
     </div>
   )
 }

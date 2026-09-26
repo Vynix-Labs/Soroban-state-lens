@@ -1,12 +1,13 @@
 # PR Summary
 
-Implements three focused enhancements:
+Adds the discovery transaction simulation workflow:
 
-- Extract `contractspecv0` payload from WASM modules safely.
-- Normalize `ScvDuration` and `ScvTimepoint` values as decimal-string primitives.
-- Validate persisted display preferences during hydration and fall back to defaults for invalid values.
+- Route simulation through the shared typed RPC client without changing the JSON-RPC payload or result mapping.
+- Add inline function-name validation, transaction XDR submission, and normalized read/write footprint results.
+- Cancel pending simulation requests when leaving the discovery route.
+- Cover validation, empty input, simulation success/error, and route-unmount cancellation with regression tests.
 
 ## Verification
 
-- `npm test -- src/test/lib/wasm.extractor.test.ts src/test/decoder/primitive.duration-timepoint.test.ts src/test/store/preferences-validation.test.ts`
-- `npm run build`
+- `npm test -- src/test/network/simulateTransaction.test.ts src/test/routes/discoveryRoute.test.tsx src/test/routes/discoveryRouteState.test.tsx` (39 passed)
+- `npx tsc --noEmit`
