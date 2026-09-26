@@ -167,8 +167,16 @@ describe('simulateTransaction request helper', () => {
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: expect.stringContaining('"method":"simulateTransaction"'),
       }),
     )
+    expect(
+      JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string),
+    ).toMatchObject({
+      jsonrpc: '2.0',
+      method: 'simulateTransaction',
+      params: { transaction: 'base64-xdr' },
+    })
   })
 
   it('returns a handled error on JSON-RPC error', async () => {
@@ -196,6 +204,7 @@ describe('simulateTransaction request helper', () => {
       ok: false,
       status: 500,
       statusText: 'Internal Server Error',
+      text: () => Promise.resolve(''),
     } as Response)
 
     const result = await simulateTransaction({
@@ -234,6 +243,8 @@ describe('simulateTransaction request helper', () => {
   })
 
   it('returns a handled abort error when the caller signal is aborted', async () => {
+    const controller = new AbortController()
+    controller.abort()
     vi.mocked(fetch).mockRejectedValue(
       new DOMException('The operation was aborted.', 'AbortError'),
     )
@@ -241,6 +252,7 @@ describe('simulateTransaction request helper', () => {
     const result = await simulateTransaction({
       rpcUrl: mockRpcUrl,
       transaction: 'base64-xdr',
+      signal: controller.signal,
     })
 
     expect(result.success).toBe(false)

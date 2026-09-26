@@ -7,6 +7,8 @@ import { buildJsonRpcRequest } from '../rpc/buildJsonRpcRequest'
 import { isJsonRpcErrorResponse } from '../rpc/isJsonRpcErrorResponse'
 import { isJsonRpcSuccessResponse } from '../rpc/isJsonRpcSuccessResponse'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
+import { callRpc } from './rpcClient'
+import type { RpcError } from './types'
 
 export interface SimulateTransactionParams {
   rpcUrl: string
@@ -48,6 +50,16 @@ function sanitizeFootprintSection(value: unknown): Array<string> {
   }
 
   return value.every((item) => typeof item === 'string') ? value : []
+}
+
+function isRpcError(value: unknown): value is RpcError {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'message' in value &&
+    typeof value.message === 'string' &&
+    'code' in value
+  )
 }
 
 /**
@@ -98,41 +110,21 @@ export async function simulateTransaction(
     requestId,
   )
 
-  let response: Response
-  try {
-    response = await fetch(rpcUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal,
-    })
-  } catch (error) {
-    // Detect aborts by the canonical `name` rather than `instanceof Error`,
-    // since DOMException is not an Error subclass and fetch implementations
-    // surface aborts as DOMException('AbortError') / plain objects.
-    if (error != null && typeof error === 'object' && 'name' in error && (error as { name: unknown }).name === 'AbortError') {
+  const data = await callRpc<unknown>(
+    { url: rpcUrl, timeout: 10_000, signal },
+    payload,
+  )
+
+  if (isRpcError(data)) {
+    if (data.code === 'ABORTED') {
       return { success: false, error: 'Request aborted' }
     }
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Network error',
-    }
-  }
-
-  if (!response.ok) {
-    return {
-      success: false,
-      error: `HTTP ${response.status}: ${response.statusText}`,
-    }
-  }
-
-  let data: unknown
-  try {
-    data = await response.json()
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Invalid JSON response',
+      error:
+        data.code === 'NETWORK_ERROR' && typeof data.details === 'string'
+          ? data.details
+          : data.message,
     }
   }
 
