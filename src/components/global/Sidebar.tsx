@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { downloadSnapshotDiff } from '../../lib/diff/exportSnapshotDiff'
 import { resolveDiffStatus } from '../../lib/diff/resolveDiffStatus'
 import { formatContractIdShort } from '../../lib/format/formatContractIdShort'
+import { formatLedgerSequence } from '../../lib/format/formatLedgerSequence'
 import { useLensStore } from '../../store/lensStore'
 
 interface SidebarProps {
@@ -247,6 +248,9 @@ function HistoryPanel() {
   const clearSnapshots = useLensStore((state) => state.clearSnapshots)
 
   const ledgerData = useLensStore((state) => state.ledgerData)
+  const currentLedgerSequence = useLensStore(
+    (state) => state.currentLedgerSequence,
+  )
   const ledgerEntries = useMemo(() => {
     if (!activeContractId) return EMPTY_ARRAY
     const entries = Object.values(ledgerData).filter(
@@ -262,7 +266,7 @@ function HistoryPanel() {
       entriesDict[entry.key] = entry
     })
     const label = `Snapshot #${snapshots.length + 1}`
-    addSnapshot(activeContractId, entriesDict, label)
+    addSnapshot(activeContractId, entriesDict, currentLedgerSequence, label)
   }
 
   const handleClearSnapshots = () => {
@@ -286,15 +290,6 @@ function HistoryPanel() {
     const next = snapshots[snapshots.length - 1]
 
     downloadSnapshotDiff(prev, next)
-  }
-
-  // Formatting helper for timestamps
-  const formatTime = (ts: number) => {
-    return new Date(ts).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    })
   }
 
   const hasInsufficient = snapshots.length < 2
@@ -531,7 +526,7 @@ function HistoryPanel() {
                     {snap.label || `Snapshot #${idx + 1}`}
                   </span>
                   <span className="text-[9px] text-text-muted flex gap-1.5 font-mono">
-                    <span>{formatTime(snap.timestamp)}</span>
+                    <span>L {formatLedgerSequence(snap.ledgerSequence)}</span>
                     <span>•</span>
                     <span>{Object.keys(snap.ledgerData).length} keys</span>
                   </span>

@@ -14,6 +14,7 @@ describe('exportSnapshotDiff', () => {
       id: 'prev-123',
       contractId: 'contract-abc123',
       timestamp: 1000000,
+      ledgerSequence: 12345,
       label: 'Before',
       ledgerData: {
         'key-1': {
@@ -37,6 +38,7 @@ describe('exportSnapshotDiff', () => {
       id: 'next-456',
       contractId: 'contract-abc123',
       timestamp: 2000000,
+      ledgerSequence: 12350,
       label: 'After',
       ledgerData: {
         'key-1': {
@@ -167,6 +169,7 @@ describe('downloadSnapshotDiff', () => {
       id: 'prev-123',
       contractId: 'contract-abc123',
       timestamp: 1000000,
+      ledgerSequence: 12345,
       label: 'Before',
       ledgerData: {
         'key-1': {
@@ -183,6 +186,7 @@ describe('downloadSnapshotDiff', () => {
       id: 'next-456',
       contractId: 'contract-abc123',
       timestamp: 2000000,
+      ledgerSequence: 12350,
       label: 'After',
       ledgerData: {
         'key-1': {

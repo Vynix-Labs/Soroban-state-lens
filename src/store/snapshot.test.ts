@@ -27,7 +27,7 @@ describe('Snapshot Slice', () => {
       },
     }
 
-    addSnapshot('contract-1', entries)
+    addSnapshot('contract-1', entries, 12345)
 
     const snapshots = getSnapshots('contract-1')
     expect(snapshots).toHaveLength(1)
@@ -52,7 +52,7 @@ describe('Snapshot Slice', () => {
       'key-1': originalEntry,
     }
 
-    addSnapshot('contract-1', entries)
+    addSnapshot('contract-1', entries, 12345)
 
     // Modify the original entry
     originalEntry.value = { data: 'modified' }
@@ -69,27 +69,29 @@ describe('Snapshot Slice', () => {
     const value: Record<string, unknown> = { label: 'cycle' }
     value.self = value
 
-    addSnapshot('contract-1', {
-      'key-1': {
-        key: 'key-1',
-        contractId: 'contract-1',
-        type: 'ContractData',
-        value,
-        lastModifiedLedger: 100,
+    addSnapshot(
+      'contract-1',
+      {
+        'key-1': {
+          key: 'key-1',
+          contractId: 'contract-1',
+          type: 'ContractData',
+          value,
+          lastModifiedLedger: 100,
+        },
       },
-    })
+      12345,
+    )
 
-    const snapshotValue = getSnapshots('contract-1')[0].ledgerData['key-1'].value as Record<string, unknown>
+    const snapshotValue = getSnapshots('contract-1')[0].ledgerData['key-1']
+      .value as Record<string, unknown>
     expect(snapshotValue).not.toBe(value)
     expect(snapshotValue.self).toBe(snapshotValue)
   })
 
   it('should preserve snapshots when live state changes', () => {
-    const {
-      addSnapshot,
-      getSnapshots,
-      upsertLedgerEntry,
-    } = useLensStore.getState()
+    const { addSnapshot, getSnapshots, upsertLedgerEntry } =
+      useLensStore.getState()
 
     const initialEntries: Record<string, LedgerEntry> = {
       'key-1': {
@@ -101,7 +103,7 @@ describe('Snapshot Slice', () => {
       },
     }
 
-    addSnapshot('contract-1', initialEntries)
+    addSnapshot('contract-1', initialEntries, 12345)
 
     // Now modify the live ledger data
     const updatedEntry: LedgerEntry = {
@@ -137,7 +139,7 @@ describe('Snapshot Slice', () => {
       },
     }
 
-    addSnapshot('contract-1', entries, 'Labeled Snapshot')
+    addSnapshot('contract-1', entries, 12345, 'Labeled Snapshot')
 
     const snapshots = getSnapshots('contract-1')
     expect(snapshots[0].label).toBe('Labeled Snapshot')
@@ -166,8 +168,8 @@ describe('Snapshot Slice', () => {
       },
     }
 
-    addSnapshot('contract-1', entries1, 'First')
-    addSnapshot('contract-1', entries2, 'Second')
+    addSnapshot('contract-1', entries1, 12345, 'First')
+    addSnapshot('contract-1', entries2, 12346, 'Second')
 
     const snapshots = getSnapshots('contract-1')
     expect(snapshots).toHaveLength(2)
@@ -198,8 +200,8 @@ describe('Snapshot Slice', () => {
       },
     }
 
-    addSnapshot('contract-1', entries1)
-    addSnapshot('contract-2', entries2)
+    addSnapshot('contract-1', entries1, 12345)
+    addSnapshot('contract-2', entries2, 12346)
 
     const snapshots1 = getSnapshots('contract-1')
     const snapshots2 = getSnapshots('contract-2')
@@ -228,8 +230,8 @@ describe('Snapshot Slice', () => {
       },
     }
 
-    addSnapshot('contract-1', entries, 'Snapshot 1')
-    addSnapshot('contract-1', entries, 'Snapshot 2')
+    addSnapshot('contract-1', entries, 12345, 'Snapshot 1')
+    addSnapshot('contract-1', entries, 12346, 'Snapshot 2')
 
     const snapshotsBefore = getSnapshots('contract-1')
     expect(snapshotsBefore).toHaveLength(2)
@@ -256,8 +258,8 @@ describe('Snapshot Slice', () => {
       },
     }
 
-    addSnapshot('contract-1', entries)
-    addSnapshot('contract-1', entries)
+    addSnapshot('contract-1', entries, 12345)
+    addSnapshot('contract-1', entries, 12346)
 
     clearSnapshots('contract-1')
 
@@ -285,22 +287,19 @@ describe('Snapshot Slice', () => {
       },
     }
 
-    addSnapshot('contract-1', entries)
-    addSnapshot('contract-1', entries)
+    addSnapshot('contract-1', entries, 12345)
+    addSnapshot('contract-1', entries, 12346)
 
     const snapshots = getSnapshots('contract-1')
     const ids = snapshots.map((s) => s.id)
-    
+
     // All IDs should be unique
     expect(new Set(ids).size).toBe(ids.length)
   })
 
   it('should capture current live state as snapshot', () => {
-    const {
-      addSnapshot,
-      getSnapshots,
-      upsertLedgerEntry,
-    } = useLensStore.getState()
+    const { addSnapshot, getSnapshots, upsertLedgerEntry } =
+      useLensStore.getState()
 
     const entries: Array<LedgerEntry> = [
       {
@@ -326,7 +325,7 @@ describe('Snapshot Slice', () => {
     const ledgerDataEntries = Object.fromEntries(
       entries.map((entry) => [entry.key, entry]),
     )
-    addSnapshot('contract-1', ledgerDataEntries)
+    addSnapshot('contract-1', ledgerDataEntries, 12345)
 
     const snapshots = getSnapshots('contract-1')
     expect(snapshots).toHaveLength(1)
@@ -354,12 +353,14 @@ describe('Snapshot Slice', () => {
     }
 
     // Should not throw
-    addSnapshot('contract-1', entries)
+    addSnapshot('contract-1', entries, 12345)
 
     const snapshots = getSnapshots('contract-1')
     expect(snapshots).toHaveLength(1)
     expect(snapshots[0].ledgerData['key-1'].value).toBeUndefined()
-    expect(snapshots[0].ledgerData['key-2'].value).toEqual({ nested: undefined })
+    expect(snapshots[0].ledgerData['key-2'].value).toEqual({
+      nested: undefined,
+    })
   })
 
   it('should preserve Uint8Array values in snapshots', () => {
@@ -376,12 +377,14 @@ describe('Snapshot Slice', () => {
       },
     }
 
-    addSnapshot('contract-1', entries)
+    addSnapshot('contract-1', entries, 12345)
 
     const snapshots = getSnapshots('contract-1')
     expect(snapshots).toHaveLength(1)
-    
-    const capturedValue = snapshots[0].ledgerData['key-1'].value as { bytes: Uint8Array }
+
+    const capturedValue = snapshots[0].ledgerData['key-1'].value as {
+      bytes: Uint8Array
+    }
     expect(capturedValue.bytes).toBeInstanceOf(Uint8Array)
     expect(capturedValue.bytes).toEqual(uint8Array)
   })
@@ -400,14 +403,16 @@ describe('Snapshot Slice', () => {
       },
     }
 
-    addSnapshot('contract-1', entries)
+    addSnapshot('contract-1', entries, 12345)
 
     // Mutate original bytes
     originalBytes[0] = 99
 
     const snapshots = getSnapshots('contract-1')
-    const capturedValue = snapshots[0].ledgerData['key-1'].value as { bytes: Uint8Array }
-    
+    const capturedValue = snapshots[0].ledgerData['key-1'].value as {
+      bytes: Uint8Array
+    }
+
     // Snapshot should not be affected
     expect(capturedValue.bytes[0]).toBe(1)
   })
@@ -426,8 +431,8 @@ describe('Snapshot Slice', () => {
     }
 
     // Attempt to add snapshot with empty contract ID
-    addSnapshot('', entries)
-    addSnapshot('  ', entries)
+    addSnapshot('', entries, 12345)
+    addSnapshot('  ', entries, 12345)
 
     const snapshotsEmpty = getSnapshots('')
     const snapshotsWhitespace = getSnapshots('  ')
@@ -450,7 +455,7 @@ describe('Snapshot Slice', () => {
       },
     }
 
-    addSnapshot('contract-1', entries)
+    addSnapshot('contract-1', entries, 12345)
 
     // Attempt to remove with empty contract ID should be ignored
     removeSnapshot('', 'any-id')
@@ -475,7 +480,7 @@ describe('Snapshot Slice', () => {
       },
     }
 
-    addSnapshot('contract-1', entries)
+    addSnapshot('contract-1', entries, 12345)
 
     // Attempt to clear with empty contract ID should be ignored
     clearSnapshots('')
