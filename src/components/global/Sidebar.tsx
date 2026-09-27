@@ -2,6 +2,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Download,
   Filter,
   GitCompare,
   History as HistoryIcon,
@@ -10,9 +11,10 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
-import { useLensStore } from '../../store/lensStore'
+import { downloadSnapshotDiff } from '../../lib/diff/exportSnapshotDiff'
 import { resolveDiffStatus } from '../../lib/diff/resolveDiffStatus'
 import { formatContractIdShort } from '../../lib/format/formatContractIdShort'
+import { useLensStore } from '../../store/lensStore'
 
 interface SidebarProps {
   open: boolean
@@ -277,6 +279,15 @@ function HistoryPanel() {
     clearSnapshots(activeContractId)
   }
 
+  const handleDownloadDiff = () => {
+    if (snapshots.length < 2) return
+
+    const prev = snapshots[snapshots.length - 2]
+    const next = snapshots[snapshots.length - 1]
+
+    downloadSnapshotDiff(prev, next)
+  }
+
   // Formatting helper for timestamps
   const formatTime = (ts: number) => {
     return new Date(ts).toLocaleTimeString([], {
@@ -475,6 +486,15 @@ function HistoryPanel() {
               >
                 <PlusCircle size={12} />
                 Capture
+              </button>
+              <button
+                onClick={handleDownloadDiff}
+                aria-label="Download snapshot diff as JSON"
+                className="py-2 px-3 rounded-lg bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 text-blue-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                title="Download snapshot diff as JSON"
+              >
+                <Download size={12} />
+                Export
               </button>
               <button
                 onClick={handleClearSnapshots}
