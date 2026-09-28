@@ -3,6 +3,7 @@ import { Button, Card, Heading, IconButton } from '@stellar/design-system'
 import { Link } from '@tanstack/react-router'
 import { useLensStore } from '../../store/lensStore'
 import { buildInspectBreadcrumb } from './buildInspectBreadcrumb'
+import type { LedgerEntry } from '../../store/types'
 
 interface InspectShellProps {
   contractId: string
@@ -24,14 +25,30 @@ export function InspectShell({
   keyPathError,
 }: InspectShellProps) {
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
+  const entry = useLensStore((state) =>
+    Object.values(state.ledgerData).reduce<LedgerEntry | undefined>(
+      (selected, candidate) => {
+        const matchesPath =
+          keyPath === candidate.key || keyPath.startsWith(`${candidate.key}.`)
+        if (candidate.contractId !== contractId || !matchesPath) {
+          return selected
+        }
+        return !selected || candidate.key.length > selected.key.length
+          ? candidate
+          : selected
+      },
+      undefined,
+    ),
+  )
   const [copied, setCopied] = useState(false)
   const copiedResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const metadata: KeyMetadata = {
-    durability: 'Persistent',
-    lastModifiedLedger: 1234567,
-    expirationLedger: 1235000,
-  }
+  const metadata: KeyMetadata | null = entry
+    ? {
+        durability: entry.durability,
+        lastModifiedLedger: entry.lastModifiedLedger,
+        expirationLedger: entry.expirationLedger,
+      }
+    : null
 
   useEffect(() => {
     return () => {
@@ -42,14 +59,17 @@ export function InspectShell({
   }, [])
 
   const handlePinKey = () => {
-    if (keyPath) {
-      addToWatchlist(contractId, keyPath)
+    if (entry && keyPath) {
+      addToWatchlist(contractId, entry.key)
     }
   }
 
   const handleCopyXDR = async () => {
-    const mockXDR = 'AAAAEgAAAAEAAAABAAAABQAAADEAA...'
-    await navigator.clipboard.writeText(mockXDR)
+    if (!entry?.rawXdr) {
+      return
+    }
+
+    await navigator.clipboard.writeText(entry.rawXdr)
     setCopied(true)
 
     if (copiedResetTimeout.current !== null) {
@@ -91,7 +111,7 @@ export function InspectShell({
             icon="pin"
             altText="Add to watchlist"
             onClick={handlePinKey}
-            disabled={!keyPath}
+            disabled={!entry || !keyPath || Boolean(keyPathError)}
             aria-label="Add to watchlist"
           />
         </div>
@@ -137,61 +157,87 @@ export function InspectShell({
         </Card>
       ) : null}
 
-      <Card>
-        <div className="p-6 space-y-4">
-          <Heading
-            size="sm"
-            as="h3"
-            className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
-          >
-            Metadata
-          </Heading>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">
-                Durability
-              </div>
-              <div className="text-white font-mono">{metadata.durability}</div>
-            </div>
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">
-                Last Modified Ledger
-              </div>
-              <div className="text-white font-mono">{metadata.lastModifiedLedger}</div>
-            </div>
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">
-                Expiration Ledger
-              </div>
-              <div className="text-white font-mono">
-                {metadata.expirationLedger ?? 'N/A'}
-              </div>
-            </div>
+      {!keyPathError && !entry ? (
+        <Card>
+          <div className="p-6 space-y-2" role="status">
+            <Heading size="sm" as="h2" className="text-white">
+              Entry not found
+            </Heading>
+            <p className="text-sm text-text-muted">
+              This key path does not match a stored ledger entry.
+            </p>
           </div>
-        </div>
-      </Card>
+        </Card>
+      ) : null}
 
-      <Card>
-        <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between gap-4">
+      {entry ? (
+        <Card>
+          <div className="p-6 space-y-4">
             <Heading
               size="sm"
               as="h3"
               className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
             >
-              Raw XDR
+              Metadata
             </Heading>
-            <Button variant="secondary" size="sm" onClick={handleCopyXDR}>
-              {copied ? 'Copied!' : 'Copy'}
-            </Button>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">
+                  Durability
+                </div>
+                <div className="text-white font-mono">
+                  {metadata?.durability ?? 'N/A'}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">
+                  Last Modified Ledger
+                </div>
+                <div className="text-white font-mono">
+                  {metadata?.lastModifiedLedger ?? 'N/A'}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">
+                  Expiration Ledger
+                </div>
+                <div className="text-white font-mono">
+                  {metadata?.expirationLedger ?? 'N/A'}
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="bg-surface-dark rounded p-3 max-h-48 overflow-auto">
-            <code className="text-xs text-text-secondary font-mono break-words">
-              AAAAEgAAAAEAAAABAAAABQAAADEAA...
-            </code>
+        </Card>
+      ) : null}
+
+      {entry ? (
+        <Card>
+          <div className="p-6 space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <Heading
+                size="sm"
+                as="h3"
+                className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
+              >
+                Raw XDR
+              </Heading>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleCopyXDR}
+                disabled={!entry.rawXdr}
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </Button>
+            </div>
+            <div className="bg-surface-dark rounded p-3 max-h-48 overflow-auto">
+              <code className="text-xs text-text-secondary font-mono break-words">
+                {entry.rawXdr || 'Raw XDR is not available for this entry.'}
+              </code>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      ) : null}
     </div>
   )
 }

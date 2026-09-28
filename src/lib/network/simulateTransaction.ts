@@ -42,6 +42,13 @@ export interface SimulateTransactionResult {
   error?: string
 }
 
+const activeSimulationControllers = new Map<string, AbortController>()
+
+const abortedSimulationResult: SimulateTransactionResult = {
+  success: false,
+  error: 'Request aborted',
+}
+
 function sanitizeFootprintSection(value: unknown): Array<string> {
   if (!Array.isArray(value)) {
     return []
@@ -94,11 +101,41 @@ export function simulateTransactionAdapter(
 export async function simulateTransaction(
   params: SimulateTransactionParams,
 ): Promise<SimulateTransactionResult> {
-  const { rpcUrl, transaction, signal } = params
+  const previousController = activeSimulationControllers.get(params.rpcUrl)
+  previousController?.abort()
 
-  if (!transaction) {
+  if (!params.transaction) {
     return { success: false, error: 'Transaction XDR is required' }
   }
+
+  const controller = new AbortController()
+  const abortFromCaller = () => controller.abort()
+  if (params.signal?.aborted) {
+    controller.abort()
+  } else {
+    params.signal?.addEventListener('abort', abortFromCaller, { once: true })
+  }
+  activeSimulationControllers.set(params.rpcUrl, controller)
+
+  try {
+    const result = await performSimulationRequest({
+      ...params,
+      signal: controller.signal,
+    })
+
+    return controller.signal.aborted ? abortedSimulationResult : result
+  } finally {
+    params.signal?.removeEventListener('abort', abortFromCaller)
+    if (activeSimulationControllers.get(params.rpcUrl) === controller) {
+      activeSimulationControllers.delete(params.rpcUrl)
+    }
+  }
+}
+
+async function performSimulationRequest(
+  params: SimulateTransactionParams,
+): Promise<SimulateTransactionResult> {
+  const { rpcUrl, transaction, signal } = params
 
   const requestId = toRpcRequestId()
   const payload = buildJsonRpcRequest(

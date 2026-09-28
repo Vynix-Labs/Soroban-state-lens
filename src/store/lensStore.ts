@@ -274,9 +274,9 @@ const createSnapshotSlice = (
       return {
         snapshots: {
           ...state.snapshots,
-          [normalizedContractId]: (state.snapshots[normalizedContractId] ?? []).filter(
-            (s) => s.id !== snapshotId,
-          ),
+          [normalizedContractId]: (
+            state.snapshots[normalizedContractId] ?? []
+          ).filter((s) => s.id !== snapshotId),
         },
       }
     }),
@@ -305,6 +305,7 @@ const createContractLoadSlice = (
 ): ContractLoadSlice => {
   let requestId = 0
   let activeController: AbortController | null = null
+  let activeDecodeBatch: Promise<void> | null = null
 
   return {
     contractLoadStatus: ContractLoadStatus.IDLE,
@@ -355,27 +356,45 @@ const createContractLoadSlice = (
           return
         }
 
-        const worker = await createDecoderWorkerSafe()
-        if (isRequestStale()) {
-          return
+        while (activeDecodeBatch !== null) {
+          await activeDecodeBatch.catch(() => undefined)
+          if (isRequestStale()) {
+            return
+          }
         }
 
         const decodedValuesByKey: Record<string, unknown> = {}
 
-        for (const entry of entries) {
+        const decodeBatch = async () => {
+          const worker = await createDecoderWorkerSafe()
           if (isRequestStale()) {
             return
           }
 
-          const result = await worker.decodeScVal({ xdr: entry.xdr })
+          for (const entry of entries) {
+            if (isRequestStale()) {
+              return
+            }
 
-          if (isRequestStale()) {
-            return
+            const result = await worker.decodeScVal({ xdr: entry.xdr })
+            if (isRequestStale()) {
+              return
+            }
+
+            decodedValuesByKey[entry.key] = isDecoderWorkerError(result)
+              ? { kind: 'raw-xdr', xdr: entry.xdr }
+              : result
           }
+        }
 
-          decodedValuesByKey[entry.key] = isDecoderWorkerError(result)
-            ? { kind: 'raw-xdr', xdr: entry.xdr }
-            : result
+        const currentDecodeBatch = decodeBatch()
+        activeDecodeBatch = currentDecodeBatch
+        try {
+          await currentDecodeBatch
+        } finally {
+          if (activeDecodeBatch === currentDecodeBatch) {
+            activeDecodeBatch = null
+          }
         }
 
         if (isRequestStale()) {
@@ -553,7 +572,9 @@ export const useLensStore = create<LensStore>()(
         }
 
         return {
-          networkConfig: serializeNetworkConfigForStorage(DEFAULT_NETWORK_CONFIG),
+          networkConfig: serializeNetworkConfigForStorage(
+            DEFAULT_NETWORK_CONFIG,
+          ),
           preferences: DEFAULT_PREFERENCES,
           watchlist: {},
         }
