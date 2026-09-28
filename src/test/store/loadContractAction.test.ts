@@ -94,7 +94,27 @@ describe('loadContract action', () => {
     const state = getStoreState()
     expect(state.contractLoadStatus).toBe(ContractLoadStatus.ERROR)
     expect(state.contractLoadError).toBe('network failure')
+    expect(state.contractLoadAttemptCount).toBeNull()
   })
+
+  it.each([1, 3])(
+    'stores the %i request attempt count on failure',
+    async (attempts) => {
+      const { resetStore, getStoreState, useLensStore } =
+        await import('../../store/lensStore')
+      resetStore()
+
+      mockGetLedgerEntries.mockRejectedValue(
+        Object.assign(new Error('network failure'), { attempts }),
+      )
+
+      await useLensStore.getState().loadContract('C_FAIL', ['rpc-key-fail'])
+
+      const state = getStoreState()
+      expect(state.contractLoadError).toBe('network failure')
+      expect(state.contractLoadAttemptCount).toBe(attempts)
+    },
+  )
 
   it('keeps malformed XDR visible as a stable raw marker while decoding siblings', async () => {
     const { resetStore, getStoreState, useLensStore } =

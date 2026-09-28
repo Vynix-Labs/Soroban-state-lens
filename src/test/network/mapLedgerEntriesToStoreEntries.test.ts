@@ -1,7 +1,35 @@
 import { describe, expect, it } from 'vitest'
+import { xdr } from '@stellar/stellar-sdk'
 import { mapLedgerEntriesToStoreEntries } from '../../lib/network/mapLedgerEntriesToStoreEntries'
 
+function makeContractDataKey(durability: 'persistent' | 'temporary'): string {
+  const ledgerKey = xdr.LedgerKey.contractData(
+    new xdr.LedgerKeyContractData({
+      contract: xdr.ScAddress.scAddressTypeContract(Buffer.alloc(32)),
+      key: xdr.ScVal.scvSymbol('metadata-key'),
+      durability: xdr.ContractDataDurability[durability](),
+    }),
+  )
+  return ledgerKey.toXDR('base64')
+}
+
 describe('mapLedgerEntriesToStoreEntries', () => {
+  it.each([
+    ['persistent', 'Persistent'],
+    ['temporary', 'Temporary'],
+  ] as const)(
+    'maps %s durability from the ledger key XDR',
+    (durability, expected) => {
+      const key = makeContractDataKey(durability)
+      const [mapped] = mapLedgerEntriesToStoreEntries({
+        contractId: 'CONTRACT_META',
+        entries: [{ key, xdr: 'value-xdr', lastModifiedLedgerSeq: 77 }],
+      })
+
+      expect(mapped.durability).toBe(expected)
+    },
+  )
+
   it('maps representative entries into stable store records', () => {
     const result = mapLedgerEntriesToStoreEntries({
       contractId: 'CONTRACT_1',

@@ -7,6 +7,7 @@ import {
   collectExpandableNodeIds,
   flattenTree,
 } from '../../../lib/tree/flattenTree'
+import { useContractLedgerPolling } from '../../../lib/network/useContractLedgerPolling'
 import { ContractLoadStatus } from '../../../store/types'
 import { useLensStore } from '../../../store/lensStore'
 import { validateContractRouteParam } from './-validateContractRouteParam'
@@ -86,6 +87,10 @@ function ContractExplorer() {
   const loadContract = useLensStore((state) => state.loadContract)
   const contractLoadStatus = useLensStore((state) => state.contractLoadStatus)
   const contractLoadError = useLensStore((state) => state.contractLoadError)
+  const contractLoadAttemptCount = useLensStore(
+    (state) => state.contractLoadAttemptCount,
+  )
+  const rpcUrl = useLensStore((state) => state.networkConfig.rpcUrl)
   const expandedNodes = useLensStore((state) => state.expandedNodes)
   const toggleExpanded = useLensStore((state) => state.toggleExpanded)
   const expandAll = useLensStore((state) => state.expandAll)
@@ -109,7 +114,7 @@ function ContractExplorer() {
 
   const handleCaptureSnapshot = () => {
     if (ledgerEntries.length === 0) return
-    const entriesDict: Record<string, typeof ledgerEntries[0]> = {}
+    const entriesDict: Record<string, (typeof ledgerEntries)[0]> = {}
     ledgerEntries.forEach((entry) => {
       entriesDict[entry.key] = entry
     })
@@ -121,6 +126,8 @@ function ContractExplorer() {
     () => dedupeExplorerKeys(search.keys).split(',').filter(Boolean),
     [search.keys],
   )
+
+  useContractLedgerPolling({ contractId, keys, rpcUrl, loadContract })
 
   const treeRoots = useMemo<Array<FlattenTreeRoot>>(
     () =>
@@ -241,9 +248,7 @@ function ContractExplorer() {
         </div>
       </header>
 
-      {contractLoadStatus === ContractLoadStatus.LOADING && (
-        <LoadingSkeleton />
-      )}
+      {contractLoadStatus === ContractLoadStatus.LOADING && <LoadingSkeleton />}
 
       {contractLoadStatus === ContractLoadStatus.EMPTY && (
         <Card>
@@ -275,6 +280,11 @@ function ContractExplorer() {
             <p className="text-text-muted text-sm">
               {contractLoadError || 'An unknown error occurred while loading.'}
             </p>
+            {contractLoadAttemptCount !== null && (
+              <p className="text-text-muted text-xs">
+                Request attempts: {contractLoadAttemptCount}
+              </p>
+            )}
             <div>
               <Button
                 id={errorRetryButtonId}

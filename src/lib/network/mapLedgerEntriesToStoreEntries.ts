@@ -1,3 +1,4 @@
+import { xdr } from '@stellar/stellar-sdk'
 import { makeLedgerEntryKey } from '../storage/makeLedgerEntryKey'
 import type { LedgerEntry as RpcLedgerEntry } from './getLedgerEntries'
 import type { LedgerEntry as StoreLedgerEntry } from '../../store/types'
@@ -29,6 +30,27 @@ function inferLedgerEntryType(key: string): StoreLedgerEntry['type'] {
   return 'Other'
 }
 
+function decodeDurability(key: string): StoreLedgerEntry['durability'] {
+  try {
+    const ledgerKey = xdr.LedgerKey.fromXDR(key, 'base64')
+    if (ledgerKey.switch().name !== 'contractData') {
+      return undefined
+    }
+
+    const durability = ledgerKey.contractData().durability().name
+    if (durability === 'persistent') {
+      return 'Persistent'
+    }
+    if (durability === 'temporary') {
+      return 'Temporary'
+    }
+  } catch {
+    return undefined
+  }
+
+  return undefined
+}
+
 /**
  * Maps raw RPC ledger-entry payloads into the canonical store entry shape.
  */
@@ -38,16 +60,23 @@ export function mapLedgerEntriesToStoreEntries(
   const { contractId, entries, decodedValuesByKey = {} } = params
   return entries.map((entry) => {
     const type = inferLedgerEntryType(entry.key)
+    const durability = decodeDurability(entry.key)
     const last = entry.lastModifiedLedgerSeq
     const live = entry.liveUntilLedgerSeq
 
     const lastModifiedLedger =
-      typeof last === 'number' && Number.isFinite(last) && last >= 0 && Number.isInteger(last)
+      typeof last === 'number' &&
+      Number.isFinite(last) &&
+      last >= 0 &&
+      Number.isInteger(last)
         ? last
         : 0
 
     const expirationLedger =
-      typeof live === 'number' && Number.isFinite(live) && live >= 0 && Number.isInteger(live)
+      typeof live === 'number' &&
+      Number.isFinite(live) &&
+      live >= 0 &&
+      Number.isInteger(live)
         ? live
         : undefined
 
@@ -55,6 +84,7 @@ export function mapLedgerEntriesToStoreEntries(
       key: makeLedgerEntryKey(contractId, type, entry.key),
       contractId,
       type,
+      ...(durability ? { durability } : {}),
       value:
         decodedValuesByKey[entry.key] !== undefined
           ? decodedValuesByKey[entry.key]

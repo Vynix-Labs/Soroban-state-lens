@@ -274,9 +274,9 @@ const createSnapshotSlice = (
       return {
         snapshots: {
           ...state.snapshots,
-          [normalizedContractId]: (state.snapshots[normalizedContractId] ?? []).filter(
-            (s) => s.id !== snapshotId,
-          ),
+          [normalizedContractId]: (
+            state.snapshots[normalizedContractId] ?? []
+          ).filter((s) => s.id !== snapshotId),
         },
       }
     }),
@@ -306,20 +306,38 @@ const createContractLoadSlice = (
   let requestId = 0
   let activeController: AbortController | null = null
 
+  const getAttemptCount = (error: unknown): number | null => {
+    if (typeof error !== 'object' || error === null || !('attempts' in error)) {
+      return null
+    }
+
+    const attempts = (error as { attempts?: unknown }).attempts
+    return typeof attempts === 'number' &&
+      Number.isInteger(attempts) &&
+      attempts > 0
+      ? attempts
+      : null
+  }
+
   return {
     contractLoadStatus: ContractLoadStatus.IDLE,
     contractLoadError: null,
+    contractLoadAttemptCount: null,
 
     setContractLoadStatus: (status: ContractLoadStatus) =>
       set(() => ({ contractLoadStatus: status })),
 
     setContractLoadError: (message: string | null) =>
-      set(() => ({ contractLoadError: message })),
+      set(() => ({
+        contractLoadError: message,
+        contractLoadAttemptCount: null,
+      })),
 
     resetContractLoadState: () =>
       set(() => ({
         contractLoadStatus: ContractLoadStatus.IDLE,
         contractLoadError: null,
+        contractLoadAttemptCount: null,
       })),
 
     loadContract: async (contractId: string, keys: Array<string>) => {
@@ -340,6 +358,7 @@ const createContractLoadSlice = (
         activeContractId: contractId,
         contractLoadStatus: ContractLoadStatus.LOADING,
         contractLoadError: null,
+        contractLoadAttemptCount: null,
         ledgerData:
           state.activeContractId === contractId ? state.ledgerData : {},
       }))
@@ -397,6 +416,7 @@ const createContractLoadSlice = (
               ? ContractLoadStatus.EMPTY
               : ContractLoadStatus.SUCCESS,
           contractLoadError: null,
+          contractLoadAttemptCount: null,
         }))
       } catch (error) {
         if (isRequestStale()) {
@@ -407,6 +427,7 @@ const createContractLoadSlice = (
           contractLoadStatus: ContractLoadStatus.ERROR,
           contractLoadError:
             error instanceof Error ? error.message : 'Failed to load contract',
+          contractLoadAttemptCount: getAttemptCount(error),
         }))
       } finally {
         if (activeController === controller) {
@@ -553,7 +574,9 @@ export const useLensStore = create<LensStore>()(
         }
 
         return {
-          networkConfig: serializeNetworkConfigForStorage(DEFAULT_NETWORK_CONFIG),
+          networkConfig: serializeNetworkConfigForStorage(
+            DEFAULT_NETWORK_CONFIG,
+          ),
           preferences: DEFAULT_PREFERENCES,
           watchlist: {},
         }
@@ -629,6 +652,7 @@ export const resetStore = () => {
     selectedKeyPath: null,
     contractLoadStatus: ContractLoadStatus.IDLE,
     contractLoadError: null,
+    contractLoadAttemptCount: null,
     preferences: DEFAULT_PREFERENCES,
   })
 }

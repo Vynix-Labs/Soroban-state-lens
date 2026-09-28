@@ -29,7 +29,20 @@ vi.mock('@tanstack/react-router', () => ({
 
 describe('InspectShell', () => {
   it('renders contract and key path context', () => {
-    useLensStore.setState({ watchlist: {} })
+    useLensStore.setState({
+      watchlist: {},
+      ledgerData: {
+        '/state/ledger': {
+          key: '/state/ledger',
+          contractId: 'C123',
+          type: 'ContractData',
+          durability: 'Persistent',
+          value: null,
+          lastModifiedLedger: 1234567,
+          expirationLedger: 1235000,
+        },
+      },
+    })
 
     render(
       <InspectShell
@@ -42,10 +55,78 @@ describe('InspectShell', () => {
     expect(screen.getAllByText('C123').length).toBeGreaterThan(0)
     expect(screen.getByText('/state/ledger')).toBeTruthy()
     expect(screen.getByText('Metadata')).toBeTruthy()
+    expect(screen.getByText('Persistent')).toBeTruthy()
+    expect(screen.getByText('1234567')).toBeTruthy()
+    expect(screen.getByText('1235000')).toBeTruthy()
+  })
+
+  it('renders temporary metadata from the matching stored entry', () => {
+    useLensStore.setState({
+      watchlist: {},
+      ledgerData: {
+        'C123::ContractData::matching-key': {
+          key: 'C123::ContractData::matching-key',
+          contractId: 'C123',
+          type: 'ContractData',
+          durability: 'Temporary',
+          value: null,
+          lastModifiedLedger: 200,
+          expirationLedger: 240,
+        },
+        'C123::ContractData::other-key': {
+          key: 'C123::ContractData::other-key',
+          contractId: 'C123',
+          type: 'ContractData',
+          durability: 'Persistent',
+          value: null,
+          lastModifiedLedger: 300,
+        },
+      },
+    })
+
+    render(
+      <InspectShell
+        contractId="C123"
+        normalizedContractId="C123"
+        keyPath="C123::ContractData::matching-key.item-0"
+      />,
+    )
+
+    expect(screen.getByText('Temporary')).toBeTruthy()
+    expect(screen.getByText('200')).toBeTruthy()
+    expect(screen.getByText('240')).toBeTruthy()
+    expect(screen.queryByText('Persistent')).toBeNull()
+    expect(screen.queryByText('300')).toBeNull()
+  })
+
+  it('renders N/A when no matching stored metadata exists', () => {
+    useLensStore.setState({
+      watchlist: {},
+      ledgerData: {
+        'OTHER::ContractData::ledger-key': {
+          key: 'OTHER::ContractData::ledger-key',
+          contractId: 'OTHER',
+          type: 'ContractData',
+          durability: 'Persistent',
+          value: null,
+          lastModifiedLedger: 1234567,
+        },
+      },
+    })
+
+    render(
+      <InspectShell
+        contractId="C123"
+        normalizedContractId="C123"
+        keyPath="C123::ContractData::missing-key"
+      />,
+    )
+
+    expect(screen.getAllByText('N/A')).toHaveLength(3)
   })
 
   it('pins the current key path to the watchlist', () => {
-    useLensStore.setState({ watchlist: {} })
+    useLensStore.setState({ watchlist: {}, ledgerData: {} })
     const addToWatchlist = vi.spyOn(useLensStore.getState(), 'addToWatchlist')
 
     render(

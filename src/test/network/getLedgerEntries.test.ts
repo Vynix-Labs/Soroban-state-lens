@@ -126,6 +126,22 @@ describe('getLedgerEntries', () => {
   })
 
   describe('failure scenarios', () => {
+    it('includes the attempt count when transient failures exhaust retries', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: false,
+        status: 503,
+      } as Response)
+
+      await expect(
+        getLedgerEntries({ rpcUrl: mockRpcUrl, keys: mockKeys }),
+      ).rejects.toMatchObject({
+        name: 'GetLedgerEntriesError',
+        message: 'HTTP error! status: 503',
+        attempts: 3,
+      })
+      expect(fetch).toHaveBeenCalledTimes(3)
+    })
+
     it('throws error on network failure', async () => {
       vi.mocked(fetch).mockRejectedValue(new Error('Network failure'))
 

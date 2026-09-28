@@ -11,12 +11,6 @@ interface InspectShellProps {
   keyPathError?: string
 }
 
-interface KeyMetadata {
-  durability?: string
-  lastModifiedLedger: number
-  expirationLedger?: number
-}
-
 export function InspectShell({
   contractId,
   normalizedContractId,
@@ -24,14 +18,15 @@ export function InspectShell({
   keyPathError,
 }: InspectShellProps) {
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
+  const ledgerData = useLensStore((state) => state.ledgerData)
   const [copied, setCopied] = useState(false)
   const copiedResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const metadata: KeyMetadata = {
-    durability: 'Persistent',
-    lastModifiedLedger: 1234567,
-    expirationLedger: 1235000,
-  }
+  const metadata = Object.values(ledgerData).find(
+    (entry) =>
+      entry.contractId === contractId &&
+      (keyPath === entry.key || keyPath.startsWith(`${entry.key}.`)),
+  )
 
   useEffect(() => {
     return () => {
@@ -151,20 +146,24 @@ export function InspectShell({
               <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">
                 Durability
               </div>
-              <div className="text-white font-mono">{metadata.durability}</div>
+              <div className="text-white font-mono">
+                {metadata?.durability ?? 'N/A'}
+              </div>
             </div>
             <div>
               <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">
                 Last Modified Ledger
               </div>
-              <div className="text-white font-mono">{metadata.lastModifiedLedger}</div>
+              <div className="text-white font-mono">
+                {metadata?.lastModifiedLedger ?? 'N/A'}
+              </div>
             </div>
             <div>
               <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-1">
                 Expiration Ledger
               </div>
               <div className="text-white font-mono">
-                {metadata.expirationLedger ?? 'N/A'}
+                {metadata?.expirationLedger ?? 'N/A'}
               </div>
             </div>
           </div>
