@@ -56,9 +56,19 @@ const createNetworkConfigSlice = (
   lastCustomUrl: undefined,
 
   setNetworkConfig: (config: Partial<NetworkConfig>) =>
-    set((state) => ({
-      networkConfig: { ...state.networkConfig, ...config },
-    })),
+    set((state) => {
+      const networkConfig = { ...state.networkConfig, ...config }
+      const changed = Object.keys(config).some(
+        (key) =>
+          networkConfig[key as keyof NetworkConfig] !==
+          state.networkConfig[key as keyof NetworkConfig],
+      )
+
+      return {
+        networkConfig,
+        ...(changed ? { connectionStatus: ConnectionStatus.IDLE } : {}),
+      }
+    }),
 
   resetNetworkConfig: () =>
     set(() => ({
@@ -344,12 +354,10 @@ const createContractLoadSlice = (
       const isRequestStale = () =>
         currentRequestId !== requestId || signal.aborted
 
-      set((state) => ({
+      set(() => ({
         activeContractId: contractId,
         contractLoadStatus: ContractLoadStatus.LOADING,
         contractLoadError: null,
-        ledgerData:
-          state.activeContractId === contractId ? state.ledgerData : {},
       }))
 
       try {
@@ -396,10 +404,17 @@ const createContractLoadSlice = (
           decodedValuesByKey,
         })
 
-        set(() => ({
-          ledgerData: Object.fromEntries(
-            mappedEntries.map((entry) => [entry.key, entry]),
-          ),
+        set((state) => ({
+          ledgerData: {
+            ...Object.fromEntries(
+              Object.entries(state.ledgerData).filter(
+                ([, entry]) => entry.contractId !== contractId,
+              ),
+            ),
+            ...Object.fromEntries(
+              mappedEntries.map((entry) => [entry.key, entry]),
+            ),
+          },
           currentLedgerSequence: latestLedger,
           contractLoadStatus:
             mappedEntries.length === 0

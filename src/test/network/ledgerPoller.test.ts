@@ -170,8 +170,9 @@ describe('startLedgerHeadPoll', () => {
       },
     )
 
-    it('does not call onLedgerChange when RPC returns error', async () => {
+    it('reports RPC errors without calling onLedgerChange', async () => {
       const onLedgerChange = vi.fn()
+      const onError = vi.fn()
       const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
       mockCallRpc.mockResolvedValue({
         message: 'Network error',
@@ -182,13 +183,68 @@ describe('startLedgerHeadPoll', () => {
         rpcConfig: defaultRpcConfig,
         intervalMs: 1000,
         onLedgerChange,
+        onError,
       })
 
       await vi.advanceTimersByTimeAsync(0)
       await vi.advanceTimersByTimeAsync(1000)
       expect(onLedgerChange).not.toHaveBeenCalled()
+      expect(onError).toHaveBeenCalledTimes(2)
       stop()
       randomSpy.mockRestore()
+    })
+
+    it('reports failure and recovery through connection status callbacks', async () => {
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+      mockCallRpc
+        .mockResolvedValueOnce({
+          message: 'Network error',
+          code: 'NETWORK_ERROR',
+        })
+        .mockResolvedValueOnce({ result: { sequence: 100 } })
+      const onError = vi.fn()
+      const onRecovery = vi.fn()
+      const stop = startLedgerHeadPoll({
+        rpcConfig: defaultRpcConfig,
+        intervalMs: 1000,
+        onLedgerChange: vi.fn(),
+        onError,
+        onRecovery,
+      })
+
+      await vi.advanceTimersByTimeAsync(0)
+      expect(onError).toHaveBeenCalledOnce()
+      await vi.advanceTimersByTimeAsync(1000)
+      expect(onRecovery).toHaveBeenCalledOnce()
+      stop()
+      randomSpy.mockRestore()
+    })
+
+    it('polls immediately when the document becomes visible again', async () => {
+      mockCallRpc.mockResolvedValue({ result: { sequence: 100 } })
+      const stop = startLedgerHeadPoll({
+        rpcConfig: defaultRpcConfig,
+        intervalMs: 10000,
+        onLedgerChange: vi.fn(),
+      })
+
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mockCallRpc).toHaveBeenCalledTimes(1)
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value: 'hidden',
+      })
+      document.dispatchEvent(new Event('visibilitychange'))
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mockCallRpc).toHaveBeenCalledTimes(1)
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value: 'visible',
+      })
+      document.dispatchEvent(new Event('visibilitychange'))
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mockCallRpc).toHaveBeenCalledTimes(2)
+      stop()
     })
 
     it('reports one error per failed tick and resumes after recovery', async () => {
@@ -285,6 +341,24 @@ describe('startLedgerHeadPoll', () => {
       stop()
       await vi.advanceTimersByTimeAsync(5000)
       expect(mockCallRpc).toHaveBeenCalledTimes(1)
+    })
+
+    it('aborts the active latest-ledger request when stopped', () => {
+      let requestSignal: AbortSignal | undefined
+      mockCallRpc.mockImplementation((_config, _body, signal) => {
+        requestSignal = signal
+        return new Promise(() => {})
+      })
+      const stop = startLedgerHeadPoll({
+        rpcConfig: defaultRpcConfig,
+        intervalMs: 1000,
+        onLedgerChange: vi.fn(),
+      })
+
+      expect(requestSignal?.aborted).toBe(false)
+      stop()
+
+      expect(requestSignal?.aborted).toBe(true)
     })
   })
 
@@ -389,6 +463,7 @@ describe('startLedgerHeadPoll', () => {
           jsonrpc: '2.0',
           method: 'getLatestLedger',
         }),
+        expect.any(AbortSignal),
       )
       stop()
     })
