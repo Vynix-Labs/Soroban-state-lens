@@ -100,6 +100,12 @@ const createLedgerDataSlice = (
   set: (fn: (state: LensStore) => Partial<LensStore>) => void,
 ): LedgerDataSlice => ({
   ledgerData: {},
+  currentLedgerSequence: 0,
+
+  setCurrentLedgerSequence: (sequence: number) =>
+    set(() => ({
+      currentLedgerSequence: sequence,
+    })),
 
   upsertLedgerEntry: (entry: LedgerEntry) =>
     set((state) => ({
@@ -225,6 +231,7 @@ const createSnapshotSlice = (
   addSnapshot: (
     contractId: string,
     entries: Record<string, LedgerEntry>,
+    ledgerSequence: number,
     label?: string,
     maxSnapshots: number = DEFAULT_SNAPSHOT_RETENTION_LIMIT,
   ) =>
@@ -253,6 +260,7 @@ const createSnapshotSlice = (
         id: `${timestamp}-${crypto.randomUUID()}`,
         contractId: normalizedContractId,
         timestamp,
+        ledgerSequence,
         ledgerData: clonedEntries,
         label: normalizedLabel,
       }
@@ -284,9 +292,9 @@ const createSnapshotSlice = (
       return {
         snapshots: {
           ...state.snapshots,
-          [normalizedContractId]: (state.snapshots[normalizedContractId] ?? []).filter(
-            (s) => s.id !== snapshotId,
-          ),
+          [normalizedContractId]: (
+            state.snapshots[normalizedContractId] ?? []
+          ).filter((s) => s.id !== snapshotId),
         },
       }
     }),
@@ -353,7 +361,7 @@ const createContractLoadSlice = (
       }))
 
       try {
-        const { entries } = await getLedgerEntries({
+        const { entries, latestLedger } = await getLedgerEntries({
           rpcUrl: get().networkConfig.rpcUrl,
           keys,
           signal,
@@ -407,6 +415,7 @@ const createContractLoadSlice = (
               mappedEntries.map((entry) => [entry.key, entry]),
             ),
           },
+          currentLedgerSequence: latestLedger,
           contractLoadStatus:
             mappedEntries.length === 0
               ? ContractLoadStatus.EMPTY
@@ -568,7 +577,9 @@ export const useLensStore = create<LensStore>()(
         }
 
         return {
-          networkConfig: serializeNetworkConfigForStorage(DEFAULT_NETWORK_CONFIG),
+          networkConfig: serializeNetworkConfigForStorage(
+            DEFAULT_NETWORK_CONFIG,
+          ),
           preferences: DEFAULT_PREFERENCES,
           watchlist: {},
         }
@@ -692,12 +703,13 @@ export const lensActions = {
   addSnapshot: (
     contractId: string,
     entries: Record<string, LedgerEntry>,
+    ledgerSequence: number,
     label?: string,
     maxSnapshots?: number,
   ) =>
     useLensStore
       .getState()
-      .addSnapshot(contractId, entries, label, maxSnapshots),
+      .addSnapshot(contractId, entries, ledgerSequence, label, maxSnapshots),
   getSnapshots: (contractId: string) =>
     useLensStore.getState().getSnapshots(contractId),
   removeSnapshot: (contractId: string, snapshotId: string) =>
@@ -714,6 +726,11 @@ export const lensActions = {
       console.warn('No active contract to capture snapshot for')
       return
     }
-    state.addSnapshot(state.activeContractId, state.ledgerData, label)
+    state.addSnapshot(
+      state.activeContractId,
+      state.ledgerData,
+      state.currentLedgerSequence,
+      label,
+    )
   },
 }

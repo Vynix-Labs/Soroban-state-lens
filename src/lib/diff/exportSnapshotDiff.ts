@@ -9,11 +9,13 @@ export interface SnapshotDiffExport {
     id: string
     label: string | undefined
     timestamp: number
+    ledgerSequence: number
   }
   nextSnapshot: {
     id: string
     label: string | undefined
     timestamp: number
+    ledgerSequence: number
   }
   diff: Array<SnapshotEntryDiff>
   summary: {
@@ -55,11 +57,13 @@ export function exportSnapshotDiff(
       id: prevSnapshot.id,
       label: prevSnapshot.label,
       timestamp: prevSnapshot.timestamp,
+      ledgerSequence: prevSnapshot.ledgerSequence,
     },
     nextSnapshot: {
       id: nextSnapshot.id,
       label: nextSnapshot.label,
       timestamp: nextSnapshot.timestamp,
+      ledgerSequence: nextSnapshot.ledgerSequence,
     },
     diff,
     summary,
