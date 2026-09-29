@@ -63,6 +63,9 @@ async function fillValidForm() {
   fireEvent.change(await screen.findByLabelText('Transaction XDR'), {
     target: { value: 'base64-transaction-xdr' },
   })
+  fireEvent.change(await screen.findByLabelText('Arguments (JSON reference)'), {
+    target: { value: '{"limit": 5}' },
+  })
 }
 
 describe('Discovery route', () => {
@@ -147,6 +150,20 @@ describe('Discovery route', () => {
     expect(
       await screen.findByText('RPC Error (-32000): Simulation failed'),
     ).toBeTruthy()
+    expect(screen.getByLabelText('Function name')).toHaveProperty(
+      'value',
+      'read_state',
+    )
+    expect(screen.getByLabelText('Transaction XDR')).toHaveProperty(
+      'value',
+      'base64-transaction-xdr',
+    )
+    expect(
+      screen.getByLabelText('Arguments (JSON reference)'),
+    ).toHaveProperty(
+      'value',
+      '{"limit": 5}',
+    )
     expect(
       screen.queryByText('No keys found in the transaction footprint.'),
     ).toBeNull()

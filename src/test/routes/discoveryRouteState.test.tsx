@@ -1,10 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { dedupeExplorerKeys } from '../../routes/contracts/$contractId/explorer'
 import {
   DiscoveryStateView,
   buildDiscoveryLoadState,
 } from '../../routes/contracts/$contractId/discovery'
+import { dedupeExplorerKeys } from '../../routes/contracts/$contractId/explorer'
 
 vi.mock('@stellar/design-system', () => ({
   Button: ({

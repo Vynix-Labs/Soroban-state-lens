@@ -21,6 +21,10 @@ export interface DiscoveryLoadState {
   requestedKeyCount: number
 }
 
+export interface DiscoveryInputState {
+  transaction: string
+  arguments: string
+}
 export function dedupeDiscoveryKeys(
   keys: Array<DiscoveredKey> | undefined,
 ): Array<DiscoveredKey> {
@@ -194,13 +198,17 @@ export const Route = createFileRoute('/contracts/$contractId/discovery')({
   component: DiscoveryRoute,
 })
 
-function DiscoveryRoute() {
+export function DiscoveryRoute() {
   const { contractId } = Route.useParams()
   const { normalizedContractId } = Route.useRouteContext()
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
   const rpcUrl = useLensStore((state) => state.networkConfig.rpcUrl)
   const [functionName, setFunctionName] = useState('')
-  const [transaction, setTransaction] = useState('')
+  const [inputState, setInputState] = useState<DiscoveryInputState>({
+    transaction: '',
+    arguments: '',
+  })
+  const { transaction } = inputState
   const [attemptedSubmit, setAttemptedSubmit] = useState(false)
   const [simulatedFunction, setSimulatedFunction] = useState('')
   const activeRequest = useRef<AbortController | null>(null)
@@ -226,6 +234,14 @@ function DiscoveryRoute() {
     attemptedSubmit && transaction.trim() === ''
       ? 'Transaction XDR is required.'
       : null
+
+  const handleTransactionChange = (value: string) => {
+    setInputState((previous) => ({ ...previous, transaction: value }))
+  }
+
+  const handleArgumentsChange = (value: string) => {
+    setInputState((previous) => ({ ...previous, arguments: value }))
+  }
 
   const handlePinKey = (keyPath: string) => {
     addToWatchlist(contractId, keyPath)
@@ -357,7 +373,7 @@ function DiscoveryRoute() {
               id="discovery-transaction"
               name="transaction"
               value={transaction}
-              onChange={(event) => setTransaction(event.target.value)}
+              onChange={(event) => handleTransactionChange(event.target.value)}
               aria-invalid={transactionError !== null}
               aria-describedby={
                 transactionError ? 'transaction-error' : undefined
@@ -375,6 +391,27 @@ function DiscoveryRoute() {
                 {transactionError}
               </p>
             )}
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="discovery-arguments" className="text-sm text-white">
+              Arguments (JSON reference)
+            </label>
+            <textarea
+              id="discovery-arguments"
+              name="arguments"
+              value={inputState.arguments}
+              onChange={(event) => handleArgumentsChange(event.target.value)}
+              rows={3}
+              spellCheck={false}
+              aria-describedby="discovery-arguments-help"
+              className="w-full resize-y rounded border border-border-dark bg-surface-dark px-3 py-2 font-mono text-sm text-white"
+            />
+            <p
+              id="discovery-arguments-help"
+              className="text-xs text-text-muted"
+            >
+              The simulation reads arguments from the transaction XDR.
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
