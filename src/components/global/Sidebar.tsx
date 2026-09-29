@@ -2,6 +2,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Download,
   Filter,
   GitCompare,
   History as HistoryIcon,
@@ -10,9 +11,11 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
-import { useLensStore } from '../../store/lensStore'
+import { downloadSnapshotDiff } from '../../lib/diff/exportSnapshotDiff'
 import { resolveDiffStatus } from '../../lib/diff/resolveDiffStatus'
 import { formatContractIdShort } from '../../lib/format/formatContractIdShort'
+import { formatLedgerSequence } from '../../lib/format/formatLedgerSequence'
+import { useLensStore } from '../../store/lensStore'
 
 interface SidebarProps {
   open: boolean
@@ -245,6 +248,9 @@ function HistoryPanel() {
   const clearSnapshots = useLensStore((state) => state.clearSnapshots)
 
   const ledgerData = useLensStore((state) => state.ledgerData)
+  const currentLedgerSequence = useLensStore(
+    (state) => state.currentLedgerSequence,
+  )
   const ledgerEntries = useMemo(() => {
     if (!activeContractId) return EMPTY_ARRAY
     const entries = Object.values(ledgerData).filter(
@@ -260,7 +266,7 @@ function HistoryPanel() {
       entriesDict[entry.key] = entry
     })
     const label = `Snapshot #${snapshots.length + 1}`
-    addSnapshot(activeContractId, entriesDict, label)
+    addSnapshot(activeContractId, entriesDict, currentLedgerSequence, label)
   }
 
   const handleClearSnapshots = () => {
@@ -277,13 +283,13 @@ function HistoryPanel() {
     clearSnapshots(activeContractId)
   }
 
-  // Formatting helper for timestamps
-  const formatTime = (ts: number) => {
-    return new Date(ts).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    })
+  const handleDownloadDiff = () => {
+    if (snapshots.length < 2) return
+
+    const prev = snapshots[snapshots.length - 2]
+    const next = snapshots[snapshots.length - 1]
+
+    downloadSnapshotDiff(prev, next)
   }
 
   const hasInsufficient = snapshots.length < 2
@@ -477,6 +483,15 @@ function HistoryPanel() {
                 Capture
               </button>
               <button
+                onClick={handleDownloadDiff}
+                aria-label="Download snapshot diff as JSON"
+                className="py-2 px-3 rounded-lg bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 text-blue-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                title="Download snapshot diff as JSON"
+              >
+                <Download size={12} />
+                Export
+              </button>
+              <button
                 onClick={handleClearSnapshots}
                 aria-label={`Clear all snapshots for ${activeContractId}`}
                 className="py-2 px-3 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
@@ -511,7 +526,7 @@ function HistoryPanel() {
                     {snap.label || `Snapshot #${idx + 1}`}
                   </span>
                   <span className="text-[9px] text-text-muted flex gap-1.5 font-mono">
-                    <span>{formatTime(snap.timestamp)}</span>
+                    <span>L {formatLedgerSequence(snap.ledgerSequence)}</span>
                     <span>•</span>
                     <span>{Object.keys(snap.ledgerData).length} keys</span>
                   </span>

@@ -206,8 +206,72 @@ describe('simulateTransaction request helper', () => {
       expect.objectContaining({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: expect.stringContaining('"method":"simulateTransaction"'),
       }),
     )
+    expect(
+      JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string),
+    ).toMatchObject({
+      jsonrpc: '2.0',
+      method: 'simulateTransaction',
+      params: { transaction: 'base64-xdr' },
+    })
+  })
+
+  it('aborts an older submit and ignores its late response', async () => {
+    let resolveFirst: (response: Response) => void = () => {}
+    let resolveSecond: (response: Response) => void = () => {}
+    let firstSignal: AbortSignal | undefined
+    vi.mocked(fetch)
+      .mockImplementationOnce((_input, init) => {
+        firstSignal = init?.signal as AbortSignal
+        return new Promise((resolve) => {
+          resolveFirst = resolve
+        })
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve
+          }),
+      )
+
+    const firstRequest = simulateTransaction({
+      rpcUrl: mockRpcUrl,
+      transaction: 'older-xdr',
+    })
+    const secondRequest = simulateTransaction({
+      rpcUrl: mockRpcUrl,
+      transaction: 'newer-xdr',
+    })
+
+    expect(firstSignal?.aborted).toBe(true)
+
+    resolveSecond({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          jsonrpc: '2.0',
+          id: 1,
+          result: { latestLedger: 2 },
+        }),
+    } as Response)
+    const secondResult = await secondRequest
+
+    resolveFirst({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          jsonrpc: '2.0',
+          id: 1,
+          result: { latestLedger: 1 },
+        }),
+    } as Response)
+    const firstResult = await firstRequest
+
+    expect(secondResult.success).toBe(true)
+    expect(secondResult.latestLedger).toBe(2)
+    expect(firstResult).toEqual({ success: false, error: 'Request aborted' })
   })
 
   it('returns a handled error on JSON-RPC error', async () => {
@@ -235,6 +299,7 @@ describe('simulateTransaction request helper', () => {
       ok: false,
       status: 500,
       statusText: 'Internal Server Error',
+      text: () => Promise.resolve(''),
     } as Response)
 
     const result = await simulateTransaction({
@@ -273,6 +338,8 @@ describe('simulateTransaction request helper', () => {
   })
 
   it('returns a handled abort error when the caller signal is aborted', async () => {
+    const controller = new AbortController()
+    controller.abort()
     vi.mocked(fetch).mockRejectedValue(
       new DOMException('The operation was aborted.', 'AbortError'),
     )
@@ -280,6 +347,7 @@ describe('simulateTransaction request helper', () => {
     const result = await simulateTransaction({
       rpcUrl: mockRpcUrl,
       transaction: 'base64-xdr',
+      signal: controller.signal,
     })
 
     expect(result.success).toBe(false)

@@ -11,8 +11,8 @@ describe('Sidebar snapshot controls', () => {
     resetStore()
     const store = useLensStore.getState()
     store.setActiveContractId(contractId)
-    store.addSnapshot(contractId, {}, 'First snapshot')
-    store.addSnapshot(contractId, {}, 'Second snapshot')
+    store.addSnapshot(contractId, {}, 1, 'First snapshot')
+    store.addSnapshot(contractId, {}, 2, 'Second snapshot')
   })
 
   it('gives destructive snapshot controls names with their target identity', () => {

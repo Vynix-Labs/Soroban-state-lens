@@ -294,7 +294,7 @@ describe('lensStore', () => {
           value: { ok: true },
           lastModifiedLedger: 1,
         },
-      })
+      }, 0)
       setSelectedKeyPath('contract.entry-0-value')
       setActiveContractId('new-contract')
 

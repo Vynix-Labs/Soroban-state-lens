@@ -11,8 +11,8 @@ describe('Sidebar snapshot clear confirmation', () => {
     resetStore()
     const store = useLensStore.getState()
     store.setActiveContractId(contractId)
-    store.addSnapshot(contractId, {}, 'First snapshot')
-    store.addSnapshot(contractId, {}, 'Second snapshot')
+    store.addSnapshot(contractId, {}, 1, 'First snapshot')
+    store.addSnapshot(contractId, {}, 2, 'Second snapshot')
   })
 
   it('keeps snapshots when the confirmation is cancelled', () => {

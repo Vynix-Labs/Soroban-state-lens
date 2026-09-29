@@ -52,15 +52,33 @@ describe('connectionStatus', () => {
     expect(stateAfterStatusChange.networkConfig.networkId).toBe('testnet')
   })
 
-  it('network field updates do not affect connection status', () => {
+  it('changing networks resets a successful connection status', () => {
     const { setConnectionStatus, setNetworkConfig } = useLensStore.getState()
 
     setConnectionStatus(ConnectionStatus.SUCCESS)
     setNetworkConfig({ networkId: 'mainnet' })
 
     const state = getStoreState()
-    expect(state.connectionStatus).toBe(ConnectionStatus.SUCCESS)
+    expect(state.connectionStatus).toBe(ConnectionStatus.IDLE)
     expect(state.networkConfig.networkId).toBe('mainnet')
+  })
+
+  it('changing networks resets a failed connection status', () => {
+    const { setConnectionStatus, setNetworkConfig } = useLensStore.getState()
+
+    setConnectionStatus(ConnectionStatus.ERROR)
+    setNetworkConfig({ networkId: 'mainnet' })
+
+    expect(getStoreState().connectionStatus).toBe(ConnectionStatus.IDLE)
+  })
+
+  it('setting an unchanged network config preserves connection status', () => {
+    const { setConnectionStatus, setNetworkConfig } = useLensStore.getState()
+
+    setConnectionStatus(ConnectionStatus.SUCCESS)
+    setNetworkConfig({})
+
+    expect(getStoreState().connectionStatus).toBe(ConnectionStatus.SUCCESS)
   })
 
   it('resetStore resets status to idle', () => {

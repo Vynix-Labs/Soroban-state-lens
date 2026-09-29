@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { InspectShell } from '../../components/explorer/InspectShell'
@@ -28,20 +28,21 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 describe('InspectShell', () => {
+  const storedEntry = {
+    key: '/state/ledger',
+    contractId: 'C123',
+    type: 'ContractData' as const,
+    durability: 'Persistent' as const,
+    value: null,
+    lastModifiedLedger: 1234567,
+    expirationLedger: 1235000,
+    rawXdr: 'known-entry-xdr',
+  }
+
   it('renders contract and key path context', () => {
     useLensStore.setState({
       watchlist: {},
-      ledgerData: {
-        '/state/ledger': {
-          key: '/state/ledger',
-          contractId: 'C123',
-          type: 'ContractData',
-          durability: 'Persistent',
-          value: null,
-          lastModifiedLedger: 1234567,
-          expirationLedger: 1235000,
-        },
-      },
+      ledgerData: { [storedEntry.key]: storedEntry },
     })
 
     render(
@@ -58,6 +59,7 @@ describe('InspectShell', () => {
     expect(screen.getByText('Persistent')).toBeTruthy()
     expect(screen.getByText('1234567')).toBeTruthy()
     expect(screen.getByText('1235000')).toBeTruthy()
+    expect(screen.getByText(storedEntry.rawXdr)).toBeTruthy()
   })
 
   it('renders temporary metadata from the matching stored entry', () => {
@@ -99,17 +101,15 @@ describe('InspectShell', () => {
     expect(screen.queryByText('300')).toBeNull()
   })
 
-  it('renders N/A when no matching stored metadata exists', () => {
+  it('renders N/A when the matching stored entry has no metadata', () => {
     useLensStore.setState({
       watchlist: {},
       ledgerData: {
-        'OTHER::ContractData::ledger-key': {
-          key: 'OTHER::ContractData::ledger-key',
-          contractId: 'OTHER',
+        'C123::ContractData::missing-key': {
+          key: 'C123::ContractData::missing-key',
+          contractId: 'C123',
           type: 'ContractData',
-          durability: 'Persistent',
           value: null,
-          lastModifiedLedger: 1234567,
         },
       },
     })
@@ -118,7 +118,7 @@ describe('InspectShell', () => {
       <InspectShell
         contractId="C123"
         normalizedContractId="C123"
-        keyPath="C123::ContractData::missing-key"
+        keyPath="C123::ContractData::missing-key.item-0"
       />,
     )
 
@@ -126,7 +126,10 @@ describe('InspectShell', () => {
   })
 
   it('pins the current key path to the watchlist', () => {
-    useLensStore.setState({ watchlist: {}, ledgerData: {} })
+    useLensStore.setState({
+      watchlist: {},
+      ledgerData: { [storedEntry.key]: storedEntry },
+    })
     const addToWatchlist = vi.spyOn(useLensStore.getState(), 'addToWatchlist')
 
     render(
@@ -140,5 +143,45 @@ describe('InspectShell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add to watchlist' }))
 
     expect(addToWatchlist).toHaveBeenCalledWith('C123', '/state/ledger')
+  })
+
+  it('copies the selected entry raw XDR', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    useLensStore.setState({ ledgerData: { [storedEntry.key]: storedEntry } })
+
+    render(
+      <InspectShell
+        contractId="C123"
+        normalizedContractId="C123"
+        keyPath="/state/ledger"
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(storedEntry.rawXdr),
+    )
+    vi.unstubAllGlobals()
+  })
+
+  it('shows a missing entry and disables entry actions for a stale key path', () => {
+    useLensStore.setState({ watchlist: {}, ledgerData: {} })
+
+    render(
+      <InspectShell
+        contractId="C123"
+        normalizedContractId="C123"
+        keyPath="stale-entry-key"
+      />,
+    )
+
+    expect(screen.getByText('Entry not found')).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: 'Add to watchlist' }),
+    ).toHaveProperty('disabled', true)
+    expect(screen.queryByRole('button', { name: 'Copy' })).toBeNull()
+    expect(screen.queryByText('Metadata')).toBeNull()
   })
 })

@@ -7,6 +7,8 @@ import { buildJsonRpcRequest } from '../rpc/buildJsonRpcRequest'
 import { isJsonRpcErrorResponse } from '../rpc/isJsonRpcErrorResponse'
 import { isJsonRpcSuccessResponse } from '../rpc/isJsonRpcSuccessResponse'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
+import { callRpc } from './rpcClient'
+import type { RpcError } from './types'
 
 export interface SimulateTransactionParams {
   rpcUrl: string
@@ -42,12 +44,29 @@ export interface SimulateTransactionResult {
   error?: string
 }
 
+const activeSimulationControllers = new Map<string, AbortController>()
+
+const abortedSimulationResult: SimulateTransactionResult = {
+  success: false,
+  error: 'Request aborted',
+}
+
 function sanitizeFootprintSection(value: unknown): Array<string> {
   if (!Array.isArray(value)) {
     return []
   }
 
   return value.every((item) => typeof item === 'string') ? value : []
+}
+
+function isRpcError(value: unknown): value is RpcError {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'message' in value &&
+    typeof value.message === 'string' &&
+    'code' in value
+  )
 }
 
 /**
@@ -94,11 +113,41 @@ export function simulateTransactionAdapter(
 export async function simulateTransaction(
   params: SimulateTransactionParams,
 ): Promise<SimulateTransactionResult> {
-  const { rpcUrl, transaction, signal } = params
+  const previousController = activeSimulationControllers.get(params.rpcUrl)
+  previousController?.abort()
 
-  if (!transaction) {
+  if (!params.transaction) {
     return { success: false, error: 'Transaction XDR is required' }
   }
+
+  const controller = new AbortController()
+  const abortFromCaller = () => controller.abort()
+  if (params.signal?.aborted) {
+    controller.abort()
+  } else {
+    params.signal?.addEventListener('abort', abortFromCaller, { once: true })
+  }
+  activeSimulationControllers.set(params.rpcUrl, controller)
+
+  try {
+    const result = await performSimulationRequest({
+      ...params,
+      signal: controller.signal,
+    })
+
+    return controller.signal.aborted ? abortedSimulationResult : result
+  } finally {
+    params.signal?.removeEventListener('abort', abortFromCaller)
+    if (activeSimulationControllers.get(params.rpcUrl) === controller) {
+      activeSimulationControllers.delete(params.rpcUrl)
+    }
+  }
+}
+
+async function performSimulationRequest(
+  params: SimulateTransactionParams,
+): Promise<SimulateTransactionResult> {
+  const { rpcUrl, transaction, signal } = params
 
   const requestId = toRpcRequestId()
   const payload = buildJsonRpcRequest(
@@ -107,46 +156,21 @@ export async function simulateTransaction(
     requestId,
   )
 
-  let response: Response
-  try {
-    response = await fetch(rpcUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal,
-    })
-  } catch (error) {
-    // Detect aborts by the canonical `name` rather than `instanceof Error`,
-    // since DOMException is not an Error subclass and fetch implementations
-    // surface aborts as DOMException('AbortError') / plain objects.
-    if (
-      error != null &&
-      typeof error === 'object' &&
-      'name' in error &&
-      (error as { name: unknown }).name === 'AbortError'
-    ) {
+  const data = await callRpc<unknown>(
+    { url: rpcUrl, timeout: 10_000, signal },
+    payload,
+  )
+
+  if (isRpcError(data)) {
+    if (data.code === 'ABORTED') {
       return { success: false, error: 'Request aborted' }
     }
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Network error',
-    }
-  }
-
-  if (!response.ok) {
-    return {
-      success: false,
-      error: `HTTP ${response.status}: ${response.statusText}`,
-    }
-  }
-
-  let data: unknown
-  try {
-    data = await response.json()
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Invalid JSON response',
+      error:
+        data.code === 'NETWORK_ERROR' && typeof data.details === 'string'
+          ? data.details
+          : data.message,
     }
   }
 

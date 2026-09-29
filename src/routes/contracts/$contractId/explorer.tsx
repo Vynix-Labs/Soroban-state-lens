@@ -102,6 +102,9 @@ function ContractExplorer() {
   )
 
   const ledgerData = useLensStore((state) => state.ledgerData)
+  const currentLedgerSequence = useLensStore(
+    (state) => state.currentLedgerSequence,
+  )
   const ledgerEntries = useMemo(() => {
     const entries = Object.values(ledgerData).filter(
       (entry) => entry.contractId === contractId,
@@ -119,7 +122,7 @@ function ContractExplorer() {
       entriesDict[entry.key] = entry
     })
     const label = `Snapshot #${snapshots.length + 1}`
-    addSnapshot(contractId, entriesDict, label)
+    addSnapshot(contractId, entriesDict, currentLedgerSequence, label)
   }
 
   const keys = useMemo(

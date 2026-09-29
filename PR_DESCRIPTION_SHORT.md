@@ -1,14 +1,13 @@
 # PR Summary
 
-Implements focused RPC and store-slice hardening for request IDs, contract-spec caching, and ledger-entry validation.
+Adds the discovery transaction simulation workflow:
 
-## What changed
-
-- Wrap generated RPC request IDs safely before they reach the JS safe-integer limit.
-- Validate JSON-RPC request IDs before building payloads, rejecting invalid values early.
-- Normalize contract IDs in the contract-spec cache so equivalent inputs resolve to the same entry.
-- Validate ledger-entry result shape before mapping to prevent malformed RPC responses from crashing downstream flows.
+- Route simulation through the shared typed RPC client without changing the JSON-RPC payload or result mapping.
+- Add inline function-name validation, transaction XDR submission, and normalized read/write footprint results.
+- Cancel pending simulation requests when leaving the discovery route.
+- Cover validation, empty input, simulation success/error, and route-unmount cancellation with regression tests.
 
 ## Verification
 
-- `node node_modules/vitest/vitest.mjs run src/test/rpc/toRpcRequestId.test.ts src/test/rpc/buildJsonRpcRequest.test.ts src/test/store/contractSpecSlice.test.ts src/test/network/getLedgerEntries.test.ts --reporter=default`
+- `npm test -- src/test/network/simulateTransaction.test.ts src/test/routes/discoveryRoute.test.tsx src/test/routes/discoveryRouteState.test.tsx` (39 passed)
+- `npx tsc --noEmit`
