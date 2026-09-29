@@ -75,11 +75,13 @@ describe('exportSnapshotDiff', () => {
         id: 'prev-123',
         label: 'Before',
         timestamp: 1000000,
+        ledgerSequence: 12345,
       },
       nextSnapshot: {
         id: 'next-456',
         label: 'After',
         timestamp: 2000000,
+        ledgerSequence: 12350,
       },
       diff: expect.any(Array),
       summary: expect.any(Object),

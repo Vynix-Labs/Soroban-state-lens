@@ -110,6 +110,7 @@ describe('selectors', () => {
           label: 'Snapshot 1',
           ledgerData: {},
           timestamp: 123,
+          ledgerSequence: 123,
         },
       ]
 

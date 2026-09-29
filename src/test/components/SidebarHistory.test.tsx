@@ -110,8 +110,8 @@ describe('Sidebar History Panel', () => {
     }
 
     // Programmatically add snapshots
-    state.addSnapshot('c1', snap1, 'Snapshot #1')
-    state.addSnapshot('c1', snap2, 'Snapshot #2')
+    state.addSnapshot('c1', snap1, 12345, 'Snapshot #1')
+    state.addSnapshot('c1', snap2, 12346, 'Snapshot #2')
 
     render(<Sidebar open={true} onClose={vi.fn()} activeNavItem="history" />)
 
