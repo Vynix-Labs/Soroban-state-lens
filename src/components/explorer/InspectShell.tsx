@@ -181,7 +181,9 @@ export function InspectShell({
                   Last Modified Ledger
                 </div>
                 <div className="text-white font-mono">
-                  {entry.lastModifiedLedger ?? 'N/A'}
+                  {entry.lastModifiedLedger > 0
+                    ? entry.lastModifiedLedger
+                    : 'N/A'}
                 </div>
               </div>
               <div>

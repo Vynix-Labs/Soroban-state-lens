@@ -110,6 +110,7 @@ describe('InspectShell', () => {
           contractId: 'C123',
           type: 'ContractData',
           value: null,
+          lastModifiedLedger: 0,
         },
       },
     })
