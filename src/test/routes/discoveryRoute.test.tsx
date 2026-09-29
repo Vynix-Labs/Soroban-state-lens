@@ -16,6 +16,35 @@ vi.mock('@stellar/design-system', () => ({
 const VALID_CONTRACT_ID =
   'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC'
 
+interface JsonRpcRequest {
+  id: number
+  method: string
+}
+
+function getRpcRequests(method: string) {
+  return vi.mocked(fetch).mock.calls.filter(([, init]) => {
+    const request = JSON.parse(String(init?.body)) as JsonRpcRequest
+    return request.method === method
+  })
+}
+
+function mockRpcResponse(
+  getResult: (request: JsonRpcRequest) => Record<string, unknown>,
+) {
+  vi.mocked(fetch).mockImplementation((_input, init) => {
+    const request = JSON.parse(String(init?.body)) as JsonRpcRequest
+    return Promise.resolve({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          jsonrpc: '2.0',
+          id: request.id,
+          ...getResult(request),
+        }),
+    } as Response)
+  })
+}
+
 function renderDiscoveryRoute() {
   window.history.pushState({}, '', `/contracts/${VALID_CONTRACT_ID}/discovery`)
   const router = createRouter({
@@ -58,7 +87,7 @@ describe('Discovery route', () => {
       screen.getByRole('button', { name: 'Simulate transaction' }),
     )
 
-    expect(fetch).not.toHaveBeenCalled()
+    expect(getRpcRequests('simulateTransaction')).toHaveLength(0)
     expect(
       screen.getByLabelText('Function name').getAttribute('aria-invalid'),
     ).toBe('true')
@@ -74,24 +103,22 @@ describe('Discovery route', () => {
     )
 
     expect(await screen.findByText('Transaction XDR is required.')).toBeTruthy()
-    expect(fetch).not.toHaveBeenCalled()
+    expect(getRpcRequests('simulateTransaction')).toHaveLength(0)
   })
 
   it('simulates the transaction and displays normalized discovered keys', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          jsonrpc: '2.0',
-          id: 1,
-          result: {
-            footprint: {
-              readOnly: ['read-key'],
-              readWrite: ['write-key'],
+    mockRpcResponse((request) =>
+      request.method === 'getLatestLedger'
+        ? { result: { sequence: 123 } }
+        : {
+            result: {
+              footprint: {
+                readOnly: ['read-key'],
+                readWrite: ['write-key'],
+              },
             },
           },
-        }),
-    } as Response)
+    )
     renderDiscoveryRoute()
     await fillValidForm()
     fireEvent.click(
@@ -106,19 +133,11 @@ describe('Discovery route', () => {
   })
 
   it('shows simulation errors without displaying a successful empty state', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: () => {
-        const request = JSON.parse(
-          vi.mocked(fetch).mock.calls[0][1]?.body as string,
-        )
-        return Promise.resolve({
-          jsonrpc: '2.0',
-          id: request.id,
-          error: { code: -32000, message: 'Simulation failed' },
-        })
-      },
-    } as Response)
+    mockRpcResponse((request) =>
+      request.method === 'getLatestLedger'
+        ? { result: { sequence: 123 } }
+        : { error: { code: -32000, message: 'Simulation failed' } },
+    )
     renderDiscoveryRoute()
     await fillValidForm()
     fireEvent.click(
@@ -135,19 +154,33 @@ describe('Discovery route', () => {
 
   it('aborts a pending simulation when the route unmounts', async () => {
     let resolveResponse: (response: Response) => void = () => undefined
-    vi.mocked(fetch).mockImplementation(
-      () =>
-        new Promise<Response>((resolve) => {
-          resolveResponse = resolve
-        }),
-    )
+    vi.mocked(fetch).mockImplementation((_input, init) => {
+      const request = JSON.parse(String(init?.body)) as JsonRpcRequest
+      if (request.method === 'getLatestLedger') {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              jsonrpc: '2.0',
+              id: request.id,
+              result: { sequence: 123 },
+            }),
+        } as Response)
+      }
+      return new Promise<Response>((resolve) => {
+        resolveResponse = resolve
+      })
+    })
     const view = renderDiscoveryRoute()
     await fillValidForm()
     fireEvent.click(
       screen.getByRole('button', { name: 'Simulate transaction' }),
     )
-    await waitFor(() => expect(fetch).toHaveBeenCalledOnce())
-    const signal = vi.mocked(fetch).mock.calls[0][1]?.signal as AbortSignal
+    await waitFor(() =>
+      expect(getRpcRequests('simulateTransaction')).toHaveLength(1),
+    )
+    const [, init] = getRpcRequests('simulateTransaction')[0]
+    const signal = init?.signal as AbortSignal
 
     view.unmount()
     expect(signal.aborted).toBe(true)
@@ -158,7 +191,7 @@ describe('Discovery route', () => {
         json: () =>
           Promise.resolve({
             jsonrpc: '2.0',
-            id: 1,
+            id: JSON.parse(String(init?.body)).id,
             result: { footprint: { readOnly: ['late-key'] } },
           }),
       } as Response)
