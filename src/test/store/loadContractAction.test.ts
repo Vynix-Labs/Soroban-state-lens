@@ -235,7 +235,7 @@ describe('loadContract action', () => {
     expect(state.ledgerData['C_STALE::Other::old-key']).toBeUndefined()
   })
 
-  it('ignores stale results that finish decoding after a newer request', async () => {
+  it('coalesces refreshes that arrive during a decode batch', async () => {
     const { resetStore, getStoreState, useLensStore } =
       await import('../../store/lensStore')
     resetStore()
@@ -245,27 +245,35 @@ describe('loadContract action', () => {
       resolveFirstDecode = resolve
     })
     const firstWorker = { decodeScVal: vi.fn().mockReturnValue(firstDecode) }
-    const secondWorker = {
+    const latestWorker = {
       decodeScVal: vi.fn().mockResolvedValue({
         kind: 'primitive',
         path: [],
         scType: 'string',
-        value: 'new',
+        value: 'latest',
         raw: { switch: 'ScvString', value: 'new' },
       }),
     }
 
     mockCreateDecoderWorkerSafe
       .mockImplementationOnce(() => Promise.resolve(firstWorker))
-      .mockImplementationOnce(() => Promise.resolve(secondWorker))
+      .mockImplementationOnce(() => Promise.resolve(latestWorker))
     mockGetLedgerEntries
       .mockResolvedValueOnce({
         entries: [{ key: 'old-key', xdr: 'old-xdr', lastModifiedLedgerSeq: 1 }],
         latestLedger: 1,
       })
       .mockResolvedValueOnce({
-        entries: [{ key: 'new-key', xdr: 'new-xdr', lastModifiedLedgerSeq: 2 }],
+        entries: [
+          { key: 'middle-key', xdr: 'middle-xdr', lastModifiedLedgerSeq: 2 },
+        ],
         latestLedger: 2,
+      })
+      .mockResolvedValueOnce({
+        entries: [
+          { key: 'latest-key', xdr: 'latest-xdr', lastModifiedLedgerSeq: 3 },
+        ],
+        latestLedger: 3,
       })
 
     const firstCall = useLensStore
@@ -279,10 +287,23 @@ describe('loadContract action', () => {
       await Promise.resolve()
     }
 
-    const secondCall = useLensStore
+    const middleCall = useLensStore
       .getState()
-      .loadContract('C_DECODE_STALE', ['new'])
-    await secondCall
+      .loadContract('C_DECODE_STALE', ['middle'])
+    const latestCall = useLensStore
+      .getState()
+      .loadContract('C_DECODE_STALE', ['latest'])
+    for (
+      let attempt = 0;
+      attempt < 10 && mockGetLedgerEntries.mock.calls.length < 3;
+      attempt += 1
+    ) {
+      await Promise.resolve()
+    }
+
+    expect(mockCreateDecoderWorkerSafe).toHaveBeenCalledTimes(1)
+    expect(latestWorker.decodeScVal).not.toHaveBeenCalled()
+
     resolveFirstDecode?.({
       kind: 'primitive',
       path: [],
@@ -290,13 +311,18 @@ describe('loadContract action', () => {
       value: 'old',
       raw: { switch: 'ScvString', value: 'old' },
     })
-    await firstCall
+    await Promise.all([firstCall, middleCall, latestCall])
 
     const state = getStoreState()
     expect(state.contractLoadStatus).toBe(ContractLoadStatus.SUCCESS)
-    expect(state.ledgerData['C_DECODE_STALE::Other::new-key'].rawXdr).toBe(
-      'new-xdr',
+    expect(latestWorker.decodeScVal).toHaveBeenCalledWith({ xdr: 'latest-xdr' })
+    expect(latestWorker.decodeScVal).toHaveBeenCalledTimes(1)
+    expect(state.ledgerData['C_DECODE_STALE::Other::latest-key'].rawXdr).toBe(
+      'latest-xdr',
     )
     expect(state.ledgerData['C_DECODE_STALE::Other::old-key']).toBeUndefined()
+    expect(
+      state.ledgerData['C_DECODE_STALE::Other::middle-key'],
+    ).toBeUndefined()
   })
 })
