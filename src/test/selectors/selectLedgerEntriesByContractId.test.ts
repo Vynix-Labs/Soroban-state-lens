@@ -85,22 +85,22 @@ describe('selectLedgerEntriesByContractId', () => {
       makeEntry({ key: 'key-a', contractId: 'CTEST' }),
       makeEntry({ key: 'key-m', contractId: 'CTEST' }),
     ]
-    
+
     const ledgerData: Record<string, LedgerEntry> = {}
     for (const entry of unfrozenEntries) {
       ledgerData[entry.key] = entry
     }
-    
+
     const testState = { ledgerData } as unknown as LensStore
-    
+
     // Get the entries from the selector
     const result = selectLedgerEntriesByContractId(testState, 'CTEST')
-    
+
     // Result should be sorted
     expect(result[0].key).toBe('key-a')
     expect(result[1].key).toBe('key-m')
     expect(result[2].key).toBe('key-z')
-    
+
     // Verify the original ledgerData entries are in their original order
     const originalOrder = Object.values(ledgerData)
     expect(originalOrder[0].key).toBe('key-z')
@@ -111,11 +111,11 @@ describe('selectLedgerEntriesByContractId', () => {
   it('should return a copy that can be mutated without affecting selector', () => {
     const result1 = selectLedgerEntriesByContractId(state, 'CABC')
     const result2 = selectLedgerEntriesByContractId(state, 'CABC')
-    
+
     // Results should be logically equal but different array instances
     expect(result1).toEqual(result2)
     expect(result1).not.toBe(result2)
-    
+
     // Mutating one result should not affect the other
     result1.push(makeEntry({ key: 'key-extra', contractId: 'CABC' }))
     expect(result1).toHaveLength(3)

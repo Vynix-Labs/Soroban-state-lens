@@ -1,14 +1,14 @@
 import { buildJsonRpcRequest } from '../rpc/buildJsonRpcRequest'
 import { isJsonRpcSuccessResponse } from '../rpc/isJsonRpcSuccessResponse'
+import { normalizeTimeoutMs } from '../rpc/normalizeTimeoutMs'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
 import { callRpc } from './rpcClient'
-import type { RpcError } from './types'
+import type { RpcError, RpcRequestOptions } from './types'
 
-export interface GetContractWasmParams {
+export interface GetContractWasmParams extends RpcRequestOptions {
   rpcUrl: string
   contractId: string
   timeout?: number
-  signal?: AbortSignal
 }
 
 export interface GetContractWasmSuccess {
@@ -72,7 +72,7 @@ export async function getContractWasm(
     const response = await callRpc(
       {
         url: params.rpcUrl,
-        timeout: params.timeout ?? 10000,
+        timeout: normalizeTimeoutMs(params.timeoutMs ?? params.timeout, 10000),
         signal: params.signal,
       },
       buildJsonRpcRequest('getContractCode', [params.contractId], requestId),

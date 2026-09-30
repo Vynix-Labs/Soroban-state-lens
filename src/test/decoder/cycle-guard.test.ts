@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
-  
   ScValType,
   VisitedTracker,
   createVisitedTracker,
-  normalizeScVal
+  normalizeScVal,
 } from '../../workers/decoder/normalizeScVal'
-import type {ScVal} from '../../workers/decoder/normalizeScVal';
+import type { ScVal } from '../../workers/decoder/normalizeScVal'
 // (NormalizedValue type import removed — unused in tests)
 
 describe('Cycle Guard - Visited Node Tracking', () => {

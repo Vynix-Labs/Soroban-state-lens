@@ -475,15 +475,17 @@ const createContractLoadSlice = (
   return {
     contractLoadStatus: ContractLoadStatus.IDLE,
     contractLoadError: null,
+    contractLoadErrorCode: null,
     contractLoadAttemptCount: null,
 
     setContractLoadStatus: (status: ContractLoadStatus) =>
       set(() => ({ contractLoadStatus: status })),
 
-    setContractLoadError: (message: string | null) =>
+    setContractLoadError: (message: string | null, code = null) =>
       set(() => ({
         contractLoadError:
           message === null ? null : limitDecoderErrorDetail(message),
+        contractLoadErrorCode: message === null ? null : code,
         contractLoadAttemptCount: null,
       })),
 
@@ -491,6 +493,7 @@ const createContractLoadSlice = (
       set(() => ({
         contractLoadStatus: ContractLoadStatus.IDLE,
         contractLoadError: null,
+        contractLoadErrorCode: null,
         contractLoadAttemptCount: null,
       })),
 
@@ -511,6 +514,7 @@ const createContractLoadSlice = (
         activeContractId: contractId,
         contractLoadStatus: ContractLoadStatus.LOADING,
         contractLoadError: null,
+        contractLoadErrorCode: null,
         contractLoadAttemptCount: null,
       }))
 
@@ -645,6 +649,7 @@ const createContractLoadSlice = (
               ? ContractLoadStatus.EMPTY
               : ContractLoadStatus.SUCCESS,
           contractLoadError: null,
+          contractLoadErrorCode: null,
           contractLoadAttemptCount: null,
         }))
       } catch (error) {
@@ -657,6 +662,12 @@ const createContractLoadSlice = (
           contractLoadError: limitDecoderErrorDetail(
             error instanceof Error ? error.message : 'Failed to load contract',
           ),
+          contractLoadErrorCode:
+            error instanceof Error &&
+            'code' in error &&
+            (typeof error.code === 'string' || typeof error.code === 'number')
+              ? error.code
+              : null,
           contractLoadAttemptCount: getAttemptCount(error),
         }))
       } finally {
@@ -975,6 +986,7 @@ export const resetStore = () => {
     selectedKeyPath: null,
     contractLoadStatus: ContractLoadStatus.IDLE,
     contractLoadError: null,
+    contractLoadErrorCode: null,
     contractLoadAttemptCount: null,
     preferences: DEFAULT_PREFERENCES,
   })
@@ -1015,8 +1027,10 @@ export const lensActions = {
   clearSelectedKeyPath: () => useLensStore.getState().clearSelectedKeyPath(),
   setContractLoadStatus: (status: ContractLoadStatus) =>
     useLensStore.getState().setContractLoadStatus(status),
-  setContractLoadError: (message: string | null) =>
-    useLensStore.getState().setContractLoadError(message),
+  setContractLoadError: (
+    message: string | null,
+    code?: string | number | null,
+  ) => useLensStore.getState().setContractLoadError(message, code),
   resetContractLoadState: () =>
     useLensStore.getState().resetContractLoadState(),
   loadContract: (contractId: string, keys: Array<string>) =>

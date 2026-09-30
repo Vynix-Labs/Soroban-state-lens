@@ -16,7 +16,6 @@ import type { FlattenTreeRoot } from '../../../lib/tree/flatTreeRow'
 import type { Node } from '../../../types/node'
 
 const EMPTY_EXPANDED_NODES: Array<string> = []
-
 export function resolveSelectedKeyPath(
   selectedKeyPath: string | null,
   rows: Array<{ id?: string; keyPath?: string }>,
@@ -130,6 +129,9 @@ function ContractExplorer() {
   const refreshActiveKeys = useLensStore((state) => state.refreshActiveKeys)
   const contractLoadStatus = useLensStore((state) => state.contractLoadStatus)
   const contractLoadError = useLensStore((state) => state.contractLoadError)
+  const contractLoadErrorCode = useLensStore(
+    (state) => state.contractLoadErrorCode,
+  )
   const contractLoadAttemptCount = useLensStore(
     (state) => state.contractLoadAttemptCount,
   )
@@ -341,6 +343,11 @@ function ContractExplorer() {
             <p className="text-text-muted text-sm">
               {contractLoadError || 'An unknown error occurred while loading.'}
             </p>
+            {contractLoadErrorCode !== null && (
+              <p className="text-text-muted text-xs">
+                RPC error code: {contractLoadErrorCode}
+              </p>
+            )}
             {contractLoadAttemptCount !== null && (
               <p className="text-text-muted text-xs">
                 Request attempts: {contractLoadAttemptCount}

@@ -1,15 +1,17 @@
 import { buildJsonRpcRequest } from '../rpc/buildJsonRpcRequest'
 import { isJsonRpcErrorResponse } from '../rpc/isJsonRpcErrorResponse'
 import { isJsonRpcSuccessResponse } from '../rpc/isJsonRpcSuccessResponse'
+import { normalizeTimeoutMs } from '../rpc/normalizeTimeoutMs'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
 import { withRpcRetries } from '../rpc/withRpcRetries'
 import { normalizeRpcUrl } from '../validation/normalizeRpcUrl'
 import { deduplicateKeys } from './deduplicateKeys'
+import type { RpcRequestOptions } from './types'
 
-export interface GetLedgerEntriesParams {
+export interface GetLedgerEntriesParams extends RpcRequestOptions {
   rpcUrl: string
   keys: Array<string>
-  signal?: AbortSignal
+  timeout?: number
 }
 
 export interface LedgerEntry {
@@ -31,13 +33,23 @@ export class AbortError extends Error {
   }
 }
 
-export class GetLedgerEntriesError extends Error {
+export class LedgerEntriesError extends Error {
   readonly attempts: number
 
-  constructor(message: string, attempts: number) {
+  constructor(message: string, code?: string | number, attempts = 0) {
     super(message)
-    this.name = 'GetLedgerEntriesError'
+    this.name = 'LedgerEntriesError'
+    this.code = code
     this.attempts = attempts
+  }
+
+  readonly code?: string | number
+}
+
+export class GetLedgerEntriesError extends LedgerEntriesError {
+  constructor(message: string, attempts: number, code?: string | number) {
+    super(message, code, attempts)
+    this.name = 'GetLedgerEntriesError'
   }
 }
 
@@ -78,6 +90,10 @@ export async function getLedgerEntries(
   params: GetLedgerEntriesParams,
 ): Promise<GetLedgerEntriesResult> {
   const { rpcUrl, keys: inputKeys, signal } = params
+  const timeoutMs = normalizeTimeoutMs(
+    params.timeoutMs ?? params.timeout,
+    10000,
+  )
 
   // Deduplicate keys while preserving first-seen order
   const keys = deduplicateKeys(inputKeys)
@@ -108,6 +124,17 @@ export async function getLedgerEntries(
           [keys],
           requestId,
         )
+        const requestController = new AbortController()
+        const onCallerAbort = () => requestController.abort()
+
+        if (signal?.aborted) {
+          throw new AbortError()
+        }
+        signal?.addEventListener('abort', onCallerAbort, { once: true })
+        const timeoutId = setTimeout(
+          () => requestController.abort(),
+          timeoutMs,
+        )
 
         let response: Response
         try {
@@ -117,9 +144,17 @@ export async function getLedgerEntries(
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(payload),
-            signal,
+            signal: requestController.signal,
           })
         } catch (error) {
+          clearTimeout(timeoutId)
+          signal?.removeEventListener('abort', onCallerAbort)
+          if (signal?.aborted) {
+            throw new AbortError()
+          }
+          if (requestController.signal.aborted) {
+            return { message: 'Request timeout', code: 'TIMEOUT' }
+          }
           if (error instanceof Error && error.name === 'AbortError') {
             throw new AbortError()
           }
@@ -129,6 +164,8 @@ export async function getLedgerEntries(
             code: 'NETWORK_ERROR',
           }
         }
+        clearTimeout(timeoutId)
+        signal?.removeEventListener('abort', onCallerAbort)
 
         if (signal?.aborted) {
           throw new AbortError()
@@ -256,7 +293,7 @@ export async function getLedgerEntries(
   }
 
   if (isRpcError(result)) {
-    throw new GetLedgerEntriesError(result.message, attempts)
+    throw new GetLedgerEntriesError(result.message, attempts, result.code)
   }
 
   return result

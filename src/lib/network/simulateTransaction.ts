@@ -6,15 +6,16 @@
 import { buildJsonRpcRequest } from '../rpc/buildJsonRpcRequest'
 import { isJsonRpcErrorResponse } from '../rpc/isJsonRpcErrorResponse'
 import { isJsonRpcSuccessResponse } from '../rpc/isJsonRpcSuccessResponse'
+import { normalizeTimeoutMs } from '../rpc/normalizeTimeoutMs'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
+import { normalizeFootprintKeys } from './normalizeFootprintKeys'
 import { callRpc } from './rpcClient'
-import type { RpcError } from './types'
+import type { RpcError, RpcRequestOptions } from './types'
 
-export interface SimulateTransactionParams {
+export interface SimulateTransactionParams extends RpcRequestOptions {
   rpcUrl: string
   /** Base64 transaction envelope XDR to simulate. */
   transaction: string
-  signal?: AbortSignal
 }
 
 export interface SimulateTransactionResponse {
@@ -176,22 +177,31 @@ export function simulateTransactionAdapter(
     return { success: false, error: mapSimulationAuthError(response.error) }
   }
 
-  const latestLedger =
+  if (
     response.latestLedger !== undefined &&
-    (typeof response.latestLedger !== 'number' ||
-      !Number.isFinite(response.latestLedger) ||
+    (!Number.isFinite(response.latestLedger) ||
       !Number.isInteger(response.latestLedger) ||
       response.latestLedger < 0)
-      ? undefined
-      : response.latestLedger
+  ) {
+    return { success: false, error: 'Invalid latest ledger value' }
+  }
 
-  return {
+  const result: SimulateTransactionResult = {
     success: true,
-    latestLedger,
+    latestLedger: response.latestLedger,
     results: sanitizeSimulationResults(response.results),
     footprint: {
       readOnly: sanitizeFootprintSection(response.footprint?.readOnly),
       readWrite: sanitizeFootprintSection(response.footprint?.readWrite),
+    },
+  }
+
+  const footprint = normalizeFootprintKeys(result)
+  return {
+    ...result,
+    footprint: {
+      readOnly: footprint.readOnly,
+      readWrite: footprint.readWrite,
     },
   }
 }
@@ -250,7 +260,11 @@ async function performSimulationRequest(
   )
 
   const data = await callRpc<unknown>(
-    { url: rpcUrl, timeout: 10_000, signal },
+    {
+      url: rpcUrl,
+      timeout: normalizeTimeoutMs(params.timeoutMs, 10_000),
+      signal,
+    },
     payload,
   )
 

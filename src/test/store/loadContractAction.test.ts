@@ -155,7 +155,26 @@ describe('loadContract action', () => {
     const state = getStoreState()
     expect(state.contractLoadStatus).toBe(ContractLoadStatus.ERROR)
     expect(state.contractLoadError).toBe('network failure')
+    expect(state.contractLoadErrorCode).toBeNull()
     expect(state.contractLoadAttemptCount).toBeNull()
+  })
+
+  it('preserves an RPC error code in contract load state', async () => {
+    const { resetStore, getStoreState, useLensStore } =
+      await import('../../store/lensStore')
+    resetStore()
+
+    const error = Object.assign(new Error('RPC request failed'), {
+      code: -32000,
+    })
+    mockGetLedgerEntries.mockRejectedValue(error)
+
+    await useLensStore.getState().loadContract('C_RPC_FAIL', ['rpc-key'])
+
+    const state = getStoreState()
+    expect(state.contractLoadStatus).toBe(ContractLoadStatus.ERROR)
+    expect(state.contractLoadError).toBe('RPC request failed')
+    expect(state.contractLoadErrorCode).toBe(-32000)
   })
 
   it.each([1, 3])(

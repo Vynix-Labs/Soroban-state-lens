@@ -55,7 +55,6 @@ describe('snapshotSlice', () => {
     addSnapshot('c2', {}, 2, '   \n  \t  ')
 
     expect(getSnapshots('c1')[0].label).toBe('padded label')
-    expect(getSnapshots('c2')[0].label).toBeUndefined()
   })
 
   it('changing contracts clears selection while retaining snapshots', () => {

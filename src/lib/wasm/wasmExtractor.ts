@@ -3,7 +3,6 @@
  */
 
 import { parseCustomSectionName } from '../decoder/sectionValidator'
-
 /**
  * Result of attempting to extract a custom section from a WASM module
  */
@@ -12,7 +11,6 @@ export type ExtractSectionResult =
   | { ok: false; reason: string }
 
 export const MAX_CONTRACT_SPEC_PAYLOAD_BYTES = 1024 * 1024
-
 /**
  * Decodes a LEB128-encoded unsigned integer from a Uint8Array
  * @param data - The byte array to read from

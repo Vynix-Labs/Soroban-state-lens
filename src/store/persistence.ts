@@ -1,6 +1,7 @@
 import { createJSONStorage } from 'zustand/middleware'
 import { parsePersistedNetworkConfig } from '../lib/storage/parsePersistedNetworkConfig'
 import { serializePersistedNetworkConfig } from '../lib/storage/serializePersistedNetworkConfig'
+import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
 import { normalizeNetworkScopeId } from './networkScope'
 import {
   BigIntDisplayMode,
@@ -9,7 +10,6 @@ import {
   DEFAULT_PREFERENCES,
   DEFAULT_SNAPSHOT_RETENTION_LIMIT,
 } from './types'
-import { validateNetworkConfigPatch } from './validateNetworkConfigPatch'
 import type {
   ContractSnapshot,
   DisplayPreferences,
@@ -124,7 +124,6 @@ function getPersistedStateVersion(persistedState: unknown): number | null {
     ? version
     : null
 }
-
 function unwrapPersistedState(
   persistedState: unknown,
 ): Record<string, unknown> | null {
@@ -231,7 +230,7 @@ export function mergeNetworkConfig(
   return {
     networkConfig,
     watchlist: sanitizeNetworkWatchlist(
-        hydratedState &&
+      hydratedState &&
         typeof hydratedState === 'object' &&
         'watchlist' in hydratedState
         ? hydratedState.watchlist

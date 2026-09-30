@@ -104,6 +104,33 @@ describe('simulateTransactionAdapter', () => {
     expect(result.results).toEqual([])
   })
 
+  it('normalizes simulation footprint keys deterministically', () => {
+    const result = simulateTransactionAdapter({
+      footprint: {
+        readOnly: [' z-key ', 'a-key', 'z-key', '  '],
+        readWrite: [' write ', '', 'write'],
+      },
+    })
+
+    expect(result).toMatchObject({
+      success: true,
+      footprint: {
+        readOnly: ['a-key', 'z-key'],
+        readWrite: ['write'],
+      },
+    })
+  })
+
+  it.each([-1, 1.5, NaN, Infinity, -Infinity])(
+    'rejects invalid latest ledger metadata: %s',
+    (latestLedger) => {
+      expect(simulateTransactionAdapter({ latestLedger })).toEqual({
+        success: false,
+        error: 'Invalid latest ledger value',
+      })
+    },
+  )
+
   it('filters malformed result records while keeping valid siblings', () => {
     const result = simulateTransactionAdapter({
       results: [
@@ -114,7 +141,7 @@ describe('simulateTransactionAdapter', () => {
         ['not', 'a', 'record'],
         { unexpected: true },
         { auth: [{ credentials: 'valid' }] },
-      ] as unknown as Array<{ auth?: Array<unknown>; xdr?: string }>,
+      ],
     })
 
     expect(result.results).toEqual([
@@ -132,19 +159,12 @@ describe('simulateTransactionAdapter', () => {
     expect(result.results).toEqual([])
   })
 
-  it.each([
-    { latestLedger: 1.5, description: 'fractional' },
-    { latestLedger: -1, description: 'negative' },
-    { latestLedger: Number.NaN, description: 'NaN' },
-    { latestLedger: Number.POSITIVE_INFINITY, description: 'Infinity' },
-  ])(
-    'should drop $description latestLedger ($latestLedger)',
-    ({ latestLedger }) => {
-      const result = simulateTransactionAdapter({ latestLedger })
-      expect(result.success).toBe(true)
-      expect(result.latestLedger).toBeUndefined()
-    },
-  )
+  it('accepts a nonnegative integer latest ledger', () => {
+    expect(simulateTransactionAdapter({ latestLedger: 100 })).toMatchObject({
+      success: true,
+      latestLedger: 100,
+    })
+  })
 
   it('should preserve valid latestLedger values including zero', () => {
     expect(simulateTransactionAdapter({ latestLedger: 0 }).latestLedger).toBe(0)

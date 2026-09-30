@@ -1,8 +1,9 @@
 import { buildJsonRpcRequest } from '../rpc/buildJsonRpcRequest'
 import { isJsonRpcSuccessResponse } from '../rpc/isJsonRpcSuccessResponse'
+import { normalizeTimeoutMs } from '../rpc/normalizeTimeoutMs'
 import { toRpcRequestId } from '../rpc/toRpcRequestId'
 import { callRpc } from './rpcClient'
-import type { LatestLedgerResult, RpcError } from './types'
+import type { LatestLedgerResult, RpcError, RpcRequestOptions } from './types'
 
 export interface GetLatestLedgerConnectionResult {
   success: boolean
@@ -10,7 +11,7 @@ export interface GetLatestLedgerConnectionResult {
   error?: string
 }
 
-export interface LatestLedgerConnectionCheckOptions {
+export interface LatestLedgerConnectionCheckOptions extends RpcRequestOptions {
   timeout?: number
   signal?: AbortSignal
 }
@@ -39,10 +40,7 @@ function parseLatestLedgerResult(value: unknown): LatestLedgerResult | null {
     return null
   }
 
-  const ledger: LatestLedgerResult = {
-    sequence: candidate.sequence,
-  }
-
+  const ledger: LatestLedgerResult = { sequence: candidate.sequence }
   if (typeof candidate.id === 'string') {
     ledger.id = candidate.id
   }
@@ -63,31 +61,20 @@ function parseLatestLedgerResult(value: unknown): LatestLedgerResult | null {
 
 export async function getLatestLedgerConnectionCheck(
   url: string,
-): Promise<GetLatestLedgerConnectionResult>
-export async function getLatestLedgerConnectionCheck(
-  url: string,
-  timeoutMs: number,
-  signal?: AbortSignal,
-): Promise<GetLatestLedgerConnectionResult>
-export async function getLatestLedgerConnectionCheck(
-  url: string,
-  options?: LatestLedgerConnectionCheckOptions,
-): Promise<GetLatestLedgerConnectionResult>
-export async function getLatestLedgerConnectionCheck(
-  url: string,
   timeoutOrOptions?: number | LatestLedgerConnectionCheckOptions,
-  signal?: AbortSignal,
+  callerSignal?: AbortSignal,
 ): Promise<GetLatestLedgerConnectionResult> {
-  const resolvedOptions =
+  const timeoutMs =
     typeof timeoutOrOptions === 'number'
-      ? { timeout: timeoutOrOptions, signal }
-      : timeoutOrOptions
+      ? timeoutOrOptions
+      : timeoutOrOptions?.timeoutMs ?? timeoutOrOptions?.timeout
+  const signal =
+    typeof timeoutOrOptions === 'object'
+      ? timeoutOrOptions.signal ?? callerSignal
+      : callerSignal
 
-  if (resolvedOptions?.signal?.aborted || signal?.aborted) {
-    return {
-      success: false,
-      error: 'Connection check aborted',
-    }
+  if (signal?.aborted) {
+    return { success: false, error: 'Connection check aborted' }
   }
 
   try {
@@ -95,8 +82,8 @@ export async function getLatestLedgerConnectionCheck(
     const response = await callRpc(
       {
         url,
-        timeout: resolvedOptions?.timeout ?? 5000,
-        signal: resolvedOptions?.signal ?? signal,
+        timeout: normalizeTimeoutMs(timeoutMs, 5000),
+        signal,
       },
       buildJsonRpcRequest('getLatestLedger', {}, requestId),
     )
@@ -131,7 +118,7 @@ export async function getLatestLedgerConnectionCheck(
     return {
       success: false,
       error:
-        resolvedOptions?.signal?.aborted || signal?.aborted
+        signal?.aborted
           ? 'Connection check aborted'
           : error instanceof Error
             ? error.message

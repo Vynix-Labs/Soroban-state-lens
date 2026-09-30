@@ -1,3 +1,8 @@
+export interface RpcRequestOptions {
+  timeoutMs?: number
+  signal?: AbortSignal
+}
+
 export interface RpcConfig {
   url: string
   timeout: number

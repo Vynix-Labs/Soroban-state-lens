@@ -67,6 +67,29 @@ describe('getLatestLedgerConnectionCheck', () => {
     )
   })
 
+  it('accepts shared timeout and caller-signal options', async () => {
+    const signal = new AbortController().signal
+    const spy = vi.spyOn(rpcClient, 'callRpc').mockResolvedValue({
+      jsonrpc: '2.0',
+      id: 7,
+      result: { sequence: 987654 },
+    })
+
+    await getLatestLedgerConnectionCheck('https://valid-rpc.com', {
+      timeoutMs: 1234,
+      signal,
+    })
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: 'https://valid-rpc.com',
+        timeout: 1234,
+        signal,
+      }),
+      expect.anything(),
+    )
+  })
+
   it('returns a handled failure when the endpoint is unreachable', async () => {
     vi.spyOn(rpcClient, 'callRpc').mockResolvedValue({
       message: 'Network error',

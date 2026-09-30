@@ -4,7 +4,7 @@
 
 Implements four focused improvements to store actions and selectors to enhance reliability and accessibility:
 - Reject empty contract IDs in snapshot operations to prevent unreachable state
-- Prevent mutation of shared ledger arrays in selectors  
+- Prevent mutation of shared ledger arrays in selectors
 - Bound selector cache to prevent unbounded memory growth
 - Return keyboard focus to retry control after load errors
 
