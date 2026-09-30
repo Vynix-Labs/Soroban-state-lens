@@ -30,13 +30,12 @@ export const Route = createFileRoute('/contracts/$contractId/inspect/$keyPath')(
 })
 
 function InspectKeyPathRoute() {
-  const { contractId } = Route.useParams()
   const { keyPath, keyPathError, normalizedContractId } =
     Route.useRouteContext()
 
   return (
     <InspectShell
-      contractId={contractId}
+      contractId={normalizedContractId}
       normalizedContractId={normalizedContractId}
       keyPath={keyPath}
       keyPathError={keyPathError}
