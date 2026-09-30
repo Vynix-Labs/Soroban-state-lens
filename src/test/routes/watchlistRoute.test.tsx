@@ -77,4 +77,27 @@ describe('Watchlist route', () => {
       useLensStore.getState().watchlist.futurenet?.[VALID_CONTRACT_ID],
     ).toBeUndefined()
   })
+
+  it('persists the inspected key under the normalized contract ID when pinning from a padded route', async () => {
+    const paddedRouteParam = `  ${VALID_CONTRACT_ID.toLowerCase()}  `
+    window.history.pushState(
+      {},
+      '',
+      `/contracts/${paddedRouteParam}/inspect//state/key1`,
+    )
+
+    const router = createTestRouter()
+    render(<RouterProvider router={router} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /pin/i }))
+
+    expect(
+      useLensStore
+        .getState()
+        .getWatchlistForContract(VALID_CONTRACT_ID).length,
+    ).toBeGreaterThan(0)
+    expect(
+      useLensStore.getState().watchlist.futurnet?.[VALID_CONTRACT_ID],
+    ).toBeDefined()
+  })
 })

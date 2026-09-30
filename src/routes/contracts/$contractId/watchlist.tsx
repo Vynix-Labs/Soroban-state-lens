@@ -1,6 +1,7 @@
 import { Button, Card, Heading } from '@stellar/design-system'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useLensStore, useWatchlist } from '../../../store/lensStore'
+import { useRouteContext } from '@tanstack/react-router'
 import { validateContractRouteParam } from './-validateContractRouteParam'
 
 export const Route = createFileRoute('/contracts/$contractId/watchlist')({
@@ -21,6 +22,7 @@ export const Route = createFileRoute('/contracts/$contractId/watchlist')({
 function WatchlistRoute() {
   const { contractId } = Route.useParams()
   const { normalizedContractId } = Route.useRouteContext()
+  const routeContext = useRouteContext({ from: '/contracts/$contractId' })
   const navigate = Route.useNavigate()
   const watchlistItems = useWatchlist(normalizedContractId)
   const removeFromWatchlist = useLensStore((state) => state.removeFromWatchlist)
@@ -28,12 +30,12 @@ function WatchlistRoute() {
   const handleInspect = (keyPath: string) => {
     void navigate({
       to: '/contracts/$contractId/inspect/$keyPath',
-      params: { contractId: normalizedContractId, keyPath },
+      params: { contractId: routeContext.normalizedContractId ?? normalizedContractId, keyPath },
     })
   }
 
   const handleRemove = (keyPath: string) => {
-    removeFromWatchlist(normalizedContractId, keyPath)
+    removeFromWatchlist(routeContext.normalizedContractId ?? normalizedContractId, keyPath)
   }
 
   return (
