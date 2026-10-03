@@ -395,4 +395,89 @@ describe('wasmExtractor - extractContractspecv0', () => {
       }
     })
   })
+
+  describe('duplicate contractspecv0 sections', () => {
+    it('returns the first section deterministically when duplicates exist', () => {
+      let wasm = createEmptyWasmModule()
+      const firstPayload = new TextEncoder().encode('first spec payload')
+      const secondPayload = new TextEncoder().encode('second spec payload')
+      wasm = addCustomSection(wasm, 'contractspecv0', firstPayload)
+      wasm = addCustomSection(wasm, 'contractspecv0', secondPayload)
+
+      const result = extractContractspecv0(wasm)
+
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.payload).toEqual(firstPayload)
+        expect(result.sectionCount).toBe(2)
+      }
+    })
+
+    it('returns the first section when three duplicates exist', () => {
+      let wasm = createEmptyWasmModule()
+      const firstPayload = new TextEncoder().encode('alpha')
+      wasm = addCustomSection(wasm, 'contractspecv0', firstPayload)
+      wasm = addCustomSection(
+        wasm,
+        'contractspecv0',
+        new TextEncoder().encode('beta'),
+      )
+      wasm = addCustomSection(
+        wasm,
+        'contractspecv0',
+        new TextEncoder().encode('gamma'),
+      )
+
+      const result = extractContractspecv0(wasm)
+
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.payload).toEqual(firstPayload)
+        expect(result.sectionCount).toBe(3)
+      }
+    })
+
+    it('reports sectionCount of 1 for a single section', () => {
+      const baseModule = createEmptyWasmModule()
+      const payload = new TextEncoder().encode('single')
+      const wasm = addCustomSection(baseModule, 'contractspecv0', payload)
+
+      const result = extractContractspecv0(wasm)
+
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.payload).toEqual(payload)
+        expect(result.sectionCount).toBe(1)
+      }
+    })
+
+    it('preserves behaviour when duplicates are mixed with other custom sections', () => {
+      let wasm = createEmptyWasmModule()
+      wasm = addCustomSection(
+        wasm,
+        'name',
+        new TextEncoder().encode('contract name'),
+      )
+      const firstPayload = new TextEncoder().encode('spec-a')
+      wasm = addCustomSection(wasm, 'contractspecv0', firstPayload)
+      wasm = addCustomSection(
+        wasm,
+        'producers',
+        new TextEncoder().encode('toolchain'),
+      )
+      wasm = addCustomSection(
+        wasm,
+        'contractspecv0',
+        new TextEncoder().encode('spec-b'),
+      )
+
+      const result = extractContractspecv0(wasm)
+
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.payload).toEqual(firstPayload)
+        expect(result.sectionCount).toBe(2)
+      }
+    })
+  })
 })
