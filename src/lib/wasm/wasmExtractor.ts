@@ -7,7 +7,15 @@ import { parseCustomSectionName } from '../decoder/sectionValidator'
  * Result of attempting to extract a custom section from a WASM module
  */
 export type ExtractSectionResult =
-  | { ok: true; payload: Uint8Array }
+  | {
+      ok: true
+      payload: Uint8Array
+      /**
+       * Number of contractspecv0 custom sections found in the module.
+       * When > 1, the first section in module order is returned deterministically.
+       */
+      sectionCount: number
+    }
   | { ok: false; reason: string }
 
 export const MAX_CONTRACT_SPEC_PAYLOAD_BYTES = 1024 * 1024
@@ -70,7 +78,16 @@ function decodeLeb128String(
 }
 
 /**
- * Safely extracts the contractspecv0 custom section payload from a WASM module
+ * Safely extracts the contractspecv0 custom section payload from a WASM module.
+ *
+ * When a module contains multiple contractspecv0 sections, the **first** section
+ * in module order is returned deterministically. This preserves existing behaviour
+ * for well-formed modules and keeps parsing stable regardless of how many
+ * duplicate sections a build toolchain may emit.
+ *
+ * The returned `sectionCount` field indicates how many contractspecv0 sections
+ * were found so callers can surface a warning when duplicates are present.
+ *
  * @param wasmBytes - The WASM module bytes
  * @returns ExtractSectionResult indicating success or failure with reason
  */
@@ -121,6 +138,9 @@ export function extractContractspecv0(
 
   // Parse sections starting after version (offset 8)
   let offset = 8
+
+  let firstPayload: Uint8Array | null = null
+  let sectionCount = 0
 
   while (offset < wasmBytes.length) {
     // Read section ID
@@ -174,34 +194,42 @@ export function extractContractspecv0(
 
       // Check if this is the contractspecv0 section
       if (name === 'contractspecv0') {
-        // Return everything after the name as the payload
-        const payloadStart = afterNameOffset
-        const payloadEnd = offset + sectionSize
+        sectionCount += 1
 
-        if (payloadEnd - payloadStart > MAX_CONTRACT_SPEC_PAYLOAD_BYTES) {
-          return {
-            ok: false,
-            reason: `contractspecv0 payload exceeds ${MAX_CONTRACT_SPEC_PAYLOAD_BYTES} bytes`,
+        // Keep only the first section in module order (deterministic behaviour).
+        if (firstPayload === null) {
+          const payloadStart = afterNameOffset
+          const payloadEnd = offset + sectionSize
+
+          if (payloadEnd - payloadStart > MAX_CONTRACT_SPEC_PAYLOAD_BYTES) {
+            return {
+              ok: false,
+              reason: `contractspecv0 payload exceeds ${MAX_CONTRACT_SPEC_PAYLOAD_BYTES} bytes`,
+            }
           }
-        }
 
-        if (payloadStart > payloadEnd) {
-          return {
-            ok: false,
-            reason: 'Invalid payload bounds',
+          if (payloadStart > payloadEnd) {
+            return {
+              ok: false,
+              reason: 'Invalid payload bounds',
+            }
           }
-        }
 
-        const payload = wasmBytes.slice(payloadStart, payloadEnd)
-        return {
-          ok: true,
-          payload,
+          firstPayload = wasmBytes.slice(payloadStart, payloadEnd)
         }
       }
     }
 
     // Move to next section
     offset += sectionSize
+  }
+
+  if (firstPayload !== null) {
+    return {
+      ok: true,
+      payload: firstPayload,
+      sectionCount,
+    }
   }
 
   // Section not found
