@@ -20,7 +20,7 @@ Soroban stores data in the ledger as ScVal (Stellar Contract Values) within Cont
 
 - [Node.js](https://nodejs.org/) (v20+) — Use [nvm](https://github.com/nvm-sh/nvm) to manage versions
 - [Bun](https://bun.sh/) (v1.0+) — Fast all-in-one JavaScript runtime
-- [Rust](https://www.rust-lang.org/) (required for the Rust-based XDR decoder)
+
 - A running Soroban RPC node (or use the public Testnet/Mainnet endpoints)
 
 ### **Stack & Architecture**
