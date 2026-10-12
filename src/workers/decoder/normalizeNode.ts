@@ -415,18 +415,18 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_U32: {
-      const value = normalizedScVal.value
+      const numericValue = normalizedScVal.value
       if (
-        typeof value === 'number' &&
-        Number.isInteger(value) &&
-        value >= 0 &&
-        value <= 0xffffffff
+        typeof numericValue === 'number' &&
+        Number.isInteger(numericValue) &&
+        numericValue >= 0 &&
+        numericValue <= 0xffffffff
       ) {
         return {
           kind: 'primitive',
           path,
           scType: 'u32',
-          value,
+          value: numericValue,
           raw: toRaw(scVal),
         } satisfies PrimitiveNode
       }
@@ -434,18 +434,18 @@ export function normalizeNode(
     }
 
     case ScValType.SCV_I32: {
-      const value = normalizedScVal.value
+      const numericValue = normalizedScVal.value
       if (
-        typeof value === 'number' &&
-        Number.isInteger(value) &&
-        value >= -0x80000000 &&
-        value <= 0x7fffffff
+        typeof numericValue === 'number' &&
+        Number.isInteger(numericValue) &&
+        numericValue >= -0x80000000 &&
+        numericValue <= 0x7fffffff
       ) {
         return {
           kind: 'primitive',
           path,
           scType: 'i32',
-          value,
+          value: numericValue,
           raw: toRaw(scVal),
         } satisfies PrimitiveNode
       }
@@ -770,11 +770,11 @@ export function normalizeNode(
     case ScValType.SCV_ADDRESS: {
       try {
         const address = scVal.value as { toString: () => string }
-        const value = address.toString()
+        const addressValue = address.toString()
         let addressType: AddressNode['addressType'] = 'unknown'
 
-        if (typeof value === 'string' && value.length > 0) {
-          const prefix = value[0]
+        if (typeof addressValue === 'string' && addressValue.length > 0) {
+          const prefix = addressValue[0]
           switch (prefix) {
             case 'G':
               addressType = 'account'
@@ -798,7 +798,7 @@ export function normalizeNode(
           kind: 'address',
           path,
           addressType,
-          value,
+          value: addressValue,
           raw: toRaw(scVal),
         } satisfies AddressNode
       } catch {

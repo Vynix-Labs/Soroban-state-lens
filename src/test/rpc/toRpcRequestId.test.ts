@@ -45,10 +45,12 @@ describe('toRpcRequestId', () => {
 
   it('wraps the generated counter before it exceeds the safe integer range', async () => {
     vi.resetModules()
-    const { toRpcRequestId } = await import('../../lib/rpc/toRpcRequestId')
+    const { toRpcRequestId: reloadedToRpcRequestId } = await import(
+      '../../lib/rpc/toRpcRequestId'
+    )
 
-    const seededId = toRpcRequestId(Number.MAX_SAFE_INTEGER - 1)
-    const wrappedId = toRpcRequestId()
+    const seededId = reloadedToRpcRequestId(Number.MAX_SAFE_INTEGER - 1)
+    const wrappedId = reloadedToRpcRequestId()
 
     expect(seededId).toBe(Number.MAX_SAFE_INTEGER - 1)
     expect(wrappedId).toBe(1)
