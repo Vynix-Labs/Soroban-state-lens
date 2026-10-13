@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { validateContractRouteParam } from '../../routes/contracts/$contractId/-validateContractRouteParam'
+import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
 import { useLensStore } from '../../store/lensStore'
 import { ConnectionStatus } from '../../store/types'
 import WatermarkBg from './WatermarkBg'
-
-const SAMPLE_CONTRACT_ID =
-  'CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE'
 
 const SearchLandingScreen = () => {
   const navigate = useNavigate()

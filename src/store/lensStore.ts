@@ -510,6 +510,9 @@ const createContractLoadSlice = (
       const { signal } = controller
       const isRequestStale = () =>
         currentRequestId !== requestId || signal.aborted
+      // Defense in depth (SSL#733): a direct loadContract(live) without a
+      // preceding setActiveContractId(live) must not retain demo records.
+      get().clearDemoRecords()
       set(() => ({
         activeContractId: contractId,
         contractLoadStatus: ContractLoadStatus.LOADING,

@@ -123,6 +123,8 @@ export interface ContractSlice {
   clearActiveContractId: () => void
   setSelectedKeyPath: (keyPath: string) => void
   clearSelectedKeyPath: () => void
+  /** Drop cached entries of the sample/demo contract (SSL#733). */
+  clearDemoRecords: () => void
 }
 
 export enum ContractLoadStatus {
