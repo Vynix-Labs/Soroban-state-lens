@@ -29,7 +29,15 @@ function formatLabel(snapshot: ContractSnapshot): string {
 }
 
 function countSnapshotEntries(snapshot: ContractSnapshot): number {
-  return Object.keys(snapshot.ledgerData).length
+  return snapshot.ledgerData ? Object.keys(snapshot.ledgerData).length : 0
+}
+
+function getDiscardedEntryCount(snapshot: ContractSnapshot): number {
+  const count = (snapshot as { discardedEntryCount?: unknown }).discardedEntryCount
+  if (typeof count !== 'number' || !Number.isFinite(count) || count <= 0) {
+    return 0
+  }
+  return Math.floor(count)
 }
 
 export function ContractHistoryRoute() {
@@ -51,24 +59,32 @@ export function ContractHistoryRoute() {
         </div>
       ) : (
         <ul className="flex-1 overflow-auto space-y-2">
-          {snapshots.map((snapshot) => (
-            <li
-              key={snapshot.id}
-              className="border border-gray-800 rounded p-3 bg-gray-900/40"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-sm font-semibold break-all">
-                  {formatLabel(snapshot)}
-                </span>
-                <span className="text-xs text-gray-400 whitespace-nowrap">
-                  {countSnapshotEntries(snapshot)} entries
-                </span>
-              </div>
-              <div className="mt-1 text-xs text-gray-500">
-                {formatTimestamp(snapshot.timestamp)}
-              </div>
-            </li>
-          ))}
+          {snapshots.map((snapshot) => {
+            const discardedCount = getDiscardedEntryCount(snapshot)
+            return (
+              <li
+                key={snapshot.id}
+                className="border border-gray-800 rounded p-3 bg-gray-900/40"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm font-semibold break-all">
+                    {formatLabel(snapshot)}
+                  </span>
+                  <span className="text-xs text-gray-400 whitespace-nowrap">
+                    {countSnapshotEntries(snapshot)} entries
+                  </span>
+                </div>
+                {discardedCount > 0 ? (
+                  <div className="mt-1 text-xs text-amber-400">
+                    {discardedCount} discarded {discardedCount === 1 ? 'entry' : 'entries'} during hydration
+                  </div>
+                ) : null}
+                <div className="mt-1 text-xs text-gray-500">
+                  {formatTimestamp(snapshot.timestamp)}
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

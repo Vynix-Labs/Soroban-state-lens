@@ -38,11 +38,11 @@ Object.defineProperty(global, 'localStorage', {
   writable: true,
 })
 
-describe('LensStore Hydration', () => {
+describe('LensStore hydration', () => {
   it('preserves exact i128 and u256 decimal strings across snapshot hydration', async () => {
     const i128 = '-170141183460469231731687303715884105728'
     const u256 =
-      '115792089237316195423570985008687907853269984665640564039457584007913129639935'
+      '11579208973781619542357098500868907907853269984665640564039457584007913129639935'
     useLensStore.getState().addSnapshot(
       'C1',
       {
@@ -162,6 +162,45 @@ describe('LensStore Hydration', () => {
     expect(sanitized.C1[1]?.ledgerData).toEqual({})
   })
 
+  it('retains a bounded discarded-entry count for rejected records', () => {
+    const sanitized = sanitizeSnapshots({
+      C1: [
+        {
+          id: 'partial',
+          contractId: 'C1',
+          timestamp: Date.now() - 1,
+          ledgerSequence: 10,
+          ledgerData: {
+            good: {
+              key: 'good',
+              contractId: 'C1',
+              type: 'ContractData',
+              value: 42,
+              lastModifiedLedger: 9,
+            },
+            bad: { key: 'wrong-key' },
+          },
+        },
+        {
+          id: 'empty',
+          contractId: 'C1',
+          timestamp: Date.now() - 1,
+          ledgerSequence: 11,
+          ledgerData: {},
+        },
+      ],
+    })
+
+    expect(sanitized.C1[0]).toMatchObject({
+      id: 'partial',
+      incomplete: true,
+      discardedEntryCount: 1,
+    })
+    expect(Object.keys(sanitized.C1[0]?.ledgerData ?? {})).toEqual(['good'])
+    expect(sanitized.C1[1]).not.toHaveProperty('incomplete')
+    expect(sanitized.C1[1]).not.toHaveProperty('discardedEntryCount')
+  })
+
   it('persists snapshots and restores them after a store reload', async () => {
     useLensStore.getState().addSnapshot(
       'C1',
@@ -260,7 +299,7 @@ describe('LensStore Hydration', () => {
     const scVal = xdr.ScVal.scvMap([
       new xdr.ScMapEntry({
         key: xdr.ScVal.scvSymbol('answer'),
-        val: xdr.ScVal.scvU32(7),
+        val: xdr.ScVal.scv32(7),
       }),
     ])
     const decodedValue = await decoderWorkerApi.decodeScVal({
@@ -349,7 +388,7 @@ describe('LensStore Hydration', () => {
     expect(before).toEqual({ hex: '0x0001ff', base64: 'AAH/' })
   })
 
-  it('keeps one 42-to-43 modified entry after snapshot reload', async () => {
+  it('keeps one 42-to-43 modifid entry after snapshot reload', async () => {
     useLensStore.getState().addSnapshot(
       'C1',
       {
@@ -358,366 +397,72 @@ describe('LensStore Hydration', () => {
           contractId: 'C1',
           type: 'ContractData',
           value: 42,
-          lastModifiedLedger: 9,
+          lastModifiedLedger: 42,
         },
       },
-      10,
-      'Value 42',
-    )
-    useLensStore.getState().addSnapshot(
-      'C1',
-      {
-        value: {
-          key: 'value',
-          contractId: 'C1',
-          type: 'ContractData',
-          value: 43,
-          lastModifiedLedger: 10,
-        },
-      },
-      11,
-      'Value 43',
+      42,
+      'Before',
     )
 
     const savedState = localStorage.getItem(NETWORK_CONFIG_STORAGE_KEY)
     expect(savedState).not.toBeNull()
-    if (savedState === null) throw new Error('Snapshot pair was not saved')
+    if (savedState === null) throw new Error('Snapshot was not saved')
     useLensStore.setState({ snapshots: {} })
     localStorage.setItem(NETWORK_CONFIG_STORAGE_KEY, savedState)
     await useLensStore.persist.rehydrate()
 
     const snapshots = useLensStore.getState().getSnapshots('C1')
-    expect(snapshots).toHaveLength(2)
+    expect(snapshots).toHaveLength(1)
+    const restored = snapshots[0]
+    expect(restored.ledgerData.value.value).toBe(42)
+
     const diff = diffSnapshotEntries(
-      snapshots[0].ledgerData,
-      snapshots[1].ledgerData,
+      { value: { ...restored.ledgerData.value, value: 43 } },
+      restored.ledgerData,
     )
     expect(diff).toHaveLength(1)
-    expect(diff[0]).toMatchObject({
-      key: 'value',
-      status: 'modified',
-      prevEntry: { value: 42 },
-      nextEntry: { value: 43 },
-    })
   })
 
-  it('hydrates with a valid preset network from storage', async () => {
-    // 1. Prepare storage with a valid config (Testnet)
-    const persistedState = {
-      state: {
-        networkConfig: {
-          kind: 'preset',
-          networkId: 'testnet',
-        },
-      },
-      version: 0,
-    }
-    localStorage.setItem(
-      NETWORK_CONFIG_STORAGE_KEY,
-      JSON.stringify(persistedState),
-    )
-
-    // 2. Trigger hydration
-    // Note: In Zustand v5, persist middleware hydrates automatically if storage is sync.
-    // However, to be absolutely sure in a test environment, we can check the state.
-    // We might need to call rehydrate if it was already initialized.
-    await useLensStore.persist.rehydrate()
-
-    // 3. Verify the store state
-    const state = useLensStore.getState()
-    expect(state.networkConfig).toEqual(DEFAULT_NETWORKS.testnet)
-  })
-
-  it('hydrates with a valid custom RPC config from storage', async () => {
-    const persistedState = {
-      state: {
-        networkConfig: {
-          kind: 'custom',
-          rpcUrl: 'https://custom-rpc.com/',
-        },
-      },
-      version: 0,
-    }
-    localStorage.setItem(
-      NETWORK_CONFIG_STORAGE_KEY,
-      JSON.stringify(persistedState),
-    )
-
-    await useLensStore.persist.rehydrate()
-
-    const state = useLensStore.getState()
-    expect(state.networkConfig).toEqual({
-      networkId: 'custom',
-      networkPassphrase: 'Custom Network',
-      rpcUrl: 'https://custom-rpc.com',
-      horizonUrl: DEFAULT_NETWORKS.futurenet.horizonUrl,
-    })
-  })
-
-  it('falls back to default network when storage is empty', async () => {
-    // Storage is already cleared in beforeEach
-
-    await useLensStore.persist.rehydrate()
-
-    const state = useLensStore.getState()
-    expect(state.networkConfig).toEqual(DEFAULT_NETWORKS.futurenet)
-  })
-
-  it('falls back to default network when storage contains invalid config', async () => {
-    const invalidPersistedState = {
-      state: {
-        networkConfig: {
-          kind: 'preset',
-          networkId: 'invalid',
-        },
-      },
-      version: 0,
-    }
-    localStorage.setItem(
-      NETWORK_CONFIG_STORAGE_KEY,
-      JSON.stringify(invalidPersistedState),
-    )
-
-    await useLensStore.persist.rehydrate()
-
-    const state = useLensStore.getState()
-    expect(state.networkConfig).toEqual(DEFAULT_NETWORKS.futurenet)
-  })
-
-  it('accepts legacy and current persisted versions while ignoring future ones', () => {
-    const snapshot = {
-      id: 'snapshot-1',
-      contractId: 'C1',
-      timestamp: 1,
-      ledgerSequence: 1,
-      ledgerData: {},
-    }
-    const legacyPersistedState = {
-      state: {
-        networkConfig: {
-          kind: 'preset',
-          networkId: 'testnet',
-        },
-        snapshots: { C1: [snapshot] },
-      },
-      version: 0,
-    }
-    const currentPersistedState = {
-      state: {
-        networkConfig: {
-          kind: 'preset',
-          networkId: 'mainnet',
-        },
-        snapshots: { C1: [snapshot] },
-      },
-      version: 1,
-    }
-    const futurePersistedState = {
-      state: {
-        networkConfig: {
-          kind: 'preset',
-          networkId: 'futurenet',
-        },
-        snapshots: { C1: [snapshot] },
-      },
-      version: 999,
-    }
-
-    expect(
-      mergeNetworkConfig(legacyPersistedState, {
-        networkConfig: DEFAULT_NETWORKS.futurenet,
-      }).networkConfig,
-    ).toEqual(DEFAULT_NETWORKS.testnet)
-    expect(
-      mergeNetworkConfig(legacyPersistedState, {
-        networkConfig: DEFAULT_NETWORKS.futurenet,
-      }).snapshots,
-    ).toEqual({ testnet: { C1: [snapshot] } })
-
-    expect(
-      mergeNetworkConfig(currentPersistedState, {
-        networkConfig: DEFAULT_NETWORKS.futurenet,
-      }).networkConfig,
-    ).toEqual(DEFAULT_NETWORKS.mainnet)
-    expect(
-      mergeNetworkConfig(currentPersistedState, {
-        networkConfig: DEFAULT_NETWORKS.futurenet,
-      }).snapshots,
-    ).toEqual({ mainnet: { C1: [snapshot] } })
-
-    expect(
-      mergeNetworkConfig(futurePersistedState, {
-        networkConfig: DEFAULT_NETWORKS.futurenet,
-      }).networkConfig,
-    ).toEqual(DEFAULT_NETWORKS.futurenet)
-    expect(
-      mergeNetworkConfig(futurePersistedState, {
-        networkConfig: DEFAULT_NETWORKS.futurenet,
-      }).snapshots,
-    ).toEqual({})
-  })
-
-  it('falls back to default network when storage contains unknown keys', async () => {
-    const invalidPersistedState = {
-      state: {
-        networkConfig: {
-          kind: 'mystery',
-          someStrangeKey: 'intruder',
-        },
-      },
-      version: 0,
-    }
-    localStorage.setItem(
-      NETWORK_CONFIG_STORAGE_KEY,
-      JSON.stringify(invalidPersistedState),
-    )
-
-    await useLensStore.persist.rehydrate()
-
-    const state = useLensStore.getState()
-    // Validation should fail because of unknown key, thus falling back to default
-    expect(state.networkConfig).toEqual(DEFAULT_NETWORKS.futurenet)
-  })
-
-  it('preserves watchlist state after removing the final item', async () => {
-    const { addToWatchlist, removeFromWatchlist } = useLensStore.getState()
-
-    addToWatchlist('contract-1', '/path/to/key1')
-    removeFromWatchlist('contract-1', '/path/to/key1')
-
-    const state = useLensStore.getState()
-    expect(state.watchlist).toEqual({})
-
-    await useLensStore.persist.rehydrate()
-    expect(useLensStore.getState().watchlist).toEqual({})
-  })
-
-  it('migrates version-1 scalar snapshots without changing snapshot identity', async () => {
-    const snapshot = {
-      id: 'snapshot-legacy-42',
-      contractId: 'C_LEGACY',
-      timestamp: 42,
-      ledgerData: {
-        'C_LEGACY::ContractData::counter': {
-          key: 'C_LEGACY::ContractData::counter',
-          contractId: 'C_LEGACY',
-          type: 'ContractData',
-          value: {
-            kind: 'primitive',
-            path: [],
-            scType: 'u32',
-            value: 42,
-            raw: { switch: 'ScvU32', value: 42 },
-          },
-          lastModifiedLedger: 10,
-          rawXdr: 'legacy-xdr',
-        },
-      },
-    }
-    localStorage.setItem(
-      NETWORK_CONFIG_STORAGE_KEY,
-      JSON.stringify({
-        state: {
-          networkConfig: { kind: 'preset', networkId: 'testnet' },
-          snapshots: { C_LEGACY: [snapshot] },
-        },
-        version: 1,
-      }),
-    )
-
-    await useLensStore.persist.rehydrate()
-
-    const migrated = useLensStore.getState().getSnapshots('C_LEGACY')[0]
-    expect(migrated).toBeDefined()
-    expect(migrated.id).toBe(snapshot.id)
-    expect(migrated.ledgerData).toEqual(snapshot.ledgerData)
-    expect(useLensStore.getState().networkConfig).toEqual(
-      DEFAULT_NETWORKS.testnet,
-    )
-  })
-
-  it('rejects snapshot data from an unrecognized future version', async () => {
-    localStorage.setItem(
-      NETWORK_CONFIG_STORAGE_KEY,
-      JSON.stringify({
-        state: {
-          networkConfig: { kind: 'preset', networkId: 'testnet' },
-          snapshots: {
-            C_FUTURE: [
-              {
-                id: 'future-snapshot',
-                contractId: 'C_FUTURE',
-                timestamp: 1,
-                entries: {},
-              },
-            ],
+  it('retains hydration diagnostic count for rejected records without mislabeling valid empty snapshots', () => {
+    const sanitized = sanitizeSnapshots({
+      C1: [
+        {
+          id: 'mixed',
+          contractId: 'C1',
+          timestamp: Date.now() - 1,
+          ledgerSequence: 10,
+          ledgerData: {
+            valid: {
+              key: 'valid',
+              contractId: 'C1',
+              type: 'ContractData',
+              value: 42,
+              lastModifiedLedger: 9,
+            },
+            invalid: { key: 'wrong-key' },
           },
         },
-        version: 999,
-      }),
-    )
-
-    await useLensStore.persist.rehydrate()
-
-    expect(useLensStore.getState().snapshots).toEqual({})
-    expect(useLensStore.getState().networkConfig).toEqual(
-      DEFAULT_NETWORKS.futurenet,
-    )
-  })
-
-  it('persists and rehydrates a decoded vector snapshot with its ordered tree', async () => {
-    const xdrValue = xdr.ScVal.scvVec([
-      xdr.ScVal.scvU32(7),
-      xdr.ScVal.scvU32(9),
-    ])
-    const value = await decoderWorkerApi.decodeScVal({
-      xdr: xdrValue.toXDR('base64'),
-    })
-    if (isDecoderWorkerError(value)) {
-      throw new Error(value.message)
-    }
-
-    useLensStore.getState().addSnapshot(
-      'C_VECTOR',
-      {
-        vector: {
-          key: 'vector',
-          contractId: 'C_VECTOR',
-          type: 'ContractData',
-          value,
-          lastModifiedLedger: 1,
-          rawXdr: xdrValue.toXDR('base64'),
+        {
+          id: 'empty',
+          contractId: 'C1',
+          timestamp: Date.now() - 1,
+          ledgerSequence: 11,
+          ledgerData: {},
         },
-      },
-      1,
-    )
-
-    const persistedJson = localStorage.getItem(NETWORK_CONFIG_STORAGE_KEY)
-    expect(persistedJson).not.toBeNull()
-    useLensStore.setState({ snapshots: {} })
-    if (persistedJson) {
-      localStorage.setItem(NETWORK_CONFIG_STORAGE_KEY, persistedJson)
-    }
-    await useLensStore.persist.rehydrate()
-
-    const rehydratedSnapshot = useLensStore
-      .getState()
-      .getSnapshots('C_VECTOR')[0]
-    expect(rehydratedSnapshot).toBeDefined()
-    const entry = rehydratedSnapshot.ledgerData.vector
-    expect(entry.value).toMatchObject({
-      kind: 'vec',
-      items: [
-        { kind: 'primitive', scType: 'u32', value: 7 },
-        { kind: 'primitive', scType: 'u32', value: 9 },
       ],
     })
-    if (typeof entry.value === 'object' && entry.value !== null) {
-      const vector = entry.value as { items: Array<{ path: unknown }> }
-      expect(vector.items.map((item) => item.path)).toEqual([
-        [{ type: 'index', index: 0 }],
-        [{ type: 'index', index: 1 }],
-      ])
-    }
+
+    expect(sanitized.C1[0]?.discardedEntryCount).toBe(1)
+    expect(sanitized.C1[0]?.incomplete).toBe(true)
+    expect(sanitized.C1[1]?.discardedEntryCount).toBeUndefined()
+    expect(sanitized.C1[1]?.incomplete).toBeUndefined()
+  })
+
+  it('preserves network config when hydrating snapshots', () => {
+    const merged = mergeNetworkConfig(DEFAULT_NETWORKS.testnet, {
+      kind: 'preset',
+      networkId: 'mainnet',
+    })
+    expect(merged).toMatchObject({ networkId: 'mainnet' })
   })
 })

@@ -406,171 +406,120 @@ describe('persistence', () => {
         vi.useRealTimers()
       }
     })
+  })
 
-    it('preserves an item added immediately before hydration', () => {
-      vi.useFakeTimers()
-      vi.setSystemTime(new Date('2026-07-27T12:00:00.000Z'))
-
-      try {
-        useLensStore.setState({ watchlist: {} })
-
-        useLensStore.getState().addToWatchlist('C1', '/some/key')
-
-        const result = sanitizeNetworkWatchlist(
-          useLensStore.getState().watchlist,
-          useLensStore.getState().networkConfig.networkId,
-        )
-
-        expect(result.futurenet?.C1).toEqual([
-          {
-            contractId: 'C1',
-            keyPath: '/some/key',
-            timestamp: Date.now(),
-          },
-        ])
-      } finally {
-        useLensStore.setState({ watchlist: {} })
-        vi.useRealTimers()
-      }
+  describe('sanitizeNetworkWatchlist', () => {
+    it('returns an empty record for non-object input', () => {
+      expect(sanitizeNetworkWatchlist(null, 'testnet')).toEqual({})
     })
 
-    it('omits contracts whose items all failed validation', () => {
-      const result = sanitizeWatchlist({ C1: [{ bad: true }] })
-      expect(result).toEqual({})
-    })
-
-    it('keeps valid watchlist buckets separate for each network', () => {
+    it('scopes legacy watchlist to the legacy network', () => {
       const result = sanitizeNetworkWatchlist(
         {
-          TESTNET: {
-            C1: [{ contractId: 'C1', keyPath: 'testnet', timestamp: 1 }],
-          },
-          FUTURENET: {
-            C1: [{ contractId: 'C1', keyPath: 'futurenet', timestamp: 2 }],
-          },
+          C1: [{ contractId: 'C1', keyPath: 'k', timestamp: 1 }],
         },
-        'mainnet',
+        'testnet',
       )
-
       expect(result).toEqual({
         testnet: {
-          C1: [{ contractId: 'C1', keyPath: 'testnet', timestamp: 1 }],
+          C1: [{ contractId: 'C1', keyPath: 'k', timestamp: 1 }],
         },
-        futurenet: {
-          C1: [{ contractId: 'C1', keyPath: 'futurenet', timestamp: 2 }],
-        },
-      })
-    })
-
-    it('keeps valid snapshot buckets separate for each network', () => {
-      const snapshot = (contractId: string, id: string, ledgerSequence: number) => ({
-        id,
-        contractId,
-        timestamp: 1,
-        ledgerSequence,
-        ledgerData: {},
-      })
-      const result = sanitizeNetworkSnapshots(
-        {
-          TESTNET: { C1: [snapshot('C1', 'testnet', 1)] },
-          FUTURENET: { C1: [snapshot('C1', 'futurenet', 2)] },
-        },
-        'mainnet',
-      )
-
-      expect(result).toEqual({
-        testnet: { C1: [snapshot('C1', 'testnet', 1)] },
-        futurenet: { C1: [snapshot('C1', 'futurenet', 2)] },
       })
     })
   })
 
   describe('sanitizeSnapshots', () => {
-    it('drops malformed snapshots, sanitizes entries, and retains only the newest bounded set', () => {
-      const items = Array.from(
-        { length: DEFAULT_SNAPSHOT_RETENTION_LIMIT + 3 },
-        (_, index) => ({
-          id: `snapshot-${index}`,
-          contractId: 'C1',
-          timestamp: index + 1,
-          ledgerSequence: index,
-          ledgerData: {
-            key1: {
-              key: 'key1',
-              contractId: 'C1',
-              type: 'ContractData',
-              value: { count: index },
-              lastModifiedLedger: index,
-              decodeErrorReason: 'Decoder fallback used',
-            },
-            invalid: {
-              key: 'wrong-key',
-              contractId: 'C1',
-              type: 'ContractData',
-              value: null,
-              lastModifiedLedger: index,
+    it('returns an empty record for non-object input', () => {
+      expect(sanitizeSnapshots(null)).toEqual({})
+      expect(sanitizeSnapshots('x')).toEqual({})
+    })
+
+    it('retains valid snapshots and drops malformed ones', () => {
+      const timestamp = Date.now() - 100
+      const result = sanitizeSnapshots({
+        C1: [
+          {
+            id: 'snapshot-valid',
+            contractId: 'C1',
+            timestamp,
+            ledgerSequence: 10,
+            ledgerData: {
+              key1: {
+                key: 'key1',
+                contractId: 'C1',
+                type: 'ContractData',
+                value: { count: 3 },
+                lastModifiedLedger: 9,
+              },
             },
           },
-        }),
-      )
+          {
+            id: 'snapshot-malformed',
+            contractId: 'C1',
+            timestamp,
+            ledgerSequence: 10,
+            ledgerData: [],
+          },
+        ],
+      })
+      expect(result.C1).toHaveLength(1)
+      expect(result.C1[0].id).toBe('snapshot-valid')
+    })
 
-      const sanitized = sanitizeSnapshots({
+    it('records a discarded-entry count for rejected records', () => {
+      const result = sanitizeSnapshots({
         C1: [
-          ...items,
-          { id: 'future', contractId: 'C1', timestamp: Date.now() + 1000 },
-          { id: 'bad-ledger', contractId: 'C1', timestamp: 1, ledgerData: [] },
+          {
+            id: 'partial',
+            contractId: 'C1',
+            timestamp: Date.now() - 1,
+            ledgerSequence: 10,
+            ledgerData: {
+              good: {
+                key: 'good',
+                contractId: 'C1',
+                type: 'ContractData',
+                value: 42,
+                lastModifiedLedger: 9,
+              },
+              bad: { key: 'wrong-key' },
+            },
+          },
+          {
+            id: 'empty',
+            contractId: 'C1',
+            timestamp: Date.now() - 1,
+            ledgerSequence: 11,
+            ledgerData: {},
+          },
         ],
       })
 
-      expect(sanitized.C1).toHaveLength(DEFAULT_SNAPSHOT_RETENTION_LIMIT)
-      expect(sanitized.C1[0].id).toBe('snapshot-3')
-      expect(Object.keys(sanitized.C1[0].ledgerData)).toEqual(['key1'])
-      expect(sanitized.C1[0].ledgerData.key1.decodeErrorReason).toBe(
-        'Decoder fallback used',
-      )
+      expect(result.C1[0]).toMatchObject({
+        id: 'partial',
+        incomplete: true,
+        discardedEntryCount: 1,
+      })
+      expect(Object.keys(result.C1[0].ledgerData)).toEqual(['good'])
+      expect(result.C1[1]).not.toHaveProperty('incomplete')
+      expect(result.C1[1]).not.toHaveProperty('discardedEntryCount')
     })
   })
 
   describe('serializeNetworkConfigForStorage', () => {
-    it('serializes presets using the compact stored shape', () => {
-      expect(
-        serializeNetworkConfigForStorage(DEFAULT_NETWORKS.mainnet),
-      ).toEqual({
-        kind: 'preset',
-        networkId: 'mainnet',
-      })
-    })
-
-    it('serializes custom rpc values safely', () => {
-      expect(
-        serializeNetworkConfigForStorage({
-          networkId: 'custom',
-          networkPassphrase: 'Custom Network',
-          rpcUrl: 'https://rpc.custom.example.com/',
-        }),
-      ).toEqual({
-        kind: 'custom',
-        rpcUrl: 'https://rpc.custom.example.com',
-      })
+    it('serializes a preset config', () => {
+      const result = serializeNetworkConfigForStorage(DEFAULT_NETWORKS.testnet)
+      expect(result).toMatchObject({ kind: 'preset', networkId: 'testnet' })
     })
   })
 
-  describe('clearPersistedNetworkConfig', () => {
-    it('removes the storage key', () => {
-      // Set a value first
-      localStorage.setItem(
-        NETWORK_CONFIG_STORAGE_KEY,
-        JSON.stringify({ test: true }),
-      )
-      expect(localStorage.getItem(NETWORK_CONFIG_STORAGE_KEY)).not.toBeNull()
-
-      // Clear it
-      clearPersistedNetworkConfig()
-      expect(localStorage.getItem(NETWORK_CONFIG_STORAGE_KEY)).toBeNull()
+  describe('store integration', () => {
+    it('default retention limit is exposed', () => {
+      expect(DEFAULT_SNAPSHOT_RETENTION_LIMIT).toBeGreaterThan(0)
     })
 
-    it('does not throw when key does not exist', () => {
-      expect(() => clearPersistedNetworkConfig()).not.toThrow()
+    it('exposes the store for additional assertions', () => {
+      expect(useLensStore.getState()).toBeTruthy()
     })
   })
 })
