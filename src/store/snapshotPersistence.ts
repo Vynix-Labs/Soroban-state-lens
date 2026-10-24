@@ -200,8 +200,16 @@ export function serializeSnapshots(
   return serialized
 }
 
+export interface HydrationDiagnostics {
+  discardedEntryCount: number
+  discardedEntryCountBySnapshot?: Record<string, number>
+}
+
+const MAX_HYDRATION_DIAGNOSTIC_COUNT = 1_000_000
+
 export function hydrateSnapshots(
   value: unknown,
+  diagnostics?: HydrationDiagnostics,
 ): Record<string, Array<ContractSnapshot>> {
   if (!isRecord(value)) {
     return {}
@@ -239,6 +247,17 @@ export function hydrateSnapshots(
         const hydratedEntry = deserializeEntry(entry)
         if (hydratedEntry) {
           ledgerData[key] = hydratedEntry
+        } else if (diagnostics) {
+          diagnostics.discardedEntryCount = Math.min(
+            diagnostics.discardedEntryCount + 1,
+            MAX_HYDRATION_DIAGNOSTIC_COUNT,
+          )
+          if (diagnostics.discardedEntryCountBySnapshot) {
+            diagnostics.discardedEntryCountBySnapshot[candidate.id] = Math.min(
+              (diagnostics.discardedEntryCountBySnapshot[candidate.id] ?? 0) + 1,
+              MAX_HYDRATION_DIAGNOSTIC_COUNT,
+            )
+          }
         }
       }
 

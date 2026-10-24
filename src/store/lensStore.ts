@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { useShallow } from 'zustand/react/shallow'
+import { useMemo } from 'react'
 
 import { deepClone } from '../lib/deepClone'
 import { isSampleContractId } from '../lib/demoContract'
@@ -33,6 +34,7 @@ import {
   mergeSnapshots,
   sanitizeNetworkSnapshots,
   serializeNetworkConfigForStorage,
+  getHydrationDiagnostics,
 } from './persistence'
 import { serializeSnapshots } from './snapshotPersistence'
 import { createPreferencesSlice } from './preferencesSlice'
@@ -987,11 +989,13 @@ export const useLensStore = create<LensStore>()(
           persistedState,
           mergedNetwork.networkConfig.networkId,
         )
+        const hydrationDiagnostics = getHydrationDiagnostics()
         return {
           ...currentState,
           ...mergedNetwork,
           ...mergedPreferences,
           snapshots,
+          hydrationDiagnostics,
         }
       },
     },

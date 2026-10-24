@@ -1,4 +1,4 @@
-/**
+/*
  * Store type definitions for Soroban State Lens
  */
 
@@ -99,10 +99,22 @@ export interface ContractSnapshot {
   ledgerSequence: number
   ledgerData: Record<string, LedgerEntry>
   incomplete?: boolean
+  /**
+   * Number of persisted entries that were rejected during hydration.
+   * Truncated to a bounded maximum so the diagnostic remains cheap to store.
+   * Undefined or 0 means no entries were discarded (e.g. a valid empty capture).
+   */
+  discardedEntryCount?: number
   label?: string
 }
 
 export const DEFAULT_SNAPSHOT_RETENTION_LIMIT = 25
+
+/**
+ * Maximum number of discarded entries tracked per hydrated snapshot.
+ * Keeps the hydration diagnostic bounded regardless of how many records fail.
+ */
+export const MAX_DISCARDED_ENTRY_COUNT = 99999;
 
 // Snapshot slice
 export interface SnapshotSlice {
@@ -249,15 +261,15 @@ export interface LensStore
 
 // Default network configurations
 export const DEFAULT_NETWORKS: Record<string, NetworkConfig> = {
-  futurenet: {
+  futurenet:{
     networkId: 'futurenet',
-    networkPassphrase: 'Test SDF Future Network ; October 2022',
+    networkPassphrase: 'Test DF Future Network ; October 2022',
     rpcUrl: 'https://rpc-futurenet.stellar.org',
     horizonUrl: 'https://horizon-futurenet.stellar.org',
   },
   testnet: {
     networkId: 'testnet',
-    networkPassphrase: 'Test SDF Network ; September 2015',
+    networkPassphrase: 'Test DF Network ; September 2015',
     rpcUrl: 'https://soroban-testnet.stellar.org',
     horizonUrl: 'https://horizon-testnet.stellar.org',
   },
