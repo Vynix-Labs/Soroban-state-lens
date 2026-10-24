@@ -7,6 +7,6 @@ count.txt
 .nitro
 .tanstack
 .wrangler
-.env
 playwright-report
 test-results
+config.bat

@@ -17,7 +17,6 @@ import {
   isDecoderWorkerError,
   limitDecoderErrorDetail,
 } from '../types/decoder-worker'
-import type { HydrationDiagnostics } from './persistence'
 import {
   RecoveringDecoder,
   toRawXdrFallback,
@@ -34,8 +33,8 @@ import {
   mergePreferences,
   mergeSnapshots,
   sanitizeNetworkSnapshots,
-  getHydrationDiagnostics,
   serializeNetworkConfigForStorage,
+  getHydrationDiagnostics,
 } from './persistence'
 import { serializeSnapshots } from './snapshotPersistence'
 import { createPreferencesSlice } from './preferencesSlice'
