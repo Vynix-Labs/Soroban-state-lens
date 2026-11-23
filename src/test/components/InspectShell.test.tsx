@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { InspectShell } from '../../components/explorer/InspectShell'
@@ -78,6 +78,36 @@ describe('InspectShell', () => {
         name: 'Local demo data. Ledger numbers are illustrative.',
       }).textContent,
     ).toContain('Ledger numbers are illustrative.')
+  })
+
+  it('keeps the selected ledger entry visible when contract metadata is stored', () => {
+    useLensStore.setState({
+      watchlist: {},
+      ledgerData: { [storedEntry.key]: storedEntry },
+    })
+    const network = useLensStore.getState().networkConfig
+    render(
+      <InspectShell
+        contractId="C123"
+        normalizedContractId="C123"
+        keyPath="/state/ledger"
+      />,
+    )
+
+    act(() =>
+      useLensStore
+        .getState()
+        .setContractSpec('C123', { functions: ['balance'] }),
+    )
+
+    expect(screen.getByText(storedEntry.rawXdr)).toBeTruthy()
+    expect(useLensStore.getState().ledgerData[storedEntry.key]).toBe(
+      storedEntry,
+    )
+    expect(useLensStore.getState().networkConfig).toBe(network)
+    expect(useLensStore.getState().getContractSpec('C123')).toEqual({
+      functions: ['balance'],
+    })
   })
 
   it('shows the affected key path and expected/actual types for a schema mismatch', () => {
