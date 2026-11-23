@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { InspectShell } from '../../components/explorer/InspectShell'
 import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
 import { useLensStore } from '../../store/lensStore'
+import { contractSpecKey } from '../../store/contractSpecSlice'
 
 vi.mock('@stellar/design-system', () => ({
   Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
@@ -85,7 +86,7 @@ describe('InspectShell', () => {
       watchlist: {},
       ledgerData: { [storedEntry.key]: storedEntry },
       contractSpecMismatches: {
-        C123: [
+        [contractSpecKey(useLensStore.getState().networkConfig, 'C123')!]: [
           {
             keyPath: '/state/ledger',
             expectedType: 'i128',
@@ -114,7 +115,9 @@ describe('InspectShell', () => {
     useLensStore.setState({
       watchlist: {},
       ledgerData: { [storedEntry.key]: storedEntry },
-      contractSpecMismatches: { C123: [] },
+      contractSpecMismatches: {
+        [contractSpecKey(useLensStore.getState().networkConfig, 'C123')!]: [],
+      },
     })
 
     render(

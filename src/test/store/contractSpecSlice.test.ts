@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { getStoreState, resetStore } from '../../store/lensStore'
+import { contractSpecKey } from '../../store/contractSpecSlice'
+import { DEFAULT_NETWORKS } from '../../store/types'
+
+const key = (id: string) => contractSpecKey(getStoreState().networkConfig, id)!
 
 describe('contractSpecSlice', () => {
   beforeEach(() => {
@@ -42,10 +46,14 @@ describe('contractSpecSlice', () => {
     ).toEqual([
       { keyPath: 'balance', expectedType: 'i128', actualType: 'symbol' },
     ])
-    expect(getStoreState().contractSpecMismatches.CONTRACT_A).toHaveLength(1)
+    expect(
+      getStoreState().contractSpecMismatches[key('CONTRACT_A')],
+    ).toHaveLength(1)
 
     expect(compare('CONTRACT_A', expected, expected)).toEqual([])
-    expect(getStoreState().contractSpecMismatches.CONTRACT_A).toEqual([])
+    expect(getStoreState().contractSpecMismatches[key('CONTRACT_A')]).toEqual(
+      [],
+    )
   })
 
   it('returns undefined for unknown contract ID', () => {
@@ -100,8 +108,12 @@ describe('contractSpecSlice', () => {
 
     expect(getStoreState().getContractSpec('CONTRACT_A')).toBeUndefined()
     expect(getStoreState().getContractSpec('CONTRACT_B')).toEqual({ name: 'B' })
-    expect(getStoreState().contractSpecMismatches.CONTRACT_A).toBeUndefined()
-    expect(getStoreState().contractSpecMismatches.CONTRACT_B).toHaveLength(1)
+    expect(
+      getStoreState().contractSpecMismatches[key('CONTRACT_A')],
+    ).toBeUndefined()
+    expect(
+      getStoreState().contractSpecMismatches[key('CONTRACT_B')],
+    ).toHaveLength(1)
   })
 
   it('normalizes equivalent contract IDs to the same cache entry', () => {
@@ -117,6 +129,34 @@ describe('contractSpecSlice', () => {
     expect(getStoreState().contractSpecs).toEqual({})
     expect(getStoreState().getContractSpec('   ')).toBeUndefined()
     expect(getStoreState().getContractSpec('\n\t')).toBeUndefined()
+  })
+
+  it('isolates specs and errors for the same contract across networks', () => {
+    getStoreState().setNetworkConfig(DEFAULT_NETWORKS.testnet)
+    getStoreState().setContractSpec('CONTRACT_A', { name: 'testnet' })
+    getStoreState().setContractSpecError('CONTRACT_B', 'testnet error')
+    getStoreState().setContractSpecMismatches('CONTRACT_A', [
+      { keyPath: 'balance', expectedType: 'i128', actualType: 'symbol' },
+    ])
+    getStoreState().setNetworkConfig(DEFAULT_NETWORKS.mainnet)
+    expect(getStoreState().getContractSpec('CONTRACT_A')).toBeUndefined()
+    expect(getStoreState().getContractSpecError('CONTRACT_B')).toBeUndefined()
+    expect(
+      getStoreState().contractSpecMismatches[key('CONTRACT_A')],
+    ).toBeUndefined()
+    getStoreState().setContractSpec('CONTRACT_A', { name: 'mainnet' })
+    getStoreState().setNetworkConfig(DEFAULT_NETWORKS.testnet)
+    expect(getStoreState().getContractSpec('CONTRACT_A')).toEqual({
+      name: 'testnet',
+    })
+    expect(getStoreState().getContractSpecError('CONTRACT_B')).toBe(
+      'testnet error',
+    )
+    getStoreState().clearContractSpec('CONTRACT_A')
+    getStoreState().setNetworkConfig(DEFAULT_NETWORKS.mainnet)
+    expect(getStoreState().getContractSpec('CONTRACT_A')).toEqual({
+      name: 'mainnet',
+    })
   })
 
   it('does not affect other store state when setting a spec', () => {

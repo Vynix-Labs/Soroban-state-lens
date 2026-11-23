@@ -1,10 +1,20 @@
 import { normalizeContractIdInput } from '../lib/validation/normalizeContractIdInput'
 import { compareContractSchema } from '../lib/spec/compareContractSchema'
-import type { ContractSpecSlice, LensStore } from './types'
+import type { ContractSpecSlice, LensStore, NetworkConfig } from './types'
 
-function normalizeContractSpecKey(contractId: string): string | null {
+export function contractSpecKey(
+  network: NetworkConfig,
+  contractId: string,
+): string | null {
   const normalized = normalizeContractIdInput(contractId)
-  return normalized.length > 0 ? normalized : null
+  return normalized.length > 0
+    ? JSON.stringify([
+        network.networkId.trim().toLowerCase(),
+        network.networkPassphrase.trim(),
+        network.rpcUrl.trim(),
+        normalized,
+      ])
+    : null
 }
 
 export const createContractSpecSlice = (
@@ -16,7 +26,10 @@ export const createContractSpecSlice = (
   contractSpecMismatches: {},
 
   setContractSpec: (contractId: string, spec: unknown) => {
-    const normalizedContractId = normalizeContractSpecKey(contractId)
+    const normalizedContractId = contractSpecKey(
+      get().networkConfig,
+      contractId,
+    )
     if (!normalizedContractId) {
       return
     }
@@ -40,7 +53,10 @@ export const createContractSpecSlice = (
 
   compareContractSpec: (contractId, expectedFields, actualFields) => {
     const mismatches = compareContractSchema(expectedFields, actualFields)
-    const normalizedContractId = normalizeContractSpecKey(contractId)
+    const normalizedContractId = contractSpecKey(
+      get().networkConfig,
+      contractId,
+    )
     if (normalizedContractId) {
       set((state) => ({
         contractSpecMismatches: {
@@ -53,7 +69,10 @@ export const createContractSpecSlice = (
   },
 
   setContractSpecMismatches: (contractId, mismatches) => {
-    const normalizedContractId = normalizeContractSpecKey(contractId)
+    const normalizedContractId = contractSpecKey(
+      get().networkConfig,
+      contractId,
+    )
     if (!normalizedContractId) return
 
     set((state) => ({
@@ -65,7 +84,10 @@ export const createContractSpecSlice = (
   },
 
   getContractSpec: (contractId: string) => {
-    const normalizedContractId = normalizeContractSpecKey(contractId)
+    const normalizedContractId = contractSpecKey(
+      get().networkConfig,
+      contractId,
+    )
     if (!normalizedContractId) {
       return undefined
     }
@@ -74,7 +96,10 @@ export const createContractSpecSlice = (
   },
 
   setContractSpecError: (contractId: string, error: string) => {
-    const normalizedContractId = normalizeContractSpecKey(contractId)
+    const normalizedContractId = contractSpecKey(
+      get().networkConfig,
+      contractId,
+    )
     const normalizedError = error.trim().slice(0, 500)
     if (!normalizedContractId || !normalizedError) return
 
@@ -96,14 +121,20 @@ export const createContractSpecSlice = (
   },
 
   getContractSpecError: (contractId: string) => {
-    const normalizedContractId = normalizeContractSpecKey(contractId)
+    const normalizedContractId = contractSpecKey(
+      get().networkConfig,
+      contractId,
+    )
     if (!normalizedContractId) return undefined
     return get().contractSpecErrors[normalizedContractId]
   },
 
   clearContractSpec: (contractId: string) =>
     set((state) => {
-      const normalizedContractId = normalizeContractSpecKey(contractId)
+      const normalizedContractId = contractSpecKey(
+        state.networkConfig,
+        contractId,
+      )
       if (!normalizedContractId) {
         return state
       }
