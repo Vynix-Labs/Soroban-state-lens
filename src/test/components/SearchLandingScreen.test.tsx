@@ -48,6 +48,23 @@ describe('SearchLandingScreen recent history action', () => {
     ).toBeTruthy()
   })
 
+  it('keeps contract ID lookup working when input has whitespace and lowercase', () => {
+    render(<SearchLandingScreen />)
+    const input = screen.getByRole('textbox', {
+      name: 'Contract ID or ledger key',
+    })
+
+    fireEvent.change(input, {
+      target: { value: `  ${SAMPLE_CONTRACT_ID.toLowerCase()}  ` },
+    })
+    fireEvent.submit(input.closest('form')!)
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/contracts/$contractId',
+      params: { contractId: SAMPLE_CONTRACT_ID },
+    })
+  })
+
   it('marks the sample explorer URL as local demo mode', () => {
     render(<SearchLandingScreen />)
 
