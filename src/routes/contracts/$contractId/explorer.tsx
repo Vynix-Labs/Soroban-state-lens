@@ -9,6 +9,11 @@ import {
   flattenTree,
 } from '../../../lib/tree/flattenTree'
 import { useContractLedgerPolling } from '../../../lib/network/useContractLedgerPolling'
+import {
+  DEMO_COUNTER_ENTRY_KEY,
+  DEMO_COUNTER_NEXT_VALUE,
+  readDemoCounterValue,
+} from '../../../lib/demo/demoLedgerEntries'
 import { isSampleContractId } from '../../../lib/demoContract'
 import { ContractLoadStatus } from '../../../store/types'
 import { useLensStore, useSnapshots } from '../../../store/lensStore'
@@ -157,6 +162,8 @@ function ContractExplorer() {
     (state) => state.setContractLoadError,
   )
   const loadContract = useLensStore((state) => state.loadContract)
+  const loadDemoContract = useLensStore((state) => state.loadDemoContract)
+  const advanceDemoCounter = useLensStore((state) => state.advanceDemoCounter)
   const refreshActiveKeys = useLensStore((state) => state.refreshActiveKeys)
   const contractLoadStatus = useLensStore((state) => state.contractLoadStatus)
   const contractLoadError = useLensStore((state) => state.contractLoadError)
@@ -222,6 +229,23 @@ function ContractExplorer() {
     setCaptureStatus(`Captured ${label}.`)
   }
 
+  const isDemoMode = search.mode === 'demo' && isSampleContractId(contractId)
+
+  const demoCounterEntry = ledgerEntries.find(
+    (entry) => entry.key === DEMO_COUNTER_ENTRY_KEY,
+  )
+  const demoCounterAdvanced =
+    readDemoCounterValue(demoCounterEntry) === DEMO_COUNTER_NEXT_VALUE
+
+  const handleAdvanceDemoCounter = () => {
+    const advanced = advanceDemoCounter(contractId)
+    setCaptureStatus(
+      advanced
+        ? 'Demo counter advanced from 42 to 43. Capture another snapshot to compare.'
+        : 'Demo counter is already at 43.',
+    )
+  }
+
   const keys = useMemo(
     () => dedupeExplorerKeys(search.keys).split(',').filter(Boolean),
     [search.keys],
@@ -278,6 +302,12 @@ function ContractExplorer() {
   useEffect(() => {
     setActiveContractId(contractId)
 
+    // Demo mode hydrates the local counter fixture instead of reading RPC.
+    if (isDemoMode) {
+      loadDemoContract(contractId)
+      return
+    }
+
     if (keys.length === 0) {
       setContractLoadError(null)
       setContractLoadStatus(ContractLoadStatus.EMPTY)
@@ -287,8 +317,10 @@ function ContractExplorer() {
     void loadContract(contractId, keys)
   }, [
     contractId,
+    isDemoMode,
     keys,
     loadContract,
+    loadDemoContract,
     setActiveContractId,
     setContractLoadError,
     setContractLoadStatus,
@@ -348,6 +380,16 @@ function ContractExplorer() {
               disabled={ledgerEntries.length === 0}
             >
               Capture Snapshot
+            </Button>
+          )}
+          {isDemoMode && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleAdvanceDemoCounter}
+              disabled={demoCounterAdvanced}
+            >
+              Demo: counter 42 → 43
             </Button>
           )}
           <Button variant="secondary" size="sm" onClick={handleRetry}>
