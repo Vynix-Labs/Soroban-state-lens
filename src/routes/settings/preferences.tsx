@@ -8,12 +8,18 @@ export const Route = createFileRoute('/settings/preferences')({
 })
 
 function PreferencesSettings() {
-  const byteDisplayMode = useLensStore((state) => state.preferences.byteDisplayMode)
-  const bigIntDisplayMode = useLensStore((state) => state.preferences.bigIntDisplayMode)
+  const byteDisplayMode = useLensStore(
+    (state) => state.preferences.byteDisplayMode,
+  )
+  const bigIntDisplayMode = useLensStore(
+    (state) => state.preferences.bigIntDisplayMode,
+  )
   const setByteDisplayMode = useLensStore((state) => state.setByteDisplayMode)
   const setBigIntDisplayMode = useLensStore(
     (state) => state.setBigIntDisplayMode,
   )
+  const autoLoadSpec = useLensStore((state) => state.preferences.autoLoadSpec)
+  const setAutoLoadSpec = useLensStore((state) => state.setAutoLoadSpec)
   const resetPreferences = useLensStore((state) => state.resetPreferences)
 
   return (
@@ -63,6 +69,30 @@ function PreferencesSettings() {
                 <option value={BigIntDisplayMode.HEX}>Hex</option>
                 <option value={BigIntDisplayMode.SCIENTIFIC}>Scientific</option>
               </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="auto-load-spec"
+                className="flex items-start gap-3 cursor-pointer"
+              >
+                <input
+                  id="auto-load-spec"
+                  type="checkbox"
+                  checked={autoLoadSpec}
+                  onChange={(event) => setAutoLoadSpec(event.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  <Heading size="sm" as="h3">
+                    Automatically load contract spec
+                  </Heading>
+                  <span className="block text-sm text-text-muted mt-1">
+                    Fetch a contract's metadata once when the Inspector opens.
+                    Off by default.
+                  </span>
+                </span>
+              </label>
             </div>
 
             <div className="mt-2 pt-4 border-t">

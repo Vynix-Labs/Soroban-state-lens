@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
 import { Link } from '@tanstack/react-router'
 import { isSampleContractId } from '../../lib/demoContract'
+import { isContractId } from '../../lib/validation/isContractId'
 import { useLensStore } from '../../store/lensStore'
+import { ContractSpecLoadStatus } from '../../store/types'
 import { buildInspectBreadcrumb } from './buildInspectBreadcrumb'
 import { LocalDemoNotice } from './LocalDemoNotice'
 import type { LedgerEntry } from '../../store/types'
@@ -21,6 +23,18 @@ export function InspectShell({
   keyPathError,
 }: InspectShellProps) {
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
+  const autoLoadSpec = useLensStore((state) => state.preferences.autoLoadSpec)
+  const loadContractSpec = useLensStore((state) => state.loadContractSpec)
+  const specLoadStatus = useLensStore((state) =>
+    state.getContractSpecLoadStatus(normalizedContractId || contractId),
+  )
+  const specLoadError = useLensStore((state) =>
+    state.getContractSpecError(normalizedContractId || contractId),
+  )
+  const hasSpec = useLensStore(
+    (state) =>
+      state.getContractSpec(normalizedContractId || contractId) !== undefined,
+  )
   const schemaMismatch = useLensStore((state) =>
     (
       state.contractSpecMismatches[normalizedContractId.toUpperCase()] ?? []
@@ -47,6 +61,15 @@ export function InspectShell({
   const [copied, setCopied] = useState(false)
   const [watchlistFeedback, setWatchlistFeedback] = useState('')
   const copiedResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inspectedContractId = normalizedContractId || contractId
+
+  // Opt-in, route-scoped automatic metadata load. The action itself skips
+  // cached specs/errors and de-duplicates concurrent loads, so re-opening the
+  // same contract never issues a second WASM request.
+  useEffect(() => {
+    if (!autoLoadSpec || !isContractId(inspectedContractId)) return
+    void loadContractSpec(inspectedContractId)
+  }, [autoLoadSpec, inspectedContractId, loadContractSpec])
 
   useEffect(() => {
     return () => {
@@ -135,6 +158,53 @@ export function InspectShell({
           {watchlistFeedback}
         </p>
       ) : null}
+
+      <Card>
+        <div className="p-6 space-y-3" aria-live="polite">
+          <div className="flex items-center justify-between gap-4">
+            <Heading size="sm" as="h2" className="text-white">
+              Contract spec
+            </Heading>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                void loadContractSpec(inspectedContractId, {
+                  force: true,
+                })
+              }
+              disabled={
+                !isContractId(inspectedContractId) ||
+                specLoadStatus === ContractSpecLoadStatus.LOADING
+              }
+            >
+              {specLoadStatus === ContractSpecLoadStatus.LOADING
+                ? 'Loading spec…'
+                : hasSpec
+                  ? 'Reload spec'
+                  : 'Load contract spec'}
+            </Button>
+          </div>
+          {specLoadStatus === ContractSpecLoadStatus.LOADING ? (
+            <p role="status" className="text-sm text-text-muted">
+              Loading contract spec…
+            </p>
+          ) : null}
+          {specLoadStatus === ContractSpecLoadStatus.ERROR && specLoadError ? (
+            <p role="alert" className="text-sm text-red-400">
+              Spec load failed: {specLoadError}
+            </p>
+          ) : null}
+          {specLoadStatus === ContractSpecLoadStatus.SUCCESS && hasSpec ? (
+            <p className="text-sm text-text-muted">Contract spec loaded.</p>
+          ) : null}
+          {!isContractId(inspectedContractId) ? (
+            <p className="text-sm text-text-muted">
+              A valid contract ID is required to load its spec.
+            </p>
+          ) : null}
+        </div>
+      </Card>
 
       <nav
         aria-label="Inspect breadcrumb"
