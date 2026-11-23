@@ -1,11 +1,11 @@
 import { xdr } from '@stellar/stellar-sdk'
 import { Spec } from '@stellar/stellar-sdk/contract'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getContractWasm } from '../../lib/network/getContractWasm'
+import { getContractWasmForSpec } from '../../lib/network/getContractWasmForSpec'
 import { loadContractSpec } from '../../lib/spec/loadContractSpec'
 
-vi.mock('../../lib/network/getContractWasm', () => ({
-  getContractWasm: vi.fn(),
+vi.mock('../../lib/network/getContractWasmForSpec', () => ({
+  getContractWasmForSpec: vi.fn(),
 }))
 
 describe('loadContractSpec', () => {
@@ -45,16 +45,16 @@ describe('loadContractSpec', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('fetches, extracts and parses a fixture without executing it', async () => {
-    vi.mocked(getContractWasm).mockResolvedValue({ success: true, wasm })
+    vi.mocked(getContractWasmForSpec).mockResolvedValue({ success: true, wasm })
     expect(await loadContractSpec(params, parse)).toEqual({
       ok: true,
       spec: ['balance'],
     })
-    expect(getContractWasm).toHaveBeenCalledWith(params)
+    expect(getContractWasmForSpec).toHaveBeenCalledWith(params)
   })
 
   it('distinguishes fetch, section and parser failures', async () => {
-    vi.mocked(getContractWasm).mockResolvedValueOnce({
+    vi.mocked(getContractWasmForSpec).mockResolvedValueOnce({
       success: false,
       error: 'offline',
     })
@@ -63,7 +63,7 @@ describe('loadContractSpec', () => {
       stage: 'fetch',
       reason: 'offline',
     })
-    vi.mocked(getContractWasm).mockResolvedValueOnce({
+    vi.mocked(getContractWasmForSpec).mockResolvedValueOnce({
       success: true,
       wasm: new Uint8Array([0]),
     })
@@ -71,11 +71,17 @@ describe('loadContractSpec', () => {
       ok: false,
       stage: 'section',
     })
-    vi.mocked(getContractWasm).mockResolvedValueOnce({ success: true, wasm })
+    vi.mocked(getContractWasmForSpec).mockResolvedValueOnce({
+      success: true,
+      wasm,
+    })
     expect(
       await loadContractSpec(params, () => ({ ok: false, reason: 'bad spec' })),
     ).toEqual({ ok: false, stage: 'parse', reason: 'bad spec' })
-    vi.mocked(getContractWasm).mockResolvedValueOnce({ success: true, wasm })
+    vi.mocked(getContractWasmForSpec).mockResolvedValueOnce({
+      success: true,
+      wasm,
+    })
     expect(
       await loadContractSpec(params, () => {
         throw new Error('details')

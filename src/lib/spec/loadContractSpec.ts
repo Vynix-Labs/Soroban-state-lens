@@ -1,4 +1,4 @@
-import { getContractWasm } from '../network/getContractWasm'
+import { getContractWasmForSpec } from '../network/getContractWasmForSpec'
 import { extractContractspecv0 } from '../wasm/wasmExtractor'
 import type { GetContractWasmParams } from '../network/getContractWasm'
 
@@ -15,7 +15,7 @@ export async function loadContractSpec<T>(
   params: GetContractWasmParams,
   parse: SpecParser<T>,
 ): Promise<LoadContractSpecResult<T>> {
-  const fetched = await getContractWasm(params)
+  const fetched = await getContractWasmForSpec(params)
   if (!fetched.success)
     return { ok: false, stage: 'fetch', reason: fetched.error }
   const extracted = extractContractspecv0(fetched.wasm)

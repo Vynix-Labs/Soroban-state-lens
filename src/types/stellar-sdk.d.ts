@@ -1,4 +1,10 @@
 declare module '@stellar/stellar-sdk' {
+  export class Contract {
+    constructor(contractId: string)
+    // Keep this declaration ambient while referring to the SDK's concrete XDR type.
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+    getFootprint(): import('@stellar/stellar-sdk/minimal').xdr.LedgerKey
+  }
   // Minimal surface needed by the app without pulling in full SDK types.
   export const xdr: any
   export namespace rpc {
