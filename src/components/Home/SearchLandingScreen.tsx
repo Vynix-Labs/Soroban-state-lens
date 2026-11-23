@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { validateContractRouteParam } from '../../routes/contracts/$contractId/-validateContractRouteParam'
+import { resolveContractDataLedgerKey } from '../../lib/validation/resolveLedgerKey'
 import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
 import { useLensStore } from '../../store/lensStore'
 import { ConnectionStatus } from '../../store/types'
@@ -22,6 +23,16 @@ const SearchLandingScreen = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const ledgerKeyResult = resolveContractDataLedgerKey(inputValue)
+    if (ledgerKeyResult.ok) {
+      navigate({
+        to: ledgerKeyResult.to,
+        params: ledgerKeyResult.params,
+        search: ledgerKeyResult.search,
+      })
+      return
+    }
+
     const result = validateContractRouteParam(inputValue)
     if (!result.ok) {
       setValidationError('Invalid contract ID')
