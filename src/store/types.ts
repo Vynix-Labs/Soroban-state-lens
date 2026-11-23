@@ -129,6 +129,18 @@ export interface ContractSlice {
   clearSelectedKeyPath: () => void
   /** Drop cached entries of the sample/demo contract (SSL#733). */
   clearDemoRecords: () => void
+  /**
+   * Demo-only counter change (SSL-I050): rewrites the sample contract counter
+   * entry from 42 to 43 in local state without touching a network. Returns
+   * false when the store is not showing the sample contract, or when the
+   * counter already holds 43.
+   */
+  advanceDemoCounter: (contractId: string) => boolean
+  /**
+   * Hydrate the local demo fixture for the sample contract (SSL-I050). Demo
+   * mode only: live contract ids are ignored and never seeded.
+   */
+  loadDemoContract: (contractId: string) => void
 }
 
 export enum ContractLoadStatus {

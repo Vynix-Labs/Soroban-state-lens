@@ -1,4 +1,11 @@
+import {
+  DEMO_COUNTER_ENTRY_KEY,
+  DEMO_COUNTER_NEXT_VALUE,
+  createDemoLedgerEntries,
+  readDemoCounterValue,
+} from '../lib/demo/demoLedgerEntries'
 import { isSampleContractId, withoutDemoRecords } from '../lib/demoContract'
+import { ContractLoadStatus } from './types'
 import type { LensStore } from './types'
 
 export type ContractSlice = {
@@ -11,6 +18,10 @@ export type ContractSlice = {
   clearSelectedKeyPath: () => void
   /** Drop cached entries of the sample/demo contract (SSL#733). */
   clearDemoRecords: () => void
+  /** Demo-only counter change (SSL-I050). */
+  advanceDemoCounter: (contractId: string) => boolean
+  /** Seed the local demo fixture for the sample contract (SSL-I050). */
+  loadDemoContract: (contractId: string) => void
 }
 
 export const createContractSlice = (
@@ -59,4 +70,82 @@ export const createContractSlice = (
     set(() => ({
       selectedKeyPath: null,
     })),
+
+  loadDemoContract: (contractId: string) => {
+    // Demo mode only: live contract ids never receive fixture entries.
+    if (!isSampleContractId(contractId)) {
+      return
+    }
+
+    set((state) => {
+      const demoEntries = createDemoLedgerEntries()
+      const hasDemoEntries = demoEntries.some((entry) =>
+        Object.prototype.hasOwnProperty.call(state.ledgerData, entry.key),
+      )
+
+      return {
+        activeContractId: contractId,
+        selectedKeyPath:
+          state.activeContractId === contractId ? state.selectedKeyPath : null,
+        ledgerData: hasDemoEntries
+          ? state.ledgerData
+          : {
+              ...state.ledgerData,
+              ...Object.fromEntries(
+                demoEntries.map((entry) => [entry.key, entry]),
+              ),
+            },
+        contractLoadStatus: ContractLoadStatus.SUCCESS,
+        contractLoadError: null,
+        contractLoadErrorCode: null,
+        contractLoadAttemptCount: null,
+      }
+    })
+  },
+
+  advanceDemoCounter: (contractId: string) => {
+    // Demo mode only: live contract ids can never reach the fixture.
+    if (!isSampleContractId(contractId)) {
+      return false
+    }
+
+    let advanced = false
+    set((state) => {
+      if (!isSampleContractId(state.activeContractId ?? '')) {
+        return {}
+      }
+      if (
+        !Object.prototype.hasOwnProperty.call(
+          state.ledgerData,
+          DEMO_COUNTER_ENTRY_KEY,
+        )
+      ) {
+        return {}
+      }
+
+      const currentEntry = state.ledgerData[DEMO_COUNTER_ENTRY_KEY]
+      if (readDemoCounterValue(currentEntry) === DEMO_COUNTER_NEXT_VALUE) {
+        return {}
+      }
+
+      const nextEntry = createDemoLedgerEntries(DEMO_COUNTER_NEXT_VALUE).find(
+        (entry) => entry.key === DEMO_COUNTER_ENTRY_KEY,
+      )
+      if (!nextEntry) {
+        return {}
+      }
+
+      advanced = true
+      // Only the counter entry is replaced; every other contract entry and
+      // all network state stay untouched.
+      return {
+        ledgerData: {
+          ...state.ledgerData,
+          [DEMO_COUNTER_ENTRY_KEY]: nextEntry,
+        },
+      }
+    })
+
+    return advanced
+  },
 })
