@@ -62,6 +62,7 @@ describe('flattenTree', () => {
           node: tree,
           canonicalKey: 'original-key-xdr',
           durability: 'Temporary',
+          ledgerType: 'ContractData',
         },
       ],
       ['root'],
@@ -70,9 +71,11 @@ describe('flattenTree', () => {
     expect(rows[0]).toMatchObject({
       canonicalKey: 'original-key-xdr',
       durability: 'Temporary',
+      ledgerType: 'ContractData',
     })
     expect(rows[1]?.canonicalKey).toBeUndefined()
     expect(rows[1]?.durability).toBeUndefined()
+    expect(rows[1]?.ledgerType).toBeUndefined()
   })
 
   it('shows direct descendants when root expanded', () => {

@@ -153,6 +153,8 @@ function ContractExplorer() {
   const { normalizedContractId } = Route.useRouteContext()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
+  const isDemoExplorer =
+    search.mode === 'demo' && isSampleContractId(contractId)
 
   const setActiveContractId = useLensStore((state) => state.setActiveContractId)
   const setContractLoadStatus = useLensStore(
@@ -266,6 +268,7 @@ function ContractExplorer() {
             label: entry.displayKey ?? entry.displayName ?? entry.key,
             canonicalKey: entry.canonicalKey,
             durability: entry.durability,
+            ledgerType: entry.type,
             node: entry.value,
             expired: entry.expired,
           },
@@ -314,11 +317,12 @@ function ContractExplorer() {
       return
     }
 
-    void loadContract(contractId, keys)
+    void loadContract(contractId, keys, search.mode)
   }, [
     contractId,
     isDemoMode,
     keys,
+    search.mode,
     loadContract,
     loadDemoContract,
     setActiveContractId,
@@ -341,7 +345,11 @@ function ContractExplorer() {
       return
     }
 
-    void loadContract(contractId, keys)
+    void loadContract(contractId, keys, search.mode)
+  }
+
+  const handleReturnToSearch = () => {
+    void navigate({ to: '/' })
   }
 
   const handleActivateRow = (keyPath: string) => {
@@ -412,18 +420,29 @@ function ContractExplorer() {
         <Card>
           <div className="p-6 space-y-3">
             <Heading size="sm" as="h3" className="text-white">
-              No Contract Data Found
+              {isDemoExplorer
+                ? 'Demo Data Unavailable'
+                : 'No Contract Data Found'}
             </Heading>
             <p className="text-text-muted text-sm">
-              The current contract query completed, but no ledger entries were
-              returned for {keys.length} requested key
-              {keys.length === 1 ? '' : 's'}.
+              {isDemoExplorer
+                ? 'The local demo dataset returned no entries for the requested keys. Retry the sample or return to search.'
+                : `The current contract query completed, but no ledger entries were returned for ${keys.length} requested key${keys.length === 1 ? '' : 's'}.`}
             </p>
-            {keys.length === 0 && (
+            {keys.length === 0 && !isDemoExplorer && (
               <p className="text-text-muted text-xs">
                 Add one or more base64 ledger keys via `?keys=...` to load
                 entries in this route.
               </p>
+            )}
+            {isDemoExplorer && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleReturnToSearch}
+              >
+                Return to search
+              </Button>
             )}
           </div>
         </Card>
@@ -433,10 +452,15 @@ function ContractExplorer() {
         <Card>
           <div className="p-6 space-y-4 border border-red-500/20 bg-red-500/5 rounded-xl">
             <Heading size="sm" as="h3" className="text-red-300">
-              Failed To Load Contract Data
+              {isDemoExplorer
+                ? 'Unable to Load Demo Data'
+                : 'Failed To Load Contract Data'}
             </Heading>
             <p className="text-text-muted text-sm">
-              {contractLoadError || 'An unknown error occurred while loading.'}
+              {isDemoExplorer
+                ? `The local demo dataset is missing or invalid. ${contractLoadError || 'Try again or return to search.'}`
+                : contractLoadError ||
+                  'An unknown error occurred while loading.'}
             </p>
             {contractLoadErrorCode !== null && (
               <p className="text-text-muted text-xs">
@@ -457,6 +481,16 @@ function ContractExplorer() {
               >
                 Retry
               </Button>
+              {isDemoExplorer && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleReturnToSearch}
+                  className="ml-2"
+                >
+                  Return to search
+                </Button>
+              )}
             </div>
           </div>
         </Card>

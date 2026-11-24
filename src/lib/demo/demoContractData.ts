@@ -1,4 +1,5 @@
 import { Address, xdr } from '@stellar/stellar-sdk'
+import { SAMPLE_CONTRACT_ID } from '../demoContract'
 
 export interface DemoContractDataRecord {
   name: 'counter' | 'nested-collection'
@@ -61,10 +62,8 @@ function makeRecord(
   }
 }
 
-/** Deterministic contract address the decoder fixture is bound to. */
-const FIXTURE_CONTRACT = xdr.ScAddress.scAddressTypeContract(
-  Buffer.alloc(32, 42),
-)
+/** Keep the decoder fixture bound to the sample contract used by the app. */
+const FIXTURE_CONTRACT = addressFromContractId(SAMPLE_CONTRACT_ID)
 
 export const DEMO_CONTRACT_DATA = [
   makeRecord('counter', xdr.ScVal.scvU32(42), FIXTURE_CONTRACT),

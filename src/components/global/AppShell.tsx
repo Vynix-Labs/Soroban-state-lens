@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate, useRouterState } from '@tanstack/react-router'
 
 import { startLedgerHeadPoll } from '../../lib/network/ledgerPoller'
 import { useLensStore, useNetworkConfig } from '../../store/lensStore'
@@ -19,6 +20,11 @@ export default function AppShell({ children }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true)
   const [activeNavItem, setActiveNavItem] = useState('watchlist')
+  const navigate = useNavigate()
+  const isPreferences = useRouterState({
+    select: (state) => state.location.pathname === '/settings/preferences',
+  })
+  const displayedNavItem = isPreferences ? 'settings' : activeNavItem
   const networkConfig = useNetworkConfig()
   const setConnectionStatus = useLensStore((state) => state.setConnectionStatus)
 
@@ -41,8 +47,12 @@ export default function AppShell({ children }: AppShellProps) {
       {/* Main workspace */}
       <div className="flex flex-1 overflow-hidden relative">
         <SlimNav
-          activeItem={activeNavItem}
+          activeItem={displayedNavItem}
           onItemClick={(item) => {
+            if (item === 'settings') {
+              void navigate({ to: '/settings/preferences' })
+              return
+            }
             setActiveNavItem(item)
             if (item === 'search') {
               setMobileMenuOpen(true)

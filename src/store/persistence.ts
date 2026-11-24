@@ -308,7 +308,7 @@ function sanitizeSnapshotLedgerData(
       item.type === 'Trustline' ||
       item.type === 'Other'
     const validDurability =
-      !('durability' in item) ||
+      item.durability === undefined ||
       item.durability === 'Persistent' ||
       item.durability === 'Temporary' ||
       item.durability === 'Instance'
@@ -323,12 +323,12 @@ function sanitizeSnapshotLedgerData(
       !Number.isSafeInteger(item.lastModifiedLedger) ||
       item.lastModifiedLedger < 0 ||
       !validDurability ||
-      ('expirationLedger' in item &&
+      (item.expirationLedger !== undefined &&
         (typeof item.expirationLedger !== 'number' ||
           !Number.isSafeInteger(item.expirationLedger) ||
           item.expirationLedger < 0)) ||
-      ('rawXdr' in item && typeof item.rawXdr !== 'string') ||
-      ('decodeErrorReason' in item &&
+      (item.rawXdr !== undefined && typeof item.rawXdr !== 'string') ||
+      (item.decodeErrorReason !== undefined &&
         typeof item.decodeErrorReason !== 'string')
     ) {
       rejectedEntries++
@@ -346,7 +346,17 @@ function sanitizeSnapshotLedgerData(
         : { durability: item.durability as LedgerEntry['durability'] }),
       ...(item.expirationLedger === undefined
         ? {}
-        : { expirationLedger: item.expirationLedger as number }),
+        : { expirationLedger: item.expirationLedger }),
+      ...(typeof item.canonicalKey === 'string'
+        ? { canonicalKey: item.canonicalKey }
+        : {}),
+      ...(typeof item.displayKey === 'string'
+        ? { displayKey: item.displayKey }
+        : {}),
+      ...(typeof item.displayName === 'string'
+        ? { displayName: item.displayName }
+        : {}),
+      ...(typeof item.expired === 'boolean' ? { expired: item.expired } : {}),
       ...(typeof item.rawXdr === 'string' ? { rawXdr: item.rawXdr } : {}),
       ...(typeof item.decodeErrorReason === 'string'
         ? { decodeErrorReason: item.decodeErrorReason.slice(0, 500) }
