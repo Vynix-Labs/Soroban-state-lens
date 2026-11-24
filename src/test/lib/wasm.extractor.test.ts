@@ -109,9 +109,11 @@ describe('wasmExtractor - extractContractspecv0', () => {
       'contractspecv0',
       specEntry.toXDR(),
     )
+    const wasmBuffer = new ArrayBuffer(module.byteLength)
+    new Uint8Array(wasmBuffer).set(module)
 
-    expect(WebAssembly.validate(module)).toBe(true)
-    const extracted = extractContractspecv0(module)
+    expect(WebAssembly.validate(wasmBuffer)).toBe(true)
+    const extracted = extractContractspecv0(new Uint8Array(wasmBuffer))
     expect(extracted.ok).toBe(true)
     if (!extracted.ok) return
 
@@ -119,10 +121,11 @@ describe('wasmExtractor - extractContractspecv0', () => {
       Buffer.from(extracted.payload),
     ).udtStructV0()
     expect(parsed.name().toString()).toBe('DemoVector')
-    expect(parsed.fields().map((field) => field.name().toString())).toEqual([
-      'first_value',
-      'second_value',
-    ])
+    expect(
+      parsed
+        .fields()
+        .map((field: xdr.ScSpecUdtStructFieldV0) => field.name().toString()),
+    ).toEqual(['first_value', 'second_value'])
   })
 
   describe('valid WASM modules', () => {
