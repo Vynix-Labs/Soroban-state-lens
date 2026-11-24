@@ -388,6 +388,17 @@ export function DiscoveryRoute() {
       )
       return
     }
+    if (!invocation.ok && invocation.error === 'unsupported_transaction') {
+      setSimulatedFunction('')
+      setState(
+        buildDiscoveryLoadState({
+          status: 'error',
+          error:
+            'Unsupported transaction operation. Discovery requires a single invoke-contract operation.',
+        }),
+      )
+      return
+    }
 
     const controller = new AbortController()
     const network = useLensStore.getState().networkConfig
