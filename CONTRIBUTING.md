@@ -8,6 +8,10 @@ welcome.
 - Node.js 20 or newer
 - Bun 1.0 or newer
 
+The web app decodes ledger values in a TypeScript worker. Rust and Soroban
+contract-authoring tools are optional for web app development. Install the
+appropriate tools separately if you are developing contracts.
+
 Run `bun run check:env` to verify the Node.js and Bun versions.
 
 ## Set up locally
