@@ -34,6 +34,32 @@ describe('TreeRow', () => {
     useLensStore.getState().resetPreferences()
   })
 
+  it('shows a root ledger class and durability while retaining the raw key', () => {
+    const row = makeRow({
+      depth: 0,
+      label: 'counter',
+      ledgerType: 'ContractData',
+      durability: 'Persistent',
+      canonicalKey: 'raw-ledger-key',
+    })
+    render(
+      <TreeRow
+        row={row}
+        rowHeight={40}
+        isExpanded={false}
+        isSelected={false}
+      />,
+    )
+    expect(screen.getByText('counter')).toBeTruthy()
+    expect(screen.getByText('ContractData')).toBeTruthy()
+    expect(screen.getByText('Persistent')).toBeTruthy()
+    expect(
+      screen.getByRole('button', {
+        name: 'Copy canonical ledger key raw-ledger-key',
+      }),
+    ).toBeTruthy()
+  })
+
   it('renders indentation spacer for leaf nodes', () => {
     render(
       <TreeRow

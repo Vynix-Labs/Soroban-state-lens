@@ -23,6 +23,10 @@ Soroban stores data in the ledger as ScVal (Stellar Contract Values) within Cont
 
 - A running Soroban RPC node (or use the public Testnet/Mainnet endpoints)
 
+The web app decodes ledger values in a TypeScript worker. Rust and Soroban
+contract-authoring tools are optional for web app development. Install the
+appropriate tools separately if you are developing contracts.
+
 ### **Stack & Architecture**
 
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)

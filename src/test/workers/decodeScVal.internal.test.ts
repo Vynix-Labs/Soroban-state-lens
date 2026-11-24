@@ -94,6 +94,23 @@ describe('decoderWorkerApi.decodeScVal', () => {
     })
   })
 
+  it('should preserve 0x00 and 0xff byte values through worker transport', async () => {
+    const scVal = xdr.ScVal.scvBytes(new Uint8Array([0x00, 0xff, 0x42]))
+    const result = await decoderWorkerApi.decodeScVal({
+      xdr: scVal.toXDR('base64'),
+    })
+
+    if (isDecoderWorkerError(result)) {
+      throw new Error(`Expected success, got error: ${result.message}`)
+    }
+
+    expect(result).toMatchObject({
+      kind: 'primitive',
+      scType: 'bytes',
+      value: [0, 255, 66],
+    })
+  })
+
   it('should decode a nested vec ScVal', async () => {
     const scVal = xdr.ScVal.scvVec([
       xdr.ScVal.scvU32(10),
