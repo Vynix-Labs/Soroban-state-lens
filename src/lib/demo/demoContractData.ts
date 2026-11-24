@@ -1,4 +1,5 @@
-import { xdr } from '@stellar/stellar-sdk'
+import { Address, xdr } from '@stellar/stellar-sdk'
+import { SAMPLE_CONTRACT_ID } from '../demoContract'
 
 export interface DemoContractDataRecord {
   name: 'counter' | 'nested-collection'
@@ -7,7 +8,7 @@ export interface DemoContractDataRecord {
   valueXdr: string
 }
 
-const contract = xdr.ScAddress.scAddressTypeContract(Buffer.alloc(32, 42))
+const contract = new Address(SAMPLE_CONTRACT_ID).toScAddress()
 
 function makeRecord(
   name: DemoContractDataRecord['name'],
