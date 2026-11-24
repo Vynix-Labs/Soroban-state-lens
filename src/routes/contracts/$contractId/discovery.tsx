@@ -75,11 +75,13 @@ export function DiscoveryStateView({
   state,
   onRetry,
   onPinKey,
+  onOpenInExplorer,
   emptyMessage,
 }: {
   state: DiscoveryLoadState
   onRetry?: () => void
   onPinKey?: (keyPath: string) => void
+  onOpenInExplorer?: () => void
   emptyMessage?: string
 }) {
   const handleRetry = useCallback(() => {
@@ -205,6 +207,12 @@ export function DiscoveryStateView({
           Discovered Keys
         </Heading>
 
+        {keys.length > 0 && onOpenInExplorer ? (
+          <Button variant="secondary" size="sm" onClick={onOpenInExplorer}>
+            Open in Explorer
+          </Button>
+        ) : null}
+
         <div className="grid gap-3">
           {keys.length > 0 ? (
             keys.map((item, idx) => (
@@ -257,6 +265,7 @@ export const Route = createFileRoute('/contracts/$contractId/discovery')({
 export function DiscoveryRoute() {
   const { contractId } = Route.useParams()
   const { normalizedContractId } = Route.useRouteContext()
+  const navigate = Route.useNavigate()
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
   const [functionName, setFunctionName] = useState('')
   const [submittedDraft, setSubmittedDraft] = useState<{
@@ -377,6 +386,19 @@ export function DiscoveryRoute() {
     setWatchlistFeedback(
       added ? 'Added to watchlist.' : 'Already in watchlist.',
     )
+  }
+
+  const handleOpenInExplorer = () => {
+    if (state.status !== 'success' || state.keys.length === 0) return
+
+    void navigate({
+      to: '/contracts/$contractId/explorer',
+      params: { contractId: normalizedContractId },
+      search: {
+        keys: state.keys.map(({ keyPath }) => keyPath).join(','),
+        mode: 'live',
+      },
+    })
   }
 
   const runSimulation = async (
@@ -633,6 +655,7 @@ export function DiscoveryRoute() {
         state={state}
         onRetry={handleRetry}
         onPinKey={handlePinKey}
+        onOpenInExplorer={handleOpenInExplorer}
         emptyMessage={
           simulatedFunction
             ? 'No keys found in the transaction footprint.'
