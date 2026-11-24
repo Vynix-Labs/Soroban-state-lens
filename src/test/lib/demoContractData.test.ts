@@ -1,7 +1,15 @@
 import { xdr } from '@stellar/stellar-sdk'
 import { describe, expect, it } from 'vitest'
-import { extractContractValueXdr } from '../../lib/network/decodeLedgerEntry'
+import {
+  decodeLedgerKeyInfo,
+  extractContractValueXdr,
+} from '../../lib/network/decodeLedgerEntry'
 import { DEMO_CONTRACT_DATA } from '../../lib/demo/demoContractData'
+import {
+  DEMO_COUNTER_NEXT_VALUE,
+  createDemoLedgerEntries,
+} from '../../lib/demo/demoLedgerEntries'
+import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
 import { isDecoderWorkerError } from '../../types/decoder-worker'
 import { decoderWorkerApi } from '../../workers/decoder.worker'
 
@@ -65,5 +73,46 @@ describe('demo contract data fixtures', () => {
       scType: 'u32',
       value: 9,
     })
+  })
+
+  it('builds sample-contract entries that match the decoded fixtures', async () => {
+    const entries = createDemoLedgerEntries()
+    const advancedEntries = createDemoLedgerEntries(DEMO_COUNTER_NEXT_VALUE)
+
+    expect(entries).toHaveLength(2)
+    for (const entry of entries) {
+      expect(entry.contractId).toBe(SAMPLE_CONTRACT_ID)
+      expect(entry.type).toBe('ContractData')
+    }
+
+    const counter = entries.find((entry) => entry.displayName === 'counter')
+    const nested = entries.find(
+      (entry) => entry.displayName === 'nested-collection',
+    )
+    const advancedCounter = advancedEntries.find(
+      (entry) => entry.displayName === 'counter',
+    )
+    if (!counter || !nested || !advancedCounter) {
+      throw new Error('Demo entries are missing expected records')
+    }
+
+    expect(decodeLedgerKeyInfo(counter.canonicalKey!).contractId).toBe(
+      SAMPLE_CONTRACT_ID,
+    )
+    expect(counter.value).toEqual(
+      await decoderWorkerApi.decodeScVal({
+        xdr: DEMO_CONTRACT_DATA[0].valueXdr,
+      }),
+    )
+    expect(nested.value).toEqual(
+      await decoderWorkerApi.decodeScVal({
+        xdr: DEMO_CONTRACT_DATA[1].valueXdr,
+      }),
+    )
+    expect(advancedCounter.value).toEqual(
+      await decoderWorkerApi.decodeScVal({
+        xdr: xdr.ScVal.scvU32(DEMO_COUNTER_NEXT_VALUE).toXDR('base64'),
+      }),
+    )
   })
 })

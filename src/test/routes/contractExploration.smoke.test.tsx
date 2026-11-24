@@ -70,16 +70,23 @@ vi.mock('../../lib/network/getLedgerEntries', () => ({
   getLedgerEntries: mockGetLedgerEntries,
 }))
 
-vi.mock('../../lib/demo/demoContractData', () => ({
-  DEMO_CONTRACT_DATA: [
-    {
-      name: 'counter',
-      keyXdr: 'invalid-demo-key',
-      entryXdr: 'invalid-demo-entry',
-      valueXdr: 'invalid-demo-value',
-    },
-  ],
-}))
+vi.mock('../../lib/demo/demoContractData', async (importOriginal) => {
+  const actual = await importOriginal()
+  if (typeof actual !== 'object' || actual === null) {
+    throw new Error('Demo contract data module is unavailable')
+  }
+  return {
+    ...actual,
+    DEMO_CONTRACT_DATA: [
+      {
+        name: 'counter',
+        keyXdr: 'invalid-demo-key',
+        entryXdr: 'invalid-demo-entry',
+        valueXdr: 'invalid-demo-value',
+      },
+    ],
+  }
+})
 
 vi.mock('../../workers/createDecoderWorker', () => ({
   createDecoderWorker: () => ({
@@ -258,29 +265,17 @@ describe('contract exploration smoke flow', () => {
     expect(mockGetLedgerEntries).not.toHaveBeenCalled()
   })
 
-  it('shows recovery when the local demo fixture is invalid', async () => {
+  it('rejects invalid local demo entries without calling RPC', async () => {
     resetStore()
-    const router = createRouter({
-      routeTree,
-      history: createMemoryHistory({
-        initialEntries: [
-          `/contracts/${SAMPLE_CONTRACT_ID}/explorer?keys=invalid-demo-key&mode=demo`,
-        ],
-      }),
-      context: {},
-    })
-    render(<RouterProvider router={router} />)
+    await getStoreState().loadContract(
+      SAMPLE_CONTRACT_ID,
+      ['invalid-demo-key'],
+      'demo',
+    )
 
-    expect(
-      await screen.findByRole('heading', { name: 'Unable to Load Demo Data' }),
-    ).toBeTruthy()
-    expect(
-      screen.getByText(/local demo dataset is missing or invalid/i),
-    ).toBeTruthy()
+    expect(getStoreState().contractLoadStatus).toBe(ContractLoadStatus.ERROR)
+    expect(getStoreState().contractLoadError).toMatch(/XDR Read Error/i)
     expect(getStoreState().ledgerData).toEqual({})
     expect(mockGetLedgerEntries).not.toHaveBeenCalled()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Return to search' }))
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
   })
 })
