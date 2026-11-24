@@ -269,6 +269,10 @@ export function DiscoveryRoute() {
     arguments: '',
   })
   const { transaction } = inputState
+  const decodedInvocation = useMemo(
+    () => decodeInvocationPreview(transaction),
+    [transaction],
+  )
   const [attemptedSubmit, setAttemptedSubmit] = useState(false)
   const [watchlistFeedback, setWatchlistFeedback] = useState('')
   const [simulatedFunction, setSimulatedFunction] = useState('')
@@ -323,10 +327,6 @@ export function DiscoveryRoute() {
     [],
   )
 
-  const decodedInvocation = useMemo(
-    () => decodeInvocationPreview(transaction),
-    [transaction],
-  )
   const resolvedFunctionName = functionName.trim()
     ? functionName.trim()
     : decodedInvocation.ok
@@ -540,6 +540,19 @@ export function DiscoveryRoute() {
               spellCheck={false}
               className="w-full resize-y rounded border border-border-dark bg-surface-dark px-3 py-2 font-mono text-sm text-white"
             />
+            {decodedInvocation.ok ? (
+              <div
+                className="rounded border border-border-dark bg-surface-dark px-3 py-2 text-xs text-text-muted"
+                aria-live="polite"
+                data-testid="invocation-preview"
+              >
+                <span className="font-semibold text-white">Invocation</span>
+                <span className="ml-2 font-mono break-all">
+                  {decodedInvocation.preview.contractId} ·{' '}
+                  {decodedInvocation.preview.functionName}
+                </span>
+              </div>
+            ) : null}
             {transactionError && (
               <p
                 id="transaction-error"
