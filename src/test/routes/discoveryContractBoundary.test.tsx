@@ -5,7 +5,7 @@ import {
   TransactionBuilder,
   xdr,
 } from '@stellar/stellar-sdk'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { routeTree } from '../../routeTree.gen'
@@ -100,13 +100,11 @@ describe('discovery invocation contract boundary', () => {
       }),
     )
   })
-  // Enable when the invocation decoder and route guard are integrated.
-  it.skip('rejects a foreign invocation and explains both identities before RPC', async () => {
+  it('rejects a foreign invocation and explains both identities before RPC', async () => {
     await submit(otherContract)
-    await waitFor(() =>
-      expect(screen.getByRole('alert').textContent).toContain(otherContract),
-    )
-    expect(screen.getByRole('alert').textContent).toContain(routeContract)
+    const error = await screen.findByRole('status')
+    expect(error.textContent).toContain(otherContract)
+    expect(error.textContent).toContain(routeContract)
     expect(simulationCalls()).toHaveLength(0)
   })
   it('allows a matching invocation to simulate', async () => {

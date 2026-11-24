@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute, redirect, useBlocker } from '@tanstack/react-router'
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
+import { decodeInvocationPreview } from '../../../lib/network/decodeInvocationPreview'
 import { normalizeFootprintKeys } from '../../../lib/network/normalizeFootprintKeys'
 import { simulateTransaction } from '../../../lib/network/simulateTransaction'
 import { isFunctionName } from '../../../lib/validation/isFunctionName'
@@ -360,6 +361,22 @@ export function DiscoveryRoute() {
     requestedTransaction: string,
   ) => {
     activeRequest.current?.abort()
+    activeRequest.current = null
+    const invocation = decodeInvocationPreview(requestedTransaction.trim())
+    if (
+      invocation.ok &&
+      invocation.preview.contractId !== normalizedContractId
+    ) {
+      setSimulatedFunction('')
+      setState(
+        buildDiscoveryLoadState({
+          status: 'error',
+          error: `Transaction invokes ${invocation.preview.contractId}, but this page is for ${normalizedContractId}.`,
+        }),
+      )
+      return
+    }
+
     const controller = new AbortController()
     const network = useLensStore.getState().networkConfig
     activeRequest.current = controller
