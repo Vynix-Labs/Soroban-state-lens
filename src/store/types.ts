@@ -1,6 +1,7 @@
 /**
  * Store type definitions for Soroban State Lens
  */
+import type { ContractSpec } from '../types/contract-spec'
 
 // Network configuration status
 export enum ConnectionStatus {
@@ -150,7 +151,11 @@ export interface ContractLoadSlice {
     code?: string | number | null,
   ) => void
   resetContractLoadState: () => void
-  loadContract: (contractId: string, keys: Array<string>) => Promise<void>
+  loadContract: (
+    contractId: string,
+    keys: Array<string>,
+    mode?: 'live' | 'demo',
+  ) => Promise<void>
   refreshActiveKeys: () => Promise<void>
 }
 
@@ -176,10 +181,10 @@ export type NetworkScopedContractBuckets<T> = Partial<
 
 // Contract spec slice – parsed schema data keyed by contract ID
 export interface ContractSpecSlice {
-  contractSpecs: Record<string, unknown>
+  contractSpecs: Record<string, ContractSpec>
   contractSpecErrors: Record<string, string>
   contractSpecMismatches: Record<string, Array<ContractSchemaMismatch>>
-  setContractSpec: (contractId: string, spec: unknown) => void
+  setContractSpec: (contractId: string, spec: ContractSpec) => void
   compareContractSpec: (
     contractId: string,
     expectedFields: Array<ContractSchemaField>,
@@ -189,7 +194,7 @@ export interface ContractSpecSlice {
     contractId: string,
     mismatches: Array<ContractSchemaMismatch>,
   ) => void
-  getContractSpec: (contractId: string) => unknown
+  getContractSpec: (contractId: string) => ContractSpec | undefined
   setContractSpecError: (contractId: string, error: string) => void
   getContractSpecError: (contractId: string) => string | undefined
   clearContractSpec: (contractId: string) => void

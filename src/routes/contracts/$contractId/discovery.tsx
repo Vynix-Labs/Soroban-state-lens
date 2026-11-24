@@ -333,6 +333,14 @@ export function DiscoveryRoute() {
       : null
 
   const handleTransactionChange = (value: string) => {
+    if (value !== transaction) {
+      activeRequest.current?.abort()
+      activeRequest.current = null
+      setSimulatedFunction('')
+      setState(
+        buildDiscoveryLoadState({ status: 'empty', requestedKeyCount: 0 }),
+      )
+    }
     setInputState((previous) => ({ ...previous, transaction: value }))
   }
 
