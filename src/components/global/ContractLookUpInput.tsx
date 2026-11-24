@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { validateContractId } from '../../lib/validation/contractId'
 import { normalizeContractIdInput } from '../../lib/validation/normalizeContractIdInput'
+import { resolveContractDataLedgerKey } from '../../lib/validation/resolveLedgerKey'
 
 function ContractLookUpInput() {
   const navigate = useNavigate()
@@ -53,6 +54,16 @@ function ContractLookUpInput() {
     setValidationError(null)
 
     try {
+      const ledgerKeyResult = resolveContractDataLedgerKey(inputValue)
+      if (ledgerKeyResult.ok) {
+        navigate({
+          to: ledgerKeyResult.to,
+          params: ledgerKeyResult.params,
+          search: ledgerKeyResult.search,
+        })
+        return
+      }
+
       const validationResult = await validateContractId(inputValue)
 
       if (!validationResult.ok) {
@@ -87,8 +98,9 @@ function ContractLookUpInput() {
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
               : 'border-border-dark bg-background-dark focus:border-[#58a6ff] focus:ring-[#58a6ff]'
           }`}
-          placeholder="Search ledger keys / contract IDs..."
+          placeholder="Search contract ID or contract-data ledger key..."
           type="text"
+          aria-label="Search contract ID or contract-data ledger key"
           aria-invalid={validationError !== null}
           aria-describedby={
             validationError ? 'contract-lookup-error' : undefined
@@ -97,6 +109,9 @@ function ContractLookUpInput() {
             const value = inputValue.trim()
             if (!value) return
             setValidationError(null)
+            if (resolveContractDataLedgerKey(value).ok) {
+              return
+            }
             const result = await validateContractId(value)
             if (!result.ok) {
               setValidationError(result.error || 'Invalid contract ID')

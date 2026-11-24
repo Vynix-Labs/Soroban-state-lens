@@ -1,9 +1,11 @@
+import { xdr } from '@stellar/stellar-sdk'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { useShallow } from 'zustand/react/shallow'
 
 import { deepClone } from '../lib/deepClone'
 import { isSampleContractId } from '../lib/demoContract'
+import { DEMO_CONTRACT_DATA } from '../lib/demo/demoContractData'
 import { getLedgerEntries } from '../lib/network/getLedgerEntries'
 import {
   decodeLedgerEntryMetadata,
@@ -59,6 +61,40 @@ import type {
   WatchlistItem,
   WatchlistSlice,
 } from './types'
+
+function getDemoLedgerEntries(contractId: string, keys: Array<string>) {
+  const normalizedContractId = normalizeContractIdInput(contractId)
+  const records = DEMO_CONTRACT_DATA.filter((record) =>
+    keys.includes(record.keyXdr),
+  )
+  if (records.length !== keys.length) {
+    throw new Error('Local demo data is missing one or more requested entries.')
+  }
+
+  return records.map((record) => {
+    const metadata = decodeLedgerEntryMetadata({
+      key: record.keyXdr,
+      xdr: record.entryXdr,
+    })
+    if (
+      metadata.type !== 'ContractData' ||
+      metadata.contractId !== normalizedContractId ||
+      !metadata.storageKeyXdr ||
+      !metadata.valueXdr ||
+      metadata.valueXdr !== record.valueXdr
+    ) {
+      throw new Error('Local demo data contains invalid ledger entries.')
+    }
+    xdr.ScVal.fromXDR(metadata.storageKeyXdr, 'base64')
+    xdr.ScVal.fromXDR(metadata.valueXdr, 'base64')
+
+    return {
+      key: record.keyXdr,
+      xdr: record.entryXdr,
+      lastModifiedLedgerSeq: 0,
+    }
+  })
+}
 
 export type { LedgerEntry, LedgerKey } from './types'
 
@@ -496,7 +532,11 @@ const createContractLoadSlice = (
         contractLoadAttemptCount: null,
       })),
 
-    loadContract: async (contractId: string, keys: Array<string>) => {
+    loadContract: async (
+      contractId: string,
+      keys: Array<string>,
+      mode = 'live',
+    ) => {
       requestId += 1
       const currentRequestId = requestId
 
@@ -506,7 +546,8 @@ const createContractLoadSlice = (
       activeDecoder?.terminate()
       activeDecoder = null
 
-      if (isSampleContractId(contractId)) {
+      const isDemo = mode === 'demo' && isSampleContractId(contractId)
+      if (isSampleContractId(contractId) && !isDemo) {
         activeController = null
         const hasDemoEntries = Object.values(get().ledgerData).some((entry) =>
           isSampleContractId(entry.contractId),
@@ -531,7 +572,7 @@ const createContractLoadSlice = (
         currentRequestId !== requestId || signal.aborted
       // Defense in depth (SSL#733): a direct live load without a preceding
       // setActiveContractId(live) must not retain demo records.
-      get().clearDemoRecords()
+      if (!isDemo) get().clearDemoRecords()
       set(() => ({
         activeContractId: contractId,
         contractLoadStatus: ContractLoadStatus.LOADING,
@@ -541,11 +582,13 @@ const createContractLoadSlice = (
       }))
 
       try {
-        const { entries, latestLedger } = await getLedgerEntries({
-          rpcUrl: get().networkConfig.rpcUrl,
-          keys,
-          signal,
-        })
+        const { entries, latestLedger } = isDemo
+          ? { entries: getDemoLedgerEntries(contractId, keys), latestLedger: 0 }
+          : await getLedgerEntries({
+              rpcUrl: get().networkConfig.rpcUrl,
+              keys,
+              signal,
+            })
 
         if (isRequestStale()) {
           return
@@ -639,6 +682,11 @@ const createContractLoadSlice = (
             if (isRequestStale()) {
               return
             }
+            if (isDemo && isDecoderWorkerError(decodedStorageKey)) {
+              throw new Error(
+                'Local demo data contains an invalid storage key.',
+              )
+            }
             if (!isDecoderWorkerError(decodedStorageKey)) {
               decodedStorageKeysByKey[entry.key] = decodedStorageKey
             }
@@ -651,6 +699,9 @@ const createContractLoadSlice = (
             }
 
             if (isDecoderWorkerError(result)) {
+              if (isDemo) {
+                throw new Error('Local demo data contains an invalid value.')
+              }
               const fallback = toRawXdrFallback(entry.xdr, result)
               decodedValuesByKey[entry.key] = fallback
               if (fallback.reason) {
@@ -693,16 +744,14 @@ const createContractLoadSlice = (
           ledgerData: {
             ...Object.fromEntries(
               Object.entries(state.ledgerData).filter(
-                ([, entry]) =>
-                  isSampleContractId(contractId) ||
-                  entry.contractId !== contractId,
+                ([, entry]) => entry.contractId !== contractId,
               ),
             ),
             ...Object.fromEntries(
               mappedEntries.map((entry) => [entry.key, entry]),
             ),
           },
-          currentLedgerSequence: latestLedger,
+          ...(isDemo ? {} : { currentLedgerSequence: latestLedger }),
           contractLoadStatus:
             mappedEntries.length === 0
               ? ContractLoadStatus.EMPTY

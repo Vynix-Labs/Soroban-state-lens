@@ -1,0 +1,212 @@
+import {
+  Account,
+  Asset,
+  BASE_FEE,
+  Operation,
+  TransactionBuilder,
+  xdr,
+} from '@stellar/stellar-sdk'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { routeTree } from '../../routeTree.gen'
+import { resetStore } from '../../store/lensStore'
+
+vi.mock('@stellar/design-system', () => ({
+  Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  Card: (props: React.ComponentProps<'div'>) => <div {...props} />,
+  Heading: ({
+    as: _as,
+    size: _size,
+    ...props
+  }: React.ComponentProps<'div'> & { as?: string; size?: string }) => (
+    <div {...props} />
+  ),
+  IconButton: ({
+    altText,
+    ...props
+  }: React.ComponentProps<'button'> & { altText: string }) => (
+    <button aria-label={altText} {...props} />
+  ),
+}))
+const routeContract = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC'
+const otherContract = 'CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4'
+const source = 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'
+
+function envelope(contract: string): string {
+  return new TransactionBuilder(new Account(source, '1'), {
+    fee: BASE_FEE,
+    networkPassphrase: 'Test SDF Network ; September 2015',
+  })
+    .addOperation(
+      Operation.invokeContractFunction({
+        contract,
+        function: 'read_state',
+        args: [xdr.ScVal.scvU32(7)],
+      }),
+    )
+    .setTimeout(60)
+    .build()
+    .toXDR()
+}
+function paymentEnvelope(): string {
+  return new TransactionBuilder(new Account(source, '1'), {
+    fee: BASE_FEE,
+    networkPassphrase: 'Test SDF Network ; September 2015',
+  })
+    .addOperation(
+      Operation.payment({
+        destination: source,
+        asset: Asset.native(),
+        amount: '1',
+      }),
+    )
+    .setTimeout(60)
+    .build()
+    .toXDR()
+}
+async function submit(transaction: string, functionName = 'read_state') {
+  window.history.pushState({}, '', `/contracts/${routeContract}/discovery`)
+  const router = createRouter({
+    routeTree,
+    context: {},
+    defaultPreload: 'intent',
+    defaultPreloadStaleTime: 0,
+  })
+  render(<RouterProvider router={router} />)
+  fireEvent.change(await screen.findByLabelText('Function name'), {
+    target: { value: functionName },
+  })
+  fireEvent.change(screen.getByLabelText('Transaction XDR'), {
+    target: { value: transaction },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Simulate transaction' }))
+}
+function simulationCalls() {
+  return vi
+    .mocked(fetch)
+    .mock.calls.filter(
+      ([, init]) =>
+        (JSON.parse(String(init?.body)) as { method: string }).method ===
+        'simulateTransaction',
+    )
+}
+
+describe('discovery invocation contract boundary', () => {
+  beforeEach(() => {
+    resetStore()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_input, init) => {
+        const request = JSON.parse(String(init?.body)) as {
+          id: number
+          method: string
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              jsonrpc: '2.0',
+              id: request.id,
+              result:
+                request.method === 'getLatestLedger'
+                  ? { sequence: 123 }
+                  : { footprint: { readOnly: ['matching-key'] } },
+            }),
+        } as Response)
+      }),
+    )
+  })
+  it('rejects a foreign invocation and explains both identities before RPC', async () => {
+    await submit(envelope(otherContract))
+    const error = await screen.findByRole('status')
+    expect(error.textContent).toContain(otherContract)
+    expect(error.textContent).toContain(routeContract)
+    expect(simulationCalls()).toHaveLength(0)
+  })
+  it('allows a matching invocation to simulate', async () => {
+    await submit(envelope(routeContract))
+    expect(await screen.findByText('matching-key')).toBeTruthy()
+    expect(simulationCalls()).toHaveLength(1)
+  })
+  it('rejects a mismatched function annotation and allows a corrected retry', async () => {
+    await submit(envelope(routeContract), 'write_state')
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Function name must match the invocation in transaction XDR.',
+    )
+    expect(
+      screen.getByLabelText('Function name').getAttribute('aria-invalid'),
+    ).toBe('true')
+    expect(simulationCalls()).toHaveLength(0)
+
+    fireEvent.change(screen.getByLabelText('Function name'), {
+      target: { value: 'read_state' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Simulate transaction' }),
+    )
+
+    expect(await screen.findByText('matching-key')).toBeTruthy()
+    expect(simulationCalls()).toHaveLength(1)
+  })
+  it.each([
+    ['corrupt', 'not-xdr'],
+    [
+      'truncated',
+      Buffer.from(envelope(routeContract), 'base64')
+        .subarray(0, -4)
+        .toString('base64'),
+    ],
+  ])(
+    'shows a field error for %s transaction XDR before RPC',
+    async (_kind, transaction) => {
+      window.history.pushState({}, '', `/contracts/${routeContract}/discovery`)
+      const router = createRouter({
+        routeTree,
+        context: {},
+        defaultPreload: 'intent',
+        defaultPreloadStaleTime: 0,
+      })
+      render(<RouterProvider router={router} />)
+      fireEvent.change(await screen.findByLabelText('Function name'), {
+        target: { value: 'read_state' },
+      })
+      const transactionField = screen.getByLabelText('Transaction XDR')
+      fireEvent.change(transactionField, { target: { value: transaction } })
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Simulate transaction' }),
+      )
+
+      expect((await screen.findByRole('alert')).textContent).toContain(
+        'Enter a valid transaction XDR.',
+      )
+      expect(transactionField.getAttribute('aria-invalid')).toBe('true')
+      expect(simulationCalls()).toHaveLength(0)
+    },
+  )
+  it('rejects a payment operation with a specific error before RPC', async () => {
+    window.history.pushState({}, '', `/contracts/${routeContract}/discovery`)
+    const router = createRouter({
+      routeTree,
+      context: {},
+      defaultPreload: 'intent',
+      defaultPreloadStaleTime: 0,
+    })
+    render(<RouterProvider router={router} />)
+    fireEvent.change(await screen.findByLabelText('Function name'), {
+      target: { value: 'read_state' },
+    })
+    fireEvent.change(screen.getByLabelText('Transaction XDR'), {
+      target: { value: paymentEnvelope() },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Simulate transaction' }),
+    )
+
+    expect((await screen.findByRole('status')).textContent).toContain(
+      'Unsupported transaction operation',
+    )
+    expect(simulationCalls()).toHaveLength(0)
+  })
+})
