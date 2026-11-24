@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { validateContractRouteParam } from '../../routes/contracts/$contractId/-validateContractRouteParam'
 import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
+import { DEMO_CONTRACT_DATA } from '../../lib/demo/demoContractData'
 import { useLensStore } from '../../store/lensStore'
 import { ConnectionStatus } from '../../store/types'
 import WatermarkBg from './WatermarkBg'
@@ -37,7 +38,10 @@ const SearchLandingScreen = () => {
     navigate({
       to: '/contracts/$contractId/explorer',
       params: { contractId: SAMPLE_CONTRACT_ID },
-      search: { keys: '', mode: 'demo' },
+      search: {
+        keys: DEMO_CONTRACT_DATA.map((entry) => entry.keyXdr).join(','),
+        mode: 'demo',
+      },
     })
   }
 
