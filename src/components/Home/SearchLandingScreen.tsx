@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { validateContractRouteParam } from '../../routes/contracts/$contractId/-validateContractRouteParam'
 import { resolveContractDataLedgerKey } from '../../lib/validation/resolveLedgerKey'
 import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
+import { DEMO_CONTRACT_DATA } from '../../lib/demo/demoContractData'
 import { useLensStore } from '../../store/lensStore'
 import { ConnectionStatus } from '../../store/types'
 import WatermarkBg from './WatermarkBg'
@@ -48,7 +49,10 @@ const SearchLandingScreen = () => {
     navigate({
       to: '/contracts/$contractId/explorer',
       params: { contractId: SAMPLE_CONTRACT_ID },
-      search: { keys: '', mode: 'demo' },
+      search: {
+        keys: DEMO_CONTRACT_DATA.map((entry) => entry.keyXdr).join(','),
+        mode: 'demo',
+      },
     })
   }
 
@@ -114,8 +118,8 @@ const SearchLandingScreen = () => {
                       if (validationError) setValidationError(null)
                     }}
                     className="w-full bg-transparent border-none text-white placeholder-gray-600 focus:ring-0 focus:outline-none font-mono text-sm h-full placeholder:font-mono"
-                    placeholder="Search Contract ID (C...) or Ledger Key"
-                    aria-label="Contract ID or ledger key"
+                    placeholder="Search Contract ID (C...)"
+                    aria-label="Contract ID"
                     type="text"
                   />
                   <div className="pr-2 flex items-center">
