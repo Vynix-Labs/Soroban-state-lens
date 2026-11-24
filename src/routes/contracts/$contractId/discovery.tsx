@@ -327,10 +327,6 @@ export function DiscoveryRoute() {
     [],
   )
 
-  const decodedInvocation = useMemo(
-    () => decodeInvocationPreview(transaction),
-    [transaction],
-  )
   const resolvedFunctionName = functionName.trim()
     ? functionName.trim()
     : decodedInvocation.ok
