@@ -162,6 +162,70 @@ describe('LensStore Hydration', () => {
     expect(sanitized.C1[1]?.ledgerData).toEqual({})
   })
 
+  it('keeps valid siblings and marks unsupported snapshot entries incomplete', async () => {
+    const valid = {
+      key: 'valid',
+      contractId: 'C1',
+      type: 'ContractData' as const,
+      value: 42,
+      lastModifiedLedger: 1,
+    }
+    const foreign = { ...valid, key: 'foreign', contractId: 'C2' }
+    const invalid = { ...valid, key: 'invalid', expirationLedger: -1 }
+    useLensStore.getState().addSnapshot('C1', { valid, foreign, invalid }, 2)
+    const saved = localStorage.getItem(NETWORK_CONFIG_STORAGE_KEY)
+    if (!saved) throw new Error('Snapshot state was not saved')
+    useLensStore.setState({ snapshots: {} })
+    localStorage.setItem(NETWORK_CONFIG_STORAGE_KEY, saved)
+    await useLensStore.persist.rehydrate()
+    expect(useLensStore.getState().getSnapshots('C1')[0]).toMatchObject({
+      incomplete: true,
+      ledgerData: { valid },
+    })
+    expect(
+      Object.keys(useLensStore.getState().getSnapshots('C1')[0].ledgerData),
+    ).toEqual(['valid'])
+  })
+
+  it('retains a captured worker scalar with an absent expiration ledger', async () => {
+    const contractId =
+      'CABAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAFNSZ'
+    const canonicalKey =
+      'AAAABgAAAAECAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgAAAA8AAAAHY291bnRlcgAAAAAB'
+    const key = `${contractId}::ContractData::${canonicalKey}`
+    const entry = {
+      key,
+      contractId,
+      type: 'ContractData' as const,
+      durability: 'Persistent' as const,
+      displayName: 'counter',
+      canonicalKey,
+      displayKey: 'counter',
+      value: {
+        kind: 'primitive',
+        path: [],
+        scType: 'u32',
+        value: 42,
+        raw: { switch: 'ScvU32', value: 42 },
+      },
+      lastModifiedLedger: 102,
+      expirationLedger: undefined,
+      rawXdr:
+        'AAAABgAAAAAAAAABAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAAAAPAAAAB2NvdW50ZXIAAAAAAQAAAAMAAAAq',
+    }
+    useLensStore.getState().addSnapshot(contractId, { [key]: entry }, 103)
+    const saved = localStorage.getItem(NETWORK_CONFIG_STORAGE_KEY)
+    if (!saved) throw new Error('Captured snapshot was not saved')
+    useLensStore.setState({ snapshots: {} })
+    localStorage.setItem(NETWORK_CONFIG_STORAGE_KEY, saved)
+    await useLensStore.persist.rehydrate()
+    const restored = useLensStore.getState().getSnapshots(contractId)[0]
+      .ledgerData[key]
+    const { expirationLedger: _expirationLedger, ...expected } = entry
+    expect(restored).toEqual(expected)
+    expect(restored.expirationLedger).toBeUndefined()
+  })
+
   it('persists snapshots and restores them after a store reload', async () => {
     useLensStore.getState().addSnapshot(
       'C1',
