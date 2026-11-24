@@ -1,3 +1,4 @@
+import { xdr } from '@stellar/stellar-sdk'
 import { isDecoderWorkerError } from '../src/types/decoder-worker'
 import {
   createDecoderWorker,
@@ -64,6 +65,33 @@ async function runRegression(): Promise<void> {
     )
     structuredClone(vector)
     structuredClone(map)
+
+    // Byte regression: verify 0x00 and 0xff bytes are preserved through Comlink
+    const bytesScVal = xdr.ScVal.scvBytes(new Uint8Array([0x00, 0xff, 0x42]))
+    const bytesResult = await worker.decodeScVal({
+      xdr: bytesScVal.toXDR('base64'),
+    })
+    if (isDecoderWorkerError(bytesResult)) {
+      throw new Error(
+        'Bytes decode returned a worker error: ' + bytesResult.message,
+      )
+    }
+    assert(
+      bytesResult.kind === 'primitive',
+      'Bytes decode did not return a primitive node',
+    )
+    assert(
+      bytesResult.scType === 'bytes',
+      'Bytes decode did not return bytes type',
+    )
+    assert(
+      Array.isArray(bytesResult.value) &&
+        bytesResult.value.length === 3 &&
+        bytesResult.value[0] === 0 &&
+        bytesResult.value[1] === 255 &&
+        bytesResult.value[2] === 66,
+      'Bytes values not preserved through worker transport',
+    )
 
     resultElement.dataset.status = 'passed'
     resultElement.textContent =

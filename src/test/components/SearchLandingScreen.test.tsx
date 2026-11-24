@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SearchLandingScreen from '../../components/Home/SearchLandingScreen'
 import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
+import { DEMO_CONTRACT_DATA } from '../../lib/demo/demoContractData'
 import { resetStore, useLensStore } from '../../store/lensStore'
 
 const mockNavigate = vi.fn()
@@ -48,6 +49,23 @@ describe('SearchLandingScreen recent history action', () => {
     ).toBeTruthy()
   })
 
+  it('keeps contract ID lookup working when input has whitespace and lowercase', () => {
+    render(<SearchLandingScreen />)
+    const input = screen.getByRole('textbox', {
+      name: 'Contract ID or ledger key',
+    })
+
+    fireEvent.change(input, {
+      target: { value: `  ${SAMPLE_CONTRACT_ID.toLowerCase()}  ` },
+    })
+    fireEvent.submit(input.closest('form')!)
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/contracts/$contractId',
+      params: { contractId: SAMPLE_CONTRACT_ID },
+    })
+  })
+
   it('marks the sample explorer URL as local demo mode', () => {
     render(<SearchLandingScreen />)
 
@@ -58,7 +76,10 @@ describe('SearchLandingScreen recent history action', () => {
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/contracts/$contractId/explorer',
       params: { contractId: SAMPLE_CONTRACT_ID },
-      search: { keys: '', mode: 'demo' },
+      search: {
+        keys: DEMO_CONTRACT_DATA.map((entry) => entry.keyXdr).join(','),
+        mode: 'demo',
+      },
     })
   })
 
