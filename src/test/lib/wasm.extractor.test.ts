@@ -1,9 +1,11 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
+import { xdr } from '@stellar/stellar-sdk'
 import {
   MAX_CONTRACT_SPEC_PAYLOAD_BYTES,
   extractContractspecv0,
 } from '../../lib/wasm/wasmExtractor'
+import type { xdr as stellarXdr } from '@stellar/stellar-base'
 
 /**
  * Helper to create a minimal valid WASM module
@@ -83,6 +85,52 @@ function addCustomSection(
 }
 
 describe('wasmExtractor - extractContractspecv0', () => {
+  it('extracts a non-executable WASM fixture with named demo struct fields', () => {
+    const fields = [
+      new xdr.ScSpecUdtStructFieldV0({
+        doc: '',
+        name: 'first_value',
+        type: xdr.ScSpecTypeDef.scSpecTypeU32(),
+      }),
+      new xdr.ScSpecUdtStructFieldV0({
+        doc: '',
+        name: 'second_value',
+        type: xdr.ScSpecTypeDef.scSpecTypeU32(),
+      }),
+    ]
+    const struct = new xdr.ScSpecUdtStructV0({
+      doc: '',
+      lib: '',
+      name: 'DemoVector',
+      fields,
+    })
+    const specEntry = xdr.ScSpecEntry.scSpecEntryUdtStructV0(struct)
+    const module = addCustomSection(
+      createEmptyWasmModule(),
+      'contractspecv0',
+      specEntry.toXDR(),
+    )
+    const wasmBuffer = new ArrayBuffer(module.byteLength)
+    new Uint8Array(wasmBuffer).set(module)
+
+    expect(WebAssembly.validate(wasmBuffer)).toBe(true)
+    const extracted = extractContractspecv0(new Uint8Array(wasmBuffer))
+    expect(extracted.ok).toBe(true)
+    if (!extracted.ok) return
+
+    const parsed = xdr.ScSpecEntry.fromXDR(
+      Buffer.from(extracted.payload),
+    ).udtStructV0()
+    expect(parsed.name().toString()).toBe('DemoVector')
+    expect(
+      parsed
+        .fields()
+        .map((field: stellarXdr.ScSpecUdtStructFieldV0) =>
+          field.name().toString(),
+        ),
+    ).toEqual(['first_value', 'second_value'])
+  })
+
   describe('valid WASM modules', () => {
     it('should extract contractspecv0 section from valid WASM module', () => {
       const baseModule = createEmptyWasmModule()

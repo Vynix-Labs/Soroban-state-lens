@@ -4,13 +4,7 @@ import {
   StrKey,
   TransactionBuilder,
 } from '@stellar/stellar-sdk'
-
-/** Same wire-preserving shape proposed in the invocation preview type. */
-export interface InvocationPreview {
-  contractId: string
-  functionName: string
-  argumentXdr: Array<string>
-}
+import type { InvocationPreview } from './invocationPreview'
 
 export type InvocationPreviewResult =
   | { ok: true; preview: InvocationPreview }

@@ -258,7 +258,6 @@ export function DiscoveryRoute() {
   const { contractId } = Route.useParams()
   const { normalizedContractId } = Route.useRouteContext()
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
-  const rpcUrl = useLensStore((state) => state.networkConfig.rpcUrl)
   const [functionName, setFunctionName] = useState('')
   const [submittedDraft, setSubmittedDraft] = useState<{
     functionName: string
@@ -305,10 +304,45 @@ export function DiscoveryRoute() {
     [],
   )
 
-  const functionNameIsValid = isFunctionName(functionName)
+  useEffect(
+    () =>
+      useLensStore.subscribe((next, previous) => {
+        const current = next.networkConfig
+        const prior = previous.networkConfig
+        if (
+          current.networkId === prior.networkId &&
+          current.networkPassphrase === prior.networkPassphrase &&
+          current.rpcUrl === prior.rpcUrl
+        )
+          return
+
+        activeRequest.current?.abort()
+        activeRequest.current = null
+        setSimulatedFunction('')
+        setWatchlistFeedback('')
+        setState(
+          buildDiscoveryLoadState({ status: 'empty', requestedKeyCount: 0 }),
+        )
+      }),
+    [],
+  )
+
+  const decodedInvocation = useMemo(
+    () => decodeInvocationPreview(transaction),
+    [transaction],
+  )
+  const resolvedFunctionName = functionName.trim()
+    ? functionName.trim()
+    : decodedInvocation.ok
+      ? decodedInvocation.preview.functionName
+      : ''
+  const functionNameIsValid =
+    resolvedFunctionName.length > 0 && isFunctionName(resolvedFunctionName)
   const functionNameError =
     !functionNameIsValid && (functionName.length > 0 || attemptedSubmit)
-      ? 'Enter a valid Soroban function name (lowercase letters, numbers, and underscores).'
+      ? functionName.trim()
+        ? 'Enter a valid Soroban function name (lowercase letters, numbers, and underscores).'
+        : 'Enter transaction XDR with a decodable contract function.'
       : null
   const transactionError =
     attemptedSubmit && transaction.trim() === ''
@@ -343,18 +377,43 @@ export function DiscoveryRoute() {
     requestedTransaction: string,
   ) => {
     activeRequest.current?.abort()
+    activeRequest.current = null
+    const invocation = decodeInvocationPreview(requestedTransaction.trim())
+    if (
+      invocation.ok &&
+      invocation.preview.contractId !== normalizedContractId
+    ) {
+      setSimulatedFunction('')
+      setState(
+        buildDiscoveryLoadState({
+          status: 'error',
+          error: `Transaction invokes ${invocation.preview.contractId}, but this page is for ${normalizedContractId}.`,
+        }),
+      )
+      return
+    }
+
     const controller = new AbortController()
+    const network = useLensStore.getState().networkConfig
     activeRequest.current = controller
     setSimulatedFunction('')
     setState(buildDiscoveryLoadState({ status: 'loading' }))
 
     try {
       const result = await simulateTransaction({
-        rpcUrl,
+        rpcUrl: network.rpcUrl,
         transaction: requestedTransaction.trim(),
         signal: controller.signal,
       })
-      if (controller.signal.aborted) return
+      const currentNetwork = useLensStore.getState().networkConfig
+      if (
+        controller.signal.aborted ||
+        activeRequest.current !== controller ||
+        currentNetwork.networkId !== network.networkId ||
+        currentNetwork.networkPassphrase !== network.networkPassphrase ||
+        currentNetwork.rpcUrl !== network.rpcUrl
+      )
+        return
 
       if (!result.success) {
         setState(
@@ -386,7 +445,7 @@ export function DiscoveryRoute() {
         }),
       )
     } finally {
-      if (!controller.signal.aborted) {
+      if (activeRequest.current === controller) {
         activeRequest.current = null
       }
     }
@@ -396,12 +455,12 @@ export function DiscoveryRoute() {
     event.preventDefault()
     setAttemptedSubmit(true)
     if (!functionNameIsValid || transaction.trim() === '') return
-    void runSimulation(functionName, transaction)
+    void runSimulation(resolvedFunctionName, transaction)
   }
 
   const handleRetry = () => {
     if (functionNameIsValid && transaction.trim() !== '') {
-      void runSimulation(functionName, transaction)
+      void runSimulation(resolvedFunctionName, transaction)
     }
   }
 
@@ -439,11 +498,12 @@ export function DiscoveryRoute() {
               htmlFor="discovery-function-name"
               className="text-sm text-white"
             >
-              Function name
+              Function name (optional)
             </label>
             <input
               id="discovery-function-name"
               name="functionName"
+              aria-label="Function name"
               value={functionName}
               onChange={(event) => setFunctionName(event.target.value)}
               aria-invalid={functionNameError !== null}
@@ -452,6 +512,7 @@ export function DiscoveryRoute() {
               }
               className="w-full rounded border border-border-dark bg-surface-dark px-3 py-2 text-sm text-white"
               autoComplete="off"
+              placeholder="Inferred from transaction XDR when blank"
             />
             {functionNameError && (
               <p
