@@ -43,9 +43,7 @@ describe('SearchLandingScreen recent history action', () => {
   it('exposes an accessible name for the contract search input', () => {
     render(<SearchLandingScreen />)
 
-    expect(
-      screen.getByRole('textbox', { name: 'Contract ID or ledger key' }),
-    ).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'Contract ID' })).toBeTruthy()
   })
 
   it('marks the sample explorer URL as local demo mode', () => {
