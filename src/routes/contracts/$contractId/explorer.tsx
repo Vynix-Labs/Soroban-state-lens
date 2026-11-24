@@ -242,6 +242,7 @@ function ContractExplorer() {
             label: entry.displayKey ?? entry.displayName ?? entry.key,
             canonicalKey: entry.canonicalKey,
             durability: entry.durability,
+            ledgerType: entry.type,
             node: entry.value,
             expired: entry.expired,
           },

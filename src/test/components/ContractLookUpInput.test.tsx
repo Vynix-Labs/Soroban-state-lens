@@ -4,8 +4,10 @@ import { describe, expect, it, vi } from 'vitest'
 import ContractLookUpInput from '../../components/global/ContractLookUpInput'
 import { validateContractId } from '../../lib/validation/contractId'
 
+const mockNavigate = vi.fn()
+
 vi.mock('@tanstack/react-router', () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
 }))
 
 vi.mock('../../lib/validation/contractId', () => ({
@@ -16,6 +18,28 @@ vi.mock('../../lib/validation/contractId', () => ({
 }))
 
 describe('ContractLookUpInput validation accessibility', () => {
+  it('preserves normalized contract ID navigation', async () => {
+    const contractId =
+      'CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE'
+    mockNavigate.mockClear()
+    vi.mocked(validateContractId).mockResolvedValueOnce({ ok: true })
+    render(<ContractLookUpInput />)
+    const input = screen.getByPlaceholderText(
+      'Search ledger keys / contract IDs...',
+    )
+    fireEvent.change(input, {
+      target: { value: ` ${contractId.toLowerCase()} ` },
+    })
+    fireEvent.submit(input.closest('form')!)
+
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: '/contracts/$contractId',
+        params: { contractId },
+      }),
+    )
+  })
+
   it('links an active error to the input and clears the link after editing', async () => {
     render(<ContractLookUpInput />)
 
