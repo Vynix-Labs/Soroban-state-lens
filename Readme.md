@@ -60,6 +60,18 @@ This command only calls `getLedgerEntries`, verifies both key results and the
 returned latest ledger, and exits with an error for RPC failures such as
 `-32602`. It never submits transactions.
 
+### Footprint simulation smoke check
+
+Run a read-only simulation with a deployed-contract transaction envelope and
+its network passphrase:
+
+```sh
+bun run smoke:footprint -- <rpc-url> <network-passphrase> <transaction-xdr>
+```
+
+The command reports read-only and read-write footprint key counts. It does not
+submit the transaction. Simulation errors exit with a nonzero status.
+
 ### **Browser Worker Regression**
 
 Install Chromium once with `bunx playwright install chromium`, then run
