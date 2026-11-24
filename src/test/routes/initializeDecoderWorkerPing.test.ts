@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import * as workerModule from '../../workers/createDecoderWorkerSafe'
-import { probeDecoderWorker } from '../../routes/initializeDecoderWorkerPing'
+import { probeDecoderWorker } from '../../routes/-initializeDecoderWorkerPing'
 
 describe('probeDecoderWorker', () => {
   it('handles ping rejection without throwing', async () => {

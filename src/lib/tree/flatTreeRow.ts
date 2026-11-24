@@ -14,6 +14,7 @@ export interface FlatTreeRow {
   childCount: number
   canonicalKey?: string
   durability?: LedgerEntry['durability']
+  ledgerType?: LedgerEntry['type']
   node: Node
   expired?: boolean
 }
@@ -23,6 +24,7 @@ export interface FlattenTreeRoot {
   label: string
   canonicalKey?: string
   durability?: LedgerEntry['durability']
+  ledgerType?: LedgerEntry['type']
   node: Node
   expired?: boolean
 }

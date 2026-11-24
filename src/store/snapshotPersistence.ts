@@ -6,13 +6,16 @@ import type {
 
 const SNAPSHOT_VALUE_TAG = '__sslSnapshotValue'
 
+type PersistedSnapshotEntry = Omit<LedgerEntry, 'value'> & { value: unknown }
+
 interface PersistedSnapshot {
   id: string
   contractId: string
   timestamp: number
   ledgerSequence: number
-  entries: Record<string, Omit<LedgerEntry, 'value'> & { value: unknown }>
+  entries: Record<string, PersistedSnapshotEntry>
   label?: string
+  incomplete?: boolean
 }
 
 export type PersistedSnapshots = Array<PersistedSnapshot>
@@ -168,6 +171,32 @@ function deserializeEntry(value: unknown): LedgerEntry | null {
   }
 }
 
+function serializeSnapshotEntry(entry: LedgerEntry): PersistedSnapshotEntry {
+  return {
+    key: entry.key,
+    contractId: entry.contractId,
+    type: entry.type,
+    value: serializeValue(entry.value),
+    lastModifiedLedger: entry.lastModifiedLedger,
+    ...(entry.durability === undefined ? {} : { durability: entry.durability }),
+    ...(entry.canonicalKey === undefined
+      ? {}
+      : { canonicalKey: entry.canonicalKey }),
+    ...(entry.displayKey === undefined ? {} : { displayKey: entry.displayKey }),
+    ...(entry.displayName === undefined
+      ? {}
+      : { displayName: entry.displayName }),
+    ...(entry.expirationLedger === undefined
+      ? {}
+      : { expirationLedger: entry.expirationLedger }),
+    ...(entry.expired === undefined ? {} : { expired: entry.expired }),
+    ...(entry.rawXdr === undefined ? {} : { rawXdr: entry.rawXdr }),
+    ...(entry.decodeErrorReason === undefined
+      ? {}
+      : { decodeErrorReason: entry.decodeErrorReason }),
+  }
+}
+
 export function serializeSnapshots(
   snapshots: NetworkScopedContractBuckets<Array<ContractSnapshot>>,
 ): NetworkScopedContractBuckets<PersistedSnapshots> {
@@ -184,13 +213,11 @@ export function serializeSnapshots(
         timestamp: snapshot.timestamp,
         ledgerSequence: snapshot.ledgerSequence,
         ...(snapshot.label === undefined ? {} : { label: snapshot.label }),
+        ...(snapshot.incomplete ? { incomplete: true } : {}),
         entries: Object.fromEntries(
           Object.entries(snapshot.ledgerData).map(([key, entry]) => [
             key,
-            {
-              ...entry,
-              value: serializeValue(entry.value),
-            },
+            serializeSnapshotEntry(entry),
           ]),
         ),
       }))
@@ -251,6 +278,7 @@ export function hydrateSnapshots(
             ? candidate.ledgerSequence
             : 0,
         ledgerData,
+        ...(candidate.incomplete === true ? { incomplete: true } : {}),
         ...(typeof candidate.label === 'string'
           ? { label: candidate.label }
           : {}),
