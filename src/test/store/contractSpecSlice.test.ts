@@ -190,8 +190,10 @@ describe('contractSpecSlice', () => {
     const state = getStoreState()
     const network = state.networkConfig
     const ledgerData = state.ledgerData
-    state.setContractSpec('CONTRACT_A', { functions: ['a'] })
-    state.setContractSpec('CONTRACT_B', { functions: ['b'] })
+    const specA = makeSpec('a')
+    const specB = makeSpec('b')
+    state.setContractSpec('CONTRACT_A', specA)
+    state.setContractSpec('CONTRACT_B', specB)
 
     getStoreState().setContractSpecError('CONTRACT_A', 'malformed spec')
 
@@ -199,9 +201,7 @@ describe('contractSpecSlice', () => {
     expect(getStoreState().getContractSpecError('CONTRACT_A')).toBe(
       'malformed spec',
     )
-    expect(getStoreState().getContractSpec('CONTRACT_B')).toEqual({
-      functions: ['b'],
-    })
+    expect(getStoreState().getContractSpec('CONTRACT_B')).toEqual(specB)
     expect(getStoreState().networkConfig).toBe(network)
     expect(getStoreState().ledgerData).toBe(ledgerData)
   })

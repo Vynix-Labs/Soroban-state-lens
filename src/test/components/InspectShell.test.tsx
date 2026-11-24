@@ -5,6 +5,7 @@ import { InspectShell } from '../../components/explorer/InspectShell'
 import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
 import { useLensStore } from '../../store/lensStore'
 import { contractSpecKey } from '../../store/contractSpecSlice'
+import type { ContractSpec } from '../../types/contract-spec'
 
 vi.mock('@stellar/design-system', () => ({
   Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
@@ -87,6 +88,7 @@ describe('InspectShell', () => {
       ledgerData: { [storedEntry.key]: storedEntry },
     })
     const network = useLensStore.getState().networkConfig
+    const spec: ContractSpec = { entries: [] }
     render(
       <InspectShell
         contractId="C123"
@@ -95,20 +97,14 @@ describe('InspectShell', () => {
       />,
     )
 
-    act(() =>
-      useLensStore
-        .getState()
-        .setContractSpec('C123', { functions: ['balance'] }),
-    )
+    act(() => useLensStore.getState().setContractSpec('C123', spec))
 
     expect(screen.getByText(storedEntry.rawXdr)).toBeTruthy()
     expect(useLensStore.getState().ledgerData[storedEntry.key]).toBe(
       storedEntry,
     )
     expect(useLensStore.getState().networkConfig).toBe(network)
-    expect(useLensStore.getState().getContractSpec('C123')).toEqual({
-      functions: ['balance'],
-    })
+    expect(useLensStore.getState().getContractSpec('C123')).toEqual(spec)
   })
 
   it('shows the affected key path and expected/actual types for a schema mismatch', () => {
