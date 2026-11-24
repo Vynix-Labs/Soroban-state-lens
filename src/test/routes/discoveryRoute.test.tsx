@@ -387,6 +387,91 @@ describe('Discovery route', () => {
     })
   })
 
+  it('aborts on a same-route network change and ignores a late footprint', async () => {
+    let resolveResponse: (response: Response) => void = () => undefined
+    vi.mocked(fetch).mockImplementation((_input, init) => {
+      const request = JSON.parse(String(init?.body)) as JsonRpcRequest
+      if (request.method === 'getLatestLedger') {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              jsonrpc: '2.0',
+              id: request.id,
+              result: { sequence: 123 },
+            }),
+        } as Response)
+      }
+      return new Promise<Response>((resolve) => {
+        resolveResponse = resolve
+      })
+    })
+    renderDiscoveryRoute()
+    await fillValidForm()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Simulate transaction' }),
+    )
+    await waitFor(() =>
+      expect(getRpcPayloads('simulateTransaction')).toHaveLength(1),
+    )
+    const [, init] = getRpcPayloads('simulateTransaction')[0]
+    const signal = init?.signal as AbortSignal
+    const before = useLensStore.getState().networkConfig
+    act(() =>
+      useLensStore.getState().setNetworkConfig({ networkId: 'other-network' }),
+    )
+    expect(signal.aborted).toBe(true)
+    expect(useLensStore.getState().networkConfig.rpcUrl).toBe(before.rpcUrl)
+    await act(async () => {
+      resolveResponse({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            jsonrpc: '2.0',
+            id: JSON.parse(String(init?.body)).id,
+            result: { footprint: { readOnly: ['late-network-key'] } },
+          }),
+      } as Response)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(screen.queryByText('late-network-key')).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'Add to watchlist' }),
+    ).toBeNull()
+    expect(screen.getByLabelText('Transaction XDR')).toHaveProperty(
+      'value',
+      'base64-transaction-xdr',
+    )
+    expect(
+      screen.getByRole('button', { name: 'Simulate transaction' }),
+    ).not.toHaveProperty('disabled', true)
+  })
+
+  it('clears completed footprints when the network passphrase changes', async () => {
+    mockRpcResponse((request) =>
+      request.method === 'getLatestLedger'
+        ? { result: { sequence: 123 } }
+        : { result: { footprint: { readOnly: ['old-network-key'] } } },
+    )
+    renderDiscoveryRoute()
+    await fillValidForm()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Simulate transaction' }),
+    )
+    await screen.findByText('old-network-key')
+    act(() =>
+      useLensStore.getState().setNetworkConfig({
+        networkPassphrase: 'different network passphrase',
+      }),
+    )
+    expect(screen.queryByText('old-network-key')).toBeNull()
+    expect(screen.getByLabelText('Function name')).toHaveProperty(
+      'value',
+      'read_state',
+    )
+  })
+
   it('does not warn when leaving a clean discovery form', async () => {
     renderDiscoveryRoute()
     await screen.findByLabelText('Function name')
