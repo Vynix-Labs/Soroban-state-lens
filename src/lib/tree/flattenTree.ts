@@ -76,6 +76,7 @@ function walkNode(params: {
   label: string
   canonicalKey?: string
   durability?: FlatTreeRow['durability']
+  ledgerType?: FlatTreeRow['ledgerType']
   expandedIds: Set<string>
   expired?: boolean
 }): void {
@@ -88,6 +89,7 @@ function walkNode(params: {
     label,
     canonicalKey,
     durability,
+    ledgerType,
     expandedIds,
     expired,
   } = params
@@ -103,6 +105,7 @@ function walkNode(params: {
     hasChildren: children.length > 0,
     childCount: children.length,
     ...(depth === 0 && durability !== undefined ? { durability } : {}),
+    ...(depth === 0 && ledgerType !== undefined ? { ledgerType } : {}),
     canonicalKey,
     node,
     ...(expired ? { expired: true } : {}),
@@ -146,6 +149,7 @@ export function flattenTree(
       label: root.label,
       canonicalKey: root.canonicalKey,
       durability: root.durability,
+      ledgerType: root.ledgerType,
       expandedIds,
       expired: root.expired,
     })
