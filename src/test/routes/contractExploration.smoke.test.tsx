@@ -181,7 +181,7 @@ describe('contract exploration smoke flow', () => {
     render(<RouterProvider router={router} />)
 
     const input = await screen.findByPlaceholderText(
-      'Search Contract ID (C...)',
+      'Search Contract ID (C...) or contract-data ledger key',
     )
     fireEvent.change(input, { target: { value: contractId } })
     fireEvent.submit(input.closest('form') as HTMLFormElement)
