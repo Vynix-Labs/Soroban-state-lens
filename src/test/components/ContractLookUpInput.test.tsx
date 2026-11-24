@@ -24,9 +24,7 @@ describe('ContractLookUpInput validation accessibility', () => {
     mockNavigate.mockClear()
     vi.mocked(validateContractId).mockResolvedValueOnce({ ok: true })
     render(<ContractLookUpInput />)
-    const input = screen.getByPlaceholderText(
-      'Search ledger keys / contract IDs...',
-    )
+    const input = screen.getByPlaceholderText('Search contract ID...')
     fireEvent.change(input, {
       target: { value: ` ${contractId.toLowerCase()} ` },
     })

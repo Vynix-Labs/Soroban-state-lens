@@ -50,7 +50,7 @@ describe('SearchLandingScreen recent history action', () => {
   it('keeps contract ID lookup working when input has whitespace and lowercase', () => {
     render(<SearchLandingScreen />)
     const input = screen.getByRole('textbox', {
-      name: 'Contract ID or ledger key',
+      name: 'Contract ID',
     })
 
     fireEvent.change(input, {
