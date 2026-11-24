@@ -33,6 +33,9 @@ declare module '@stellar/stellar-sdk' {
     static account(buffer: any): Address
     static contract(buffer: any): Address
     static fromScVal(scv: any): Address
+    static fromScAddress(
+      value: import('@stellar/stellar-base').xdr.ScAddress,
+    ): Address
     toScVal(): any
     toString(): string
   }
@@ -42,8 +45,13 @@ declare module '@stellar/stellar-sdk' {
   }
 
   export const BASE_FEE: string
+  export const Asset: typeof import('@stellar/stellar-base').Asset
+  export const Contract: typeof import('@stellar/stellar-base').Contract
+  export const FeeBumpTransaction: typeof import('@stellar/stellar-base').FeeBumpTransaction
+  export const Networks: typeof import('@stellar/stellar-base').Networks
   export function nativeToScVal(value: unknown): any
   export const Operation: {
+    payment: typeof import('@stellar/stellar-base').Operation.payment
     invokeContractFunction: (options: {
       contract: string
       function: string
@@ -57,10 +65,13 @@ declare module '@stellar/stellar-sdk' {
     )
     addOperation: (operation: any) => this
     setTimeout: (timeout: number) => this
-    build: () => { toXDR: () => string }
+    build: () => import('@stellar/stellar-base').Transaction
+    static fromXDR: typeof import('@stellar/stellar-base').TransactionBuilder.fromXDR
+    static buildFeeBumpTransaction: typeof import('@stellar/stellar-base').TransactionBuilder.buildFeeBumpTransaction
   }
   export const StrKey: {
     encodeContract: (publicKey: Uint8Array) => string
+    isValidContract: (address: string) => boolean
   }
 
   export namespace rpc {
