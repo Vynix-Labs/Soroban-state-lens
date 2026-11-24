@@ -285,10 +285,11 @@ function ContractExplorer() {
       return
     }
 
-    void loadContract(contractId, keys)
+    void loadContract(contractId, keys, search.mode)
   }, [
     contractId,
     keys,
+    search.mode,
     loadContract,
     setActiveContractId,
     setContractLoadError,
@@ -310,7 +311,7 @@ function ContractExplorer() {
       return
     }
 
-    void loadContract(contractId, keys)
+    void loadContract(contractId, keys, search.mode)
   }
 
   const handleActivateRow = (keyPath: string) => {
