@@ -87,8 +87,9 @@ function ContractLookUpInput() {
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
               : 'border-border-dark bg-background-dark focus:border-[#58a6ff] focus:ring-[#58a6ff]'
           }`}
-          placeholder="Search ledger keys / contract IDs..."
+          placeholder="Search contract ID..."
           type="text"
+          aria-label="Search contract ID"
           aria-invalid={validationError !== null}
           aria-describedby={
             validationError ? 'contract-lookup-error' : undefined
