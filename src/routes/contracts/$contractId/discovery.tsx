@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute, redirect, useBlocker } from '@tanstack/react-router'
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
+import { decodeInvocationPreview } from '../../../lib/network/decodeInvocationPreview'
 import { normalizeFootprintKeys } from '../../../lib/network/normalizeFootprintKeys'
 import { simulateTransaction } from '../../../lib/network/simulateTransaction'
 import { isFunctionName } from '../../../lib/validation/isFunctionName'
@@ -300,10 +301,22 @@ export function DiscoveryRoute() {
     [],
   )
 
-  const functionNameIsValid = isFunctionName(functionName)
+  const decodedInvocation = useMemo(
+    () => decodeInvocationPreview(transaction),
+    [transaction],
+  )
+  const resolvedFunctionName = functionName.trim()
+    ? functionName.trim()
+    : decodedInvocation.ok
+      ? decodedInvocation.preview.functionName
+      : ''
+  const functionNameIsValid =
+    resolvedFunctionName.length > 0 && isFunctionName(resolvedFunctionName)
   const functionNameError =
     !functionNameIsValid && (functionName.length > 0 || attemptedSubmit)
-      ? 'Enter a valid Soroban function name (lowercase letters, numbers, and underscores).'
+      ? functionName.trim()
+        ? 'Enter a valid Soroban function name (lowercase letters, numbers, and underscores).'
+        : 'Enter transaction XDR with a decodable contract function.'
       : null
   const transactionError =
     attemptedSubmit && transaction.trim() === ''
@@ -383,12 +396,12 @@ export function DiscoveryRoute() {
     event.preventDefault()
     setAttemptedSubmit(true)
     if (!functionNameIsValid || transaction.trim() === '') return
-    void runSimulation(functionName, transaction)
+    void runSimulation(resolvedFunctionName, transaction)
   }
 
   const handleRetry = () => {
     if (functionNameIsValid && transaction.trim() !== '') {
-      void runSimulation(functionName, transaction)
+      void runSimulation(resolvedFunctionName, transaction)
     }
   }
 
@@ -426,11 +439,12 @@ export function DiscoveryRoute() {
               htmlFor="discovery-function-name"
               className="text-sm text-white"
             >
-              Function name
+              Function name (optional)
             </label>
             <input
               id="discovery-function-name"
               name="functionName"
+              aria-label="Function name"
               value={functionName}
               onChange={(event) => setFunctionName(event.target.value)}
               aria-invalid={functionNameError !== null}
@@ -439,6 +453,7 @@ export function DiscoveryRoute() {
               }
               className="w-full rounded border border-border-dark bg-surface-dark px-3 py-2 text-sm text-white"
               autoComplete="off"
+              placeholder="Inferred from transaction XDR when blank"
             />
             {functionNameError && (
               <p
