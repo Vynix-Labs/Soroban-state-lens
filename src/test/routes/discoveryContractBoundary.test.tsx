@@ -1,5 +1,6 @@
 import {
   Account,
+  Asset,
   BASE_FEE,
   Operation,
   TransactionBuilder,
@@ -42,6 +43,22 @@ function envelope(contract: string): string {
         contract,
         function: 'read_state',
         args: [xdr.ScVal.scvU32(7)],
+      }),
+    )
+    .setTimeout(60)
+    .build()
+    .toXDR()
+}
+function paymentEnvelope(): string {
+  return new TransactionBuilder(new Account(source, '1'), {
+    fee: BASE_FEE,
+    networkPassphrase: 'Test SDF Network ; September 2015',
+  })
+    .addOperation(
+      Operation.payment({
+        destination: source,
+        asset: Asset.native(),
+        amount: '1',
       }),
     )
     .setTimeout(60)
@@ -147,4 +164,28 @@ describe('discovery invocation contract boundary', () => {
       expect(simulationCalls()).toHaveLength(0)
     },
   )
+  it('rejects a payment operation with a specific error before RPC', async () => {
+    window.history.pushState({}, '', `/contracts/${routeContract}/discovery`)
+    const router = createRouter({
+      routeTree,
+      context: {},
+      defaultPreload: 'intent',
+      defaultPreloadStaleTime: 0,
+    })
+    render(<RouterProvider router={router} />)
+    fireEvent.change(await screen.findByLabelText('Function name'), {
+      target: { value: 'read_state' },
+    })
+    fireEvent.change(screen.getByLabelText('Transaction XDR'), {
+      target: { value: paymentEnvelope() },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Simulate transaction' }),
+    )
+
+    expect((await screen.findByRole('status')).textContent).toContain(
+      'Unsupported transaction operation',
+    )
+    expect(simulationCalls()).toHaveLength(0)
+  })
 })
