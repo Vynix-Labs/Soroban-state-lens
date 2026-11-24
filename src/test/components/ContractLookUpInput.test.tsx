@@ -24,9 +24,7 @@ describe('ContractLookUpInput validation accessibility', () => {
     mockNavigate.mockClear()
     vi.mocked(validateContractId).mockResolvedValueOnce({ ok: true })
     render(<ContractLookUpInput />)
-    const input = screen.getByPlaceholderText(
-      'Search ledger keys / contract IDs...',
-    )
+    const input = screen.getByPlaceholderText('Search contract ID...')
     fireEvent.change(input, {
       target: { value: ` ${contractId.toLowerCase()} ` },
     })
@@ -43,9 +41,7 @@ describe('ContractLookUpInput validation accessibility', () => {
   it('links an active error to the input and clears the link after editing', async () => {
     render(<ContractLookUpInput />)
 
-    const input = screen.getByPlaceholderText(
-      'Search ledger keys / contract IDs...',
-    )
+    const input = screen.getByPlaceholderText('Search contract ID...')
     fireEvent.change(input, { target: { value: 'invalid' } })
     fireEvent.submit(input.closest('form')!)
 
@@ -84,9 +80,7 @@ describe('ContractLookUpInput validation accessibility', () => {
     vi.mocked(validateContractId).mockReturnValueOnce(pendingValidation)
 
     render(<ContractLookUpInput />)
-    const input = screen.getByPlaceholderText(
-      'Search ledger keys / contract IDs...',
-    )
+    const input = screen.getByPlaceholderText('Search contract ID...')
     fireEvent.change(input, { target: { value: 'invalid' } })
     const form = input.closest('form')!
 
