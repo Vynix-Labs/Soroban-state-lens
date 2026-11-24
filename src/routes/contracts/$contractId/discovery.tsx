@@ -343,15 +343,18 @@ export function DiscoveryRoute() {
   const functionNameError =
     !functionNameIsValid && (functionName.length > 0 || attemptedSubmit)
       ? functionName.trim()
-        ? functionNameMismatch
+        ? functionNameMismatch && isFunctionName(functionName.trim())
           ? 'Function name must match the invocation in transaction XDR.'
           : 'Enter a valid Soroban function name (lowercase letters, numbers, and underscores).'
         : 'Enter transaction XDR with a decodable contract function.'
       : null
-  const transactionError =
-    attemptedSubmit && transaction.trim() === ''
+  const transactionError = attemptedSubmit
+    ? transaction.trim() === ''
       ? 'Transaction XDR is required.'
-      : null
+      : !decodedInvocation.ok && decodedInvocation.error === 'invalid_xdr'
+        ? 'Enter a valid transaction XDR.'
+        : null
+    : null
 
   const handleTransactionChange = (value: string) => {
     if (value !== transaction) {
@@ -383,6 +386,16 @@ export function DiscoveryRoute() {
     activeRequest.current?.abort()
     activeRequest.current = null
     const invocation = decodeInvocationPreview(requestedTransaction.trim())
+    if (!invocation.ok && invocation.error === 'invalid_xdr') {
+      setSimulatedFunction('')
+      setState(
+        buildDiscoveryLoadState({
+          status: 'error',
+          error: 'Enter a valid transaction XDR.',
+        }),
+      )
+      return
+    }
     if (
       invocation.ok &&
       invocation.preview.contractId !== normalizedContractId
