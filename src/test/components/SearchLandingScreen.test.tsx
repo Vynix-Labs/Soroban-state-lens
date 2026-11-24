@@ -44,13 +44,17 @@ describe('SearchLandingScreen recent history action', () => {
   it('exposes an accessible name for the contract search input', () => {
     render(<SearchLandingScreen />)
 
-    expect(screen.getByRole('textbox', { name: 'Contract ID' })).toBeTruthy()
+    expect(
+      screen.getByRole('textbox', {
+        name: 'Contract ID or contract-data ledger key',
+      }),
+    ).toBeTruthy()
   })
 
   it('keeps contract ID lookup working when input has whitespace and lowercase', () => {
     render(<SearchLandingScreen />)
     const input = screen.getByRole('textbox', {
-      name: 'Contract ID',
+      name: 'Contract ID or contract-data ledger key',
     })
 
     fireEvent.change(input, {
