@@ -5,6 +5,7 @@ import {
   MAX_CONTRACT_SPEC_PAYLOAD_BYTES,
   extractContractspecv0,
 } from '../../lib/wasm/wasmExtractor'
+import type { xdr as stellarXdr } from '@stellar/stellar-base'
 
 /**
  * Helper to create a minimal valid WASM module
@@ -124,7 +125,9 @@ describe('wasmExtractor - extractContractspecv0', () => {
     expect(
       parsed
         .fields()
-        .map((field: xdr.ScSpecUdtStructFieldV0) => field.name().toString()),
+        .map((field: stellarXdr.ScSpecUdtStructFieldV0) =>
+          field.name().toString(),
+        ),
     ).toEqual(['first_value', 'second_value'])
   })
 
