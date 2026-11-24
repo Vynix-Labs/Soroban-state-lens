@@ -1,5 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import {
+  Account,
+  Contract,
+  Networks,
+  TransactionBuilder,
+} from '@stellar/stellar-sdk'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { routeTree } from '../../routeTree.gen'
 import { resetStore, useLensStore } from '../../store/lensStore'
@@ -15,6 +21,14 @@ vi.mock('@stellar/design-system', () => ({
 
 const VALID_CONTRACT_ID =
   'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC'
+const VALID_TRANSACTION_XDR = new TransactionBuilder(
+  new Account('GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5', '1'),
+  { fee: '100', networkPassphrase: Networks.TESTNET },
+)
+  .addOperation(new Contract(VALID_CONTRACT_ID).call('read_state'))
+  .setTimeout(60)
+  .build()
+  .toXDR()
 
 interface JsonRpcRequest {
   id: number
@@ -61,7 +75,7 @@ async function fillValidForm() {
     target: { value: 'read_state' },
   })
   fireEvent.change(await screen.findByLabelText('Transaction XDR'), {
-    target: { value: 'base64-transaction-xdr' },
+    target: { value: VALID_TRANSACTION_XDR },
   })
   fireEvent.change(await screen.findByLabelText('Arguments (JSON reference)'), {
     target: { value: '{"limit": 5}' },
@@ -80,7 +94,7 @@ describe('Discovery route', () => {
       target: { value: 'ReadState' },
     })
     fireEvent.change(await screen.findByLabelText('Transaction XDR'), {
-      target: { value: 'base64-transaction-xdr' },
+      target: { value: VALID_TRANSACTION_XDR },
     })
 
     expect(screen.getByRole('alert').textContent).toContain(
@@ -204,7 +218,7 @@ describe('Discovery route', () => {
     )
     expect(screen.getByLabelText('Transaction XDR')).toHaveProperty(
       'value',
-      'base64-transaction-xdr',
+      VALID_TRANSACTION_XDR,
     )
     expect(screen.getByLabelText('Arguments (JSON reference)')).toHaveProperty(
       'value',
@@ -441,7 +455,7 @@ describe('Discovery route', () => {
     ).toBeNull()
     expect(screen.getByLabelText('Transaction XDR')).toHaveProperty(
       'value',
-      'base64-transaction-xdr',
+      VALID_TRANSACTION_XDR,
     )
     expect(
       screen.getByRole('button', { name: 'Simulate transaction' }),
@@ -486,7 +500,7 @@ describe('Discovery route', () => {
   it('warns when leaving with a dirty discovery transaction draft', async () => {
     renderDiscoveryRoute()
     fireEvent.change(await screen.findByLabelText('Transaction XDR'), {
-      target: { value: 'base64-transaction-xdr' },
+      target: { value: VALID_TRANSACTION_XDR },
     })
 
     const event = new Event('beforeunload', { cancelable: true })
@@ -499,7 +513,7 @@ describe('Discovery route', () => {
   it('blocks in-app navigation when the draft is dirty', async () => {
     const { router } = renderDiscoveryRoute()
     fireEvent.change(await screen.findByLabelText('Transaction XDR'), {
-      target: { value: 'base64-transaction-xdr' },
+      target: { value: VALID_TRANSACTION_XDR },
     })
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
 
@@ -518,7 +532,7 @@ describe('Discovery route', () => {
   it('allows in-app navigation after confirming the dirty draft warning', async () => {
     const { router } = renderDiscoveryRoute()
     fireEvent.change(await screen.findByLabelText('Transaction XDR'), {
-      target: { value: 'base64-transaction-xdr' },
+      target: { value: VALID_TRANSACTION_XDR },
     })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
 
@@ -569,7 +583,7 @@ describe('Discovery route', () => {
     )
     expect(screen.getByLabelText('Transaction XDR')).toHaveProperty(
       'value',
-      'base64-transaction-xdr',
+      VALID_TRANSACTION_XDR,
     )
   })
 })

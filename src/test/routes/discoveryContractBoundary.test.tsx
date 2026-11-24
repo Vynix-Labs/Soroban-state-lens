@@ -48,7 +48,7 @@ function envelope(contract: string): string {
     .build()
     .toXDR()
 }
-async function submit(contract: string) {
+async function submit(transaction: string) {
   window.history.pushState({}, '', `/contracts/${routeContract}/discovery`)
   const router = createRouter({
     routeTree,
@@ -61,7 +61,7 @@ async function submit(contract: string) {
     target: { value: 'read_state' },
   })
   fireEvent.change(screen.getByLabelText('Transaction XDR'), {
-    target: { value: envelope(contract) },
+    target: { value: transaction },
   })
   fireEvent.click(screen.getByRole('button', { name: 'Simulate transaction' }))
 }
@@ -101,15 +101,50 @@ describe('discovery invocation contract boundary', () => {
     )
   })
   it('rejects a foreign invocation and explains both identities before RPC', async () => {
-    await submit(otherContract)
+    await submit(envelope(otherContract))
     const error = await screen.findByRole('status')
     expect(error.textContent).toContain(otherContract)
     expect(error.textContent).toContain(routeContract)
     expect(simulationCalls()).toHaveLength(0)
   })
   it('allows a matching invocation to simulate', async () => {
-    await submit(routeContract)
+    await submit(envelope(routeContract))
     expect(await screen.findByText('matching-key')).toBeTruthy()
     expect(simulationCalls()).toHaveLength(1)
   })
+  it.each([
+    ['corrupt', 'not-xdr'],
+    [
+      'truncated',
+      Buffer.from(envelope(routeContract), 'base64')
+        .subarray(0, -4)
+        .toString('base64'),
+    ],
+  ])(
+    'shows a field error for %s transaction XDR before RPC',
+    async (_kind, transaction) => {
+      window.history.pushState({}, '', `/contracts/${routeContract}/discovery`)
+      const router = createRouter({
+        routeTree,
+        context: {},
+        defaultPreload: 'intent',
+        defaultPreloadStaleTime: 0,
+      })
+      render(<RouterProvider router={router} />)
+      fireEvent.change(await screen.findByLabelText('Function name'), {
+        target: { value: 'read_state' },
+      })
+      const transactionField = screen.getByLabelText('Transaction XDR')
+      fireEvent.change(transactionField, { target: { value: transaction } })
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Simulate transaction' }),
+      )
+
+      expect((await screen.findByRole('alert')).textContent).toContain(
+        'Enter a valid transaction XDR.',
+      )
+      expect(transactionField.getAttribute('aria-invalid')).toBe('true')
+      expect(simulationCalls()).toHaveLength(0)
+    },
+  )
 })
