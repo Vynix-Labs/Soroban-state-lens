@@ -1,5 +1,6 @@
 import { normalizeContractIdInput } from '../lib/validation/normalizeContractIdInput'
 import { compareContractSchema } from '../lib/spec/compareContractSchema'
+import type { ContractSpec } from '../types/contract-spec'
 import type { ContractSpecSlice, LensStore } from './types'
 
 function normalizeContractSpecKey(contractId: string): string | null {
@@ -15,7 +16,7 @@ export const createContractSpecSlice = (
   contractSpecErrors: {},
   contractSpecMismatches: {},
 
-  setContractSpec: (contractId: string, spec: unknown) => {
+  setContractSpec: (contractId: string, spec: ContractSpec) => {
     const normalizedContractId = normalizeContractSpecKey(contractId)
     if (!normalizedContractId) {
       return
