@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { makeContractDataFixture } from '../network/ledgerEntryFixtures'
+import { resolveContractDataLedgerKey } from '@/lib/validation/resolveLedgerKey'
 import { validateContractRouteParam } from '@/routes/contracts/$contractId/-validateContractRouteParam'
 
 const VALID_CONTRACT_ID =
@@ -31,5 +33,17 @@ describe('contract lookup navigation guard', () => {
   it('strips surrounding whitespace and still passes — navigation proceeds', () => {
     const result = validateContractRouteParam(`  ${VALID_CONTRACT_ID}  `)
     expect(result.ok).toBe(true)
+  })
+
+  it('resolves a contract-data LedgerKey into route parameters', () => {
+    const fixture = makeContractDataFixture('counter')
+    const result = resolveContractDataLedgerKey(fixture.keyXdr)
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.params.contractId).toBe(fixture.contractId)
+      expect(result.search.keys).toBe(fixture.keyXdr)
+      expect(result.to).toBe('/contracts/$contractId/explorer')
+    }
   })
 })
