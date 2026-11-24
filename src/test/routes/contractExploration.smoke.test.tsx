@@ -70,6 +70,17 @@ vi.mock('../../lib/network/getLedgerEntries', () => ({
   getLedgerEntries: mockGetLedgerEntries,
 }))
 
+vi.mock('../../lib/demo/demoContractData', () => ({
+  DEMO_CONTRACT_DATA: [
+    {
+      name: 'counter',
+      keyXdr: 'invalid-demo-key',
+      entryXdr: 'invalid-demo-entry',
+      valueXdr: 'invalid-demo-value',
+    },
+  ],
+}))
+
 vi.mock('../../workers/createDecoderWorker', () => ({
   createDecoderWorker: () => ({
     ping: () => Promise.resolve({ status: 'pong' }),
@@ -245,5 +256,31 @@ describe('contract exploration smoke flow', () => {
       ].value,
     ).toBe('demo value')
     expect(mockGetLedgerEntries).not.toHaveBeenCalled()
+  })
+
+  it('shows recovery when the local demo fixture is invalid', async () => {
+    resetStore()
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: [
+          `/contracts/${SAMPLE_CONTRACT_ID}/explorer?keys=invalid-demo-key&mode=demo`,
+        ],
+      }),
+      context: {},
+    })
+    render(<RouterProvider router={router} />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Unable to Load Demo Data' }),
+    ).toBeTruthy()
+    expect(
+      screen.getByText(/local demo dataset is missing or invalid/i),
+    ).toBeTruthy()
+    expect(getStoreState().ledgerData).toEqual({})
+    expect(mockGetLedgerEntries).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Return to search' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
   })
 })
