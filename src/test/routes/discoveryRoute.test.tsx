@@ -147,6 +147,42 @@ describe('Discovery route', () => {
     ).toHaveLength(1)
   })
 
+  it('clears footprint results only when transaction XDR changes', async () => {
+    mockRpcResponse((request) =>
+      request.method === 'getLatestLedger'
+        ? { result: { sequence: 123 } }
+        : {
+            result: {
+              footprint: { readOnly: ['read-key'], readWrite: ['write-key'] },
+            },
+          },
+    )
+    renderDiscoveryRoute()
+    await fillValidForm()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Simulate transaction' }),
+    )
+    await screen.findByText('read-key')
+    const network = useLensStore.getState().networkConfig
+
+    fireEvent.change(screen.getByLabelText('Arguments (JSON reference)'), {
+      target: { value: 'new notes' },
+    })
+    expect(screen.getByText('read-key')).toBeTruthy()
+    expect(screen.getByText('write-key')).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Transaction XDR'), {
+      target: { value: 'different-transaction-xdr' },
+    })
+    expect(screen.queryByText('read-key')).toBeNull()
+    expect(screen.queryByText('write-key')).toBeNull()
+    expect(useLensStore.getState().networkConfig).toEqual(network)
+    expect(screen.getByLabelText('Arguments (JSON reference)')).toHaveProperty(
+      'value',
+      'new notes',
+    )
+  })
+
   it('shows simulation errors without displaying a successful empty state', async () => {
     mockRpcResponse((request) =>
       request.method === 'getLatestLedger'
@@ -250,6 +286,57 @@ describe('Discovery route', () => {
         'Authorization required: add your RPC credentials and try again.',
       ),
     ).toBeTruthy()
+  })
+
+  it('ignores an old simulation response after the XDR changes', async () => {
+    let resolveResponse: (response: Response) => void = () => undefined
+    vi.mocked(fetch).mockImplementation((_input, init) => {
+      const request = JSON.parse(String(init?.body)) as JsonRpcRequest
+      if (request.method === 'getLatestLedger') {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              jsonrpc: '2.0',
+              id: request.id,
+              result: { sequence: 123 },
+            }),
+        } as Response)
+      }
+      return new Promise<Response>((resolve) => {
+        resolveResponse = resolve
+      })
+    })
+    renderDiscoveryRoute()
+    await fillValidForm()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Simulate transaction' }),
+    )
+    await waitFor(() =>
+      expect(getRpcPayloads('simulateTransaction')).toHaveLength(1),
+    )
+    const [, init] = getRpcPayloads('simulateTransaction')[0]
+    fireEvent.change(screen.getByLabelText('Transaction XDR'), {
+      target: { value: 'new-xdr' },
+    })
+    expect(init?.signal?.aborted).toBe(true)
+    await act(async () => {
+      resolveResponse({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            jsonrpc: '2.0',
+            id: JSON.parse(String(init?.body)).id,
+            result: { footprint: { readOnly: ['late-key'] } },
+          }),
+      } as Response)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(screen.queryByText('late-key')).toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'Simulate transaction' }),
+    ).toHaveProperty('disabled', false)
   })
 
   it('aborts a pending simulation when the route unmounts', async () => {
@@ -359,9 +446,12 @@ describe('Discovery route', () => {
 
   it('warns when leaving with a dirty discovery argument draft', async () => {
     renderDiscoveryRoute()
-    fireEvent.change(await screen.findByLabelText('Arguments (JSON reference)'), {
-      target: { value: '{"limit": 5}' },
-    })
+    fireEvent.change(
+      await screen.findByLabelText('Arguments (JSON reference)'),
+      {
+        target: { value: '{"limit": 5}' },
+      },
+    )
 
     const event = new Event('beforeunload', { cancelable: true })
     const result = window.dispatchEvent(event)
