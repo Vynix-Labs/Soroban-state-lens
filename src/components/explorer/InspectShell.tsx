@@ -3,6 +3,7 @@ import { Button, Card, Heading, IconButton } from '@stellar/design-system'
 import { Link } from '@tanstack/react-router'
 import { isSampleContractId } from '../../lib/demoContract'
 import { useLensStore } from '../../store/lensStore'
+import { contractSpecKey } from '../../store/contractSpecSlice'
 import { buildInspectBreadcrumb } from './buildInspectBreadcrumb'
 import { LocalDemoNotice } from './LocalDemoNotice'
 import type { LedgerEntry } from '../../store/types'
@@ -23,7 +24,9 @@ export function InspectShell({
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
   const schemaMismatch = useLensStore((state) =>
     (
-      state.contractSpecMismatches[normalizedContractId.toUpperCase()] ?? []
+      state.contractSpecMismatches[
+        contractSpecKey(state.networkConfig, normalizedContractId) ?? ''
+      ] ?? []
     ).find((mismatch) => mismatch.keyPath === keyPath),
   )
   const entry = useLensStore((state) =>
