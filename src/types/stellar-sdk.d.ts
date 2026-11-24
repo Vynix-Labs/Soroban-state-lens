@@ -30,6 +30,8 @@ declare module '@stellar/stellar-sdk' {
   }
 
   export class Address {
+    constructor(address: string)
+    toScAddress(): ReturnType<typeof xdr.ScAddress.scAddressTypeContract>
     static account(buffer: any): Address
     static contract(buffer: any): Address
     static fromScVal(scv: any): Address
@@ -87,6 +89,8 @@ declare module '@stellar/stellar-sdk' {
   }
 
   export class Address {
+    constructor(address: string)
+    toScAddress(): ReturnType<typeof xdr.ScAddress.scAddressTypeContract>
     static account(buffer: any): Address
     static contract(buffer: any): Address
     static fromScVal(scv: any): Address

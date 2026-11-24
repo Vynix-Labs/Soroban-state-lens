@@ -150,7 +150,11 @@ export interface ContractLoadSlice {
     code?: string | number | null,
   ) => void
   resetContractLoadState: () => void
-  loadContract: (contractId: string, keys: Array<string>) => Promise<void>
+  loadContract: (
+    contractId: string,
+    keys: Array<string>,
+    mode?: 'live' | 'demo',
+  ) => Promise<void>
   refreshActiveKeys: () => Promise<void>
 }
 
