@@ -332,12 +332,20 @@ export function DiscoveryRoute() {
     : decodedInvocation.ok
       ? decodedInvocation.preview.functionName
       : ''
+  const functionNameMismatch =
+    functionName.trim().length > 0 &&
+    decodedInvocation.ok &&
+    functionName.trim() !== decodedInvocation.preview.functionName
   const functionNameIsValid =
-    resolvedFunctionName.length > 0 && isFunctionName(resolvedFunctionName)
+    resolvedFunctionName.length > 0 &&
+    isFunctionName(resolvedFunctionName) &&
+    !functionNameMismatch
   const functionNameError =
     !functionNameIsValid && (functionName.length > 0 || attemptedSubmit)
       ? functionName.trim()
-        ? 'Enter a valid Soroban function name (lowercase letters, numbers, and underscores).'
+        ? functionNameMismatch
+          ? 'Function name must match the invocation in transaction XDR.'
+          : 'Enter a valid Soroban function name (lowercase letters, numbers, and underscores).'
         : 'Enter transaction XDR with a decodable contract function.'
       : null
   const transactionError =
