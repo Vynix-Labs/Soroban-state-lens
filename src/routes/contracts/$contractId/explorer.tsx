@@ -242,6 +242,7 @@ function ContractExplorer() {
             label: entry.displayKey ?? entry.displayName ?? entry.key,
             canonicalKey: entry.canonicalKey,
             durability: entry.durability,
+            ledgerType: entry.type,
             node: entry.value,
             expired: entry.expired,
           },
@@ -284,10 +285,11 @@ function ContractExplorer() {
       return
     }
 
-    void loadContract(contractId, keys)
+    void loadContract(contractId, keys, search.mode)
   }, [
     contractId,
     keys,
+    search.mode,
     loadContract,
     setActiveContractId,
     setContractLoadError,
@@ -309,7 +311,7 @@ function ContractExplorer() {
       return
     }
 
-    void loadContract(contractId, keys)
+    void loadContract(contractId, keys, search.mode)
   }
 
   const handleActivateRow = (keyPath: string) => {

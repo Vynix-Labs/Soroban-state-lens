@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 
 import { deepClone } from '../lib/deepClone'
 import { isSampleContractId } from '../lib/demoContract'
+import { DEMO_CONTRACT_DATA } from '../lib/demo/demoContractData'
 import { getLedgerEntries } from '../lib/network/getLedgerEntries'
 import {
   decodeLedgerEntryMetadata,
@@ -496,7 +497,11 @@ const createContractLoadSlice = (
         contractLoadAttemptCount: null,
       })),
 
-    loadContract: async (contractId: string, keys: Array<string>) => {
+    loadContract: async (
+      contractId: string,
+      keys: Array<string>,
+      mode = 'live',
+    ) => {
       requestId += 1
       const currentRequestId = requestId
 
@@ -506,7 +511,8 @@ const createContractLoadSlice = (
       activeDecoder?.terminate()
       activeDecoder = null
 
-      if (isSampleContractId(contractId)) {
+      const isDemo = mode === 'demo' && isSampleContractId(contractId)
+      if (isSampleContractId(contractId) && !isDemo) {
         activeController = null
         const hasDemoEntries = Object.values(get().ledgerData).some((entry) =>
           isSampleContractId(entry.contractId),
@@ -531,7 +537,7 @@ const createContractLoadSlice = (
         currentRequestId !== requestId || signal.aborted
       // Defense in depth (SSL#733): a direct live load without a preceding
       // setActiveContractId(live) must not retain demo records.
-      get().clearDemoRecords()
+      if (!isDemo) get().clearDemoRecords()
       set(() => ({
         activeContractId: contractId,
         contractLoadStatus: ContractLoadStatus.LOADING,
@@ -541,11 +547,22 @@ const createContractLoadSlice = (
       }))
 
       try {
-        const { entries, latestLedger } = await getLedgerEntries({
-          rpcUrl: get().networkConfig.rpcUrl,
-          keys,
-          signal,
-        })
+        const { entries, latestLedger } = isDemo
+          ? {
+              entries: DEMO_CONTRACT_DATA.filter((record) =>
+                keys.includes(record.keyXdr),
+              ).map((record) => ({
+                key: record.keyXdr,
+                xdr: record.entryXdr,
+                lastModifiedLedgerSeq: 0,
+              })),
+              latestLedger: 0,
+            }
+          : await getLedgerEntries({
+              rpcUrl: get().networkConfig.rpcUrl,
+              keys,
+              signal,
+            })
 
         if (isRequestStale()) {
           return
@@ -693,16 +710,14 @@ const createContractLoadSlice = (
           ledgerData: {
             ...Object.fromEntries(
               Object.entries(state.ledgerData).filter(
-                ([, entry]) =>
-                  isSampleContractId(contractId) ||
-                  entry.contractId !== contractId,
+                ([, entry]) => entry.contractId !== contractId,
               ),
             ),
             ...Object.fromEntries(
               mappedEntries.map((entry) => [entry.key, entry]),
             ),
           },
-          currentLedgerSequence: latestLedger,
+          ...(isDemo ? {} : { currentLedgerSequence: latestLedger }),
           contractLoadStatus:
             mappedEntries.length === 0
               ? ContractLoadStatus.EMPTY
