@@ -572,11 +572,11 @@ describe('Discovery route', () => {
     )
     await screen.findByText('read-key')
 
-    const event = new Event('beforeunload', { cancelable: true })
-    const result = window.dispatchEvent(event)
-
-    expect(result).toBe(true)
-    expect(event.defaultPrevented).toBe(false)
+    await waitFor(() => {
+      const event = new Event('beforeunload', { cancelable: true })
+      expect(window.dispatchEvent(event)).toBe(true)
+      expect(event.defaultPrevented).toBe(false)
+    })
     expect(screen.getByLabelText('Function name')).toHaveProperty(
       'value',
       'read_state',
