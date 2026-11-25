@@ -10,6 +10,9 @@ export type ExtractSectionResult =
   | { ok: true; payload: Uint8Array }
   | { ok: false; reason: string }
 
+export const NO_CONTRACT_SPEC_REASON =
+  'contractspecv0 section not found in module'
+
 export const MAX_CONTRACT_SPEC_PAYLOAD_BYTES = 1024 * 1024
 /**
  * Decodes a LEB128-encoded unsigned integer from a Uint8Array
@@ -209,6 +212,6 @@ export function extractContractspecv0(
   // Section not found
   return {
     ok: false,
-    reason: 'contractspecv0 section not found in module',
+    reason: NO_CONTRACT_SPEC_REASON,
   }
 }

@@ -11,6 +11,7 @@ import { useLensStore } from '../../store/lensStore'
 import { ContractSpecLoadStatus } from '../../store/types'
 import { contractSpecKey } from '../../store/contractSpecSlice'
 import { buildInspectBreadcrumb } from './buildInspectBreadcrumb'
+import { InspectorEnum } from './InspectorEnum'
 import { LocalDemoNotice } from './LocalDemoNotice'
 import type { LedgerEntry } from '../../store/types'
 import type { Node } from '../../types/node'
@@ -45,6 +46,9 @@ export function InspectShell({
   )
   const rpcUrl = useLensStore((state) => state.networkConfig.rpcUrl)
   const loadContractSpec = useLensStore((state) => state.loadContractSpec)
+  const uploadContractSpec = useLensStore(
+    (state) => state.loadContractSpecFromUpload,
+  )
   const specLoadStatus = useLensStore((state) =>
     state.getContractSpecLoadStatus(normalizedContractId || contractId),
   )
@@ -66,6 +70,12 @@ export function InspectShell({
   )
   const setCollectionStructInterpretation = useLensStore(
     (state) => state.setCollectionStructInterpretation,
+  )
+  const clearKeyInterpretation = useLensStore(
+    (state) => state.clearKeyInterpretation,
+  )
+  const interpretationScope = useLensStore((state) =>
+    contractSpecKey(state.networkConfig, normalizedContractId || contractId),
   )
   const compareContractSpec = useLensStore((state) => state.compareContractSpec)
   const schemaMismatch = useLensStore((state) =>
@@ -148,6 +158,14 @@ export function InspectShell({
     networkPassphrase,
     rpcUrl,
   ])
+
+  useEffect(
+    () => () => {
+      if (interpretationScope)
+        clearKeyInterpretation(interpretationScope, keyPath)
+    },
+    [interpretationScope, keyPath, clearKeyInterpretation],
+  )
 
   // Opt-in, route-scoped automatic metadata load. The action itself skips
   // cached specs/errors and de-duplicates concurrent loads, so re-opening the
@@ -280,6 +298,28 @@ export function InspectShell({
                   : 'Load contract spec'}
             </Button>
           </div>
+          <label className="block text-sm text-text-muted">
+            Upload contract WASM
+            <input
+              type="file"
+              accept=".wasm,application/wasm"
+              disabled={
+                !isContractId(inspectedContractId) ||
+                specLoadStatus === ContractSpecLoadStatus.LOADING
+              }
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0]
+                event.currentTarget.value = ''
+                if (file) void uploadContractSpec(inspectedContractId, file)
+              }}
+            />
+          </label>
+          {specLoadStatus === ContractSpecLoadStatus.NO_SPEC ? (
+            <p role="status" className="text-sm text-text-muted">
+              This WASM file has no contractspecv0 section. Raw values remain
+              available; schema labels are unavailable.
+            </p>
+          ) : null}
           {specLoadStatus === ContractSpecLoadStatus.LOADING ? (
             <p role="status" className="text-sm text-text-muted">
               Loading contract spec…
@@ -300,6 +340,14 @@ export function InspectShell({
           ) : null}
         </div>
       </Card>
+
+      {entry && !keyPathError ? (
+        <InspectorEnum
+          contractId={inspectedContractId}
+          keyPath={keyPath}
+          entry={entry}
+        />
+      ) : null}
 
       <nav
         aria-label="Inspect breadcrumb"
