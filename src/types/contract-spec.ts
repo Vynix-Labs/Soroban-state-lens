@@ -1,4 +1,5 @@
 import type { xdr } from '@stellar/stellar-base'
+import type { EnumLookup, SpecEnumEntry } from '../lib/spec/resolveEnumValue'
 
 export interface ContractSpecFunction {
   kind: 'function'
@@ -32,7 +33,7 @@ export interface ContractSpecErrorEnum {
 export interface ContractSpecUnion {
   kind: 'union'
   name: string
-  cases: Array<xdr.ScSpecUdtUnionCaseVoidV0 | xdr.ScSpecUdtUnionCaseTupleV0>
+  cases: Array<xdr.ScSpecUdtUnionCaseV0>
   wire: xdr.ScSpecUdtUnionV0
 }
 
@@ -45,4 +46,7 @@ export type ContractSpecEntry =
 
 export interface ContractSpec {
   entries: Array<ContractSpecEntry>
+  /** Derived enum labels used by Inspector value rendering. */
+  enumEntries?: Array<SpecEnumEntry>
+  enumLookup?: EnumLookup
 }

@@ -191,11 +191,34 @@ export type NetworkScopedContractBuckets<T> = Partial<
   Record<string, Partial<Record<string, T>>>
 >
 
+/** Lifecycle of the metadata load for one contract. */
+export enum ContractSpecLoadStatus {
+  IDLE = 'idle',
+  LOADING = 'loading',
+  SUCCESS = 'success',
+  ERROR = 'error',
+}
+
+export interface LoadContractSpecOptions {
+  /** Retry even when a spec or a previous error is already cached. */
+  force?: boolean
+  /** Cancels the in-flight RPC request, for example when Inspector unmounts. */
+  signal?: AbortSignal
+}
+
+export interface LoadContractSpecResult {
+  ok: boolean
+  /** True when no request was made (cache hit, duplicate, or abort). */
+  skipped?: boolean
+  reason?: string
+}
+
 // Contract spec slice – parsed schema data keyed by contract ID
 export interface ContractSpecSlice {
   contractSpecs: Record<string, ContractSpec>
   contractSpecErrors: Record<string, string>
   contractSpecMismatches: Record<string, Array<ContractSchemaMismatch>>
+  contractSpecLoadStatuses: Record<string, ContractSpecLoadStatus>
   setContractSpec: (contractId: string, spec: ContractSpec) => void
   compareContractSpec: (
     contractId: string,
@@ -210,6 +233,12 @@ export interface ContractSpecSlice {
   setContractSpecError: (contractId: string, error: string) => void
   getContractSpecError: (contractId: string) => string | undefined
   clearContractSpec: (contractId: string) => void
+  getContractSpecLoadStatus: (contractId: string) => ContractSpecLoadStatus
+  /** Fetch, validate, and cache the spec for a single contract. */
+  loadContractSpec: (
+    contractId: string,
+    options?: LoadContractSpecOptions,
+  ) => Promise<LoadContractSpecResult>
 }
 
 /** A storage field and its type in a parsed contract schema. */
@@ -241,6 +270,8 @@ export enum BigIntDisplayMode {
 export interface DisplayPreferences {
   byteDisplayMode: ByteDisplayMode
   bigIntDisplayMode: BigIntDisplayMode
+  /** Opt-in: load a contract's metadata automatically when Inspector opens. */
+  autoLoadSpec: boolean
 }
 
 // Preferences slice
@@ -248,6 +279,7 @@ export interface PreferencesSlice {
   preferences: DisplayPreferences
   setByteDisplayMode: (mode: ByteDisplayMode) => void
   setBigIntDisplayMode: (mode: BigIntDisplayMode) => void
+  setAutoLoadSpec: (enabled: boolean) => void
   resetPreferences: () => void
 }
 
@@ -292,4 +324,5 @@ export const DEFAULT_NETWORKS: Record<string, NetworkConfig> = {
 export const DEFAULT_PREFERENCES: DisplayPreferences = {
   byteDisplayMode: ByteDisplayMode.HEX,
   bigIntDisplayMode: BigIntDisplayMode.DECIMAL,
+  autoLoadSpec: false,
 }

@@ -54,7 +54,7 @@ describe('ContractLookUpInput validation accessibility', () => {
       expect(input.getAttribute('aria-describedby')).toBe(
         'contract-lookup-error',
       )
-      expect(screen.getByText('Invalid contract ID').id).toBe(
+      expect(screen.getByText(/malformed ledger key xdr/i).id).toBe(
         'contract-lookup-error',
       )
       expect((input as HTMLInputElement).value).toBe('invalid')
@@ -97,7 +97,7 @@ describe('ContractLookUpInput validation accessibility', () => {
 
     resolveValidation({ ok: false, error: 'Invalid contract ID' })
     await waitFor(() => {
-      expect(screen.getByText('Invalid contract ID')).toBeTruthy()
+      expect(screen.getByText(/malformed ledger key xdr/i)).toBeTruthy()
     })
   })
 })

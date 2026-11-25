@@ -278,4 +278,61 @@ describe('contract exploration smoke flow', () => {
     expect(getStoreState().ledgerData).toEqual({})
     expect(mockGetLedgerEntries).not.toHaveBeenCalled()
   })
+
+  it('loads a matching manual key and rejects a key from another contract', async () => {
+    resetStore()
+    const matchingEntry = createContractDataLedgerEntry({
+      contractSeed: 17,
+      key: xdr.ScVal.scvSymbol('counter'),
+    })
+    const foreignEntry = createContractDataLedgerEntry({
+      contractSeed: 18,
+      key: xdr.ScVal.scvSymbol('counter'),
+    })
+    mockGetLedgerEntries.mockResolvedValue({ entries: [], latestLedger: 100 })
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: [
+          `/contracts/${matchingEntry.contractId}/explorer?keys=&mode=live`,
+        ],
+      }),
+      context: {},
+    })
+    render(<RouterProvider router={router} />)
+
+    const input = await screen.findByRole('textbox', {
+      name: 'Contract-data ledger key',
+    })
+    fireEvent.change(input, { target: { value: matchingEntry.key } })
+    fireEvent.submit(input.closest('form') as HTMLFormElement)
+
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({
+        keys: matchingEntry.key,
+        mode: 'live',
+      })
+      expect(mockGetLedgerEntries).toHaveBeenCalledWith(
+        expect.objectContaining({ keys: [matchingEntry.key] }),
+      )
+    })
+
+    const inputAfterLoad = await screen.findByRole('textbox', {
+      name: 'Contract-data ledger key',
+    })
+    const fetchCallCount = mockGetLedgerEntries.mock.calls.length
+    fireEvent.change(inputAfterLoad, { target: { value: foreignEntry.key } })
+    fireEvent.submit(inputAfterLoad.closest('form') as HTMLFormElement)
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(
+      /belongs to a different contract/i,
+    )
+    expect((inputAfterLoad as HTMLInputElement).value).toBe(foreignEntry.key)
+    expect(router.state.location.search).toEqual({
+      keys: matchingEntry.key,
+      mode: 'live',
+    })
+    expect(mockGetLedgerEntries).toHaveBeenCalledTimes(fetchCallCount)
+  })
 })
