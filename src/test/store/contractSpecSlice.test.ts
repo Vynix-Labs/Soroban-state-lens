@@ -1,6 +1,24 @@
+import { xdr } from '@stellar/stellar-sdk'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { getStoreState, resetStore } from '../../store/lensStore'
+import { contractSpecKey } from '../../store/contractSpecSlice'
+import { DEFAULT_NETWORKS } from '../../store/types'
+import type { ContractSpec } from '../../types/contract-spec'
+
+const key = (id: string) => contractSpecKey(getStoreState().networkConfig, id)!
+
+function makeSpec(name: string): ContractSpec {
+  const wire = new xdr.ScSpecFunctionV0({
+    doc: '',
+    name,
+    inputs: [],
+    outputs: [],
+  })
+  return {
+    entries: [{ kind: 'function', name, inputs: [], outputs: [], wire }],
+  }
+}
 
 describe('contractSpecSlice', () => {
   beforeEach(() => {
@@ -14,23 +32,27 @@ describe('contractSpecSlice', () => {
   })
 
   it('stores spec data for a contract ID', () => {
-    const spec = { functions: ['transfer', 'balance'] }
+    const spec = makeSpec('transfer')
     getStoreState().setContractSpec('CONTRACT_A', spec)
     expect(getStoreState().getContractSpec('CONTRACT_A')).toEqual(spec)
   })
 
   it('replaces existing spec for the same contract ID', () => {
-    getStoreState().setContractSpec('CONTRACT_A', { v: 1 })
-    getStoreState().setContractSpec('CONTRACT_A', { v: 2 })
-    expect(getStoreState().getContractSpec('CONTRACT_A')).toEqual({ v: 2 })
+    const first = makeSpec('first')
+    const second = makeSpec('second')
+    getStoreState().setContractSpec('CONTRACT_A', first)
+    getStoreState().setContractSpec('CONTRACT_A', second)
+    expect(getStoreState().getContractSpec('CONTRACT_A')).toEqual(second)
   })
 
   it('stores specs for multiple contract IDs independently', () => {
-    getStoreState().setContractSpec('CONTRACT_A', { name: 'A' })
-    getStoreState().setContractSpec('CONTRACT_B', { name: 'B' })
+    const specA = makeSpec('A')
+    const specB = makeSpec('B')
+    getStoreState().setContractSpec('CONTRACT_A', specA)
+    getStoreState().setContractSpec('CONTRACT_B', specB)
 
-    expect(getStoreState().getContractSpec('CONTRACT_A')).toEqual({ name: 'A' })
-    expect(getStoreState().getContractSpec('CONTRACT_B')).toEqual({ name: 'B' })
+    expect(getStoreState().getContractSpec('CONTRACT_A')).toEqual(specA)
+    expect(getStoreState().getContractSpec('CONTRACT_B')).toEqual(specB)
   })
 
   it('stores schema comparison details and clears them for matching fields', () => {
@@ -42,10 +64,14 @@ describe('contractSpecSlice', () => {
     ).toEqual([
       { keyPath: 'balance', expectedType: 'i128', actualType: 'symbol' },
     ])
-    expect(getStoreState().contractSpecMismatches.CONTRACT_A).toHaveLength(1)
+    expect(
+      getStoreState().contractSpecMismatches[key('CONTRACT_A')],
+    ).toHaveLength(1)
 
     expect(compare('CONTRACT_A', expected, expected)).toEqual([])
-    expect(getStoreState().contractSpecMismatches.CONTRACT_A).toEqual([])
+    expect(getStoreState().contractSpecMismatches[key('CONTRACT_A')]).toEqual(
+      [],
+    )
   })
 
   it('returns undefined for unknown contract ID', () => {
@@ -66,12 +92,11 @@ describe('contractSpecSlice', () => {
     getStoreState().setContractSpecError('CONTRACT_A', 'x'.repeat(700))
     expect(getStoreState().getContractSpecError('CONTRACT_A')).toHaveLength(500)
 
-    getStoreState().setContractSpec('CONTRACT_A', { functions: [] })
+    const spec = makeSpec('empty')
+    getStoreState().setContractSpec('CONTRACT_A', spec)
 
     expect(getStoreState().getContractSpecError('CONTRACT_A')).toBeUndefined()
-    expect(getStoreState().getContractSpec('CONTRACT_A')).toEqual({
-      functions: [],
-    })
+    expect(getStoreState().getContractSpec('CONTRACT_A')).toEqual(spec)
   })
 
   it('clears spec data and errors for only the selected contract', () => {
@@ -87,8 +112,10 @@ describe('contractSpecSlice', () => {
   })
 
   it('clears a single contract spec without affecting others', () => {
-    getStoreState().setContractSpec('CONTRACT_A', { name: 'A' })
-    getStoreState().setContractSpec('CONTRACT_B', { name: 'B' })
+    const specA = makeSpec('A')
+    const specB = makeSpec('B')
+    getStoreState().setContractSpec('CONTRACT_A', specA)
+    getStoreState().setContractSpec('CONTRACT_B', specB)
     getStoreState().setContractSpecMismatches('CONTRACT_A', [
       { keyPath: 'balance', expectedType: 'i128', actualType: 'symbol' },
     ])
@@ -99,32 +126,83 @@ describe('contractSpecSlice', () => {
     getStoreState().clearContractSpec('CONTRACT_A')
 
     expect(getStoreState().getContractSpec('CONTRACT_A')).toBeUndefined()
-    expect(getStoreState().getContractSpec('CONTRACT_B')).toEqual({ name: 'B' })
-    expect(getStoreState().contractSpecMismatches.CONTRACT_A).toBeUndefined()
-    expect(getStoreState().contractSpecMismatches.CONTRACT_B).toHaveLength(1)
+    expect(getStoreState().getContractSpec('CONTRACT_B')).toEqual(specB)
+    expect(
+      getStoreState().contractSpecMismatches[key('CONTRACT_A')],
+    ).toBeUndefined()
+    expect(
+      getStoreState().contractSpecMismatches[key('CONTRACT_B')],
+    ).toHaveLength(1)
   })
 
   it('normalizes equivalent contract IDs to the same cache entry', () => {
-    getStoreState().setContractSpec('  c123   ', { name: 'A' })
+    const spec = makeSpec('A')
+    getStoreState().setContractSpec('  c123   ', spec)
 
-    expect(getStoreState().getContractSpec('C123')).toEqual({ name: 'A' })
+    expect(getStoreState().getContractSpec('C123')).toEqual(spec)
   })
 
   it('ignores blank contract IDs when storing specs', () => {
-    getStoreState().setContractSpec('   ', { name: 'A' })
-    getStoreState().setContractSpec('\n\t', { name: 'B' })
+    getStoreState().setContractSpec('   ', makeSpec('A'))
+    getStoreState().setContractSpec('\n\t', makeSpec('B'))
 
     expect(getStoreState().contractSpecs).toEqual({})
     expect(getStoreState().getContractSpec('   ')).toBeUndefined()
     expect(getStoreState().getContractSpec('\n\t')).toBeUndefined()
   })
 
+  it('isolates specs and errors for the same contract across networks', () => {
+    getStoreState().setNetworkConfig(DEFAULT_NETWORKS.testnet)
+    const testnetSpec = makeSpec('testnet')
+    getStoreState().setContractSpec('CONTRACT_A', testnetSpec)
+    getStoreState().setContractSpecError('CONTRACT_B', 'testnet error')
+    getStoreState().setContractSpecMismatches('CONTRACT_A', [
+      { keyPath: 'balance', expectedType: 'i128', actualType: 'symbol' },
+    ])
+    getStoreState().setNetworkConfig(DEFAULT_NETWORKS.mainnet)
+    expect(getStoreState().getContractSpec('CONTRACT_A')).toBeUndefined()
+    expect(getStoreState().getContractSpecError('CONTRACT_B')).toBeUndefined()
+    expect(
+      getStoreState().contractSpecMismatches[key('CONTRACT_A')],
+    ).toBeUndefined()
+    const mainnetSpec = makeSpec('mainnet')
+    getStoreState().setContractSpec('CONTRACT_A', mainnetSpec)
+    getStoreState().setNetworkConfig(DEFAULT_NETWORKS.testnet)
+    expect(getStoreState().getContractSpec('CONTRACT_A')).toEqual(testnetSpec)
+    expect(getStoreState().getContractSpecError('CONTRACT_B')).toBe(
+      'testnet error',
+    )
+    getStoreState().clearContractSpec('CONTRACT_A')
+    getStoreState().setNetworkConfig(DEFAULT_NETWORKS.mainnet)
+    expect(getStoreState().getContractSpec('CONTRACT_A')).toEqual(mainnetSpec)
+  })
+
   it('does not affect other store state when setting a spec', () => {
     const before = getStoreState()
     const ledgerDataBefore = before.ledgerData
 
-    before.setContractSpec('CONTRACT_A', { spec: true })
+    before.setContractSpec('CONTRACT_A', makeSpec('preserve-state'))
 
     expect(getStoreState().ledgerData).toBe(ledgerDataBefore)
+  })
+
+  it('keeps another contract and the network intact when recording a spec error', () => {
+    const state = getStoreState()
+    const network = state.networkConfig
+    const ledgerData = state.ledgerData
+    const specA = makeSpec('a')
+    const specB = makeSpec('b')
+    state.setContractSpec('CONTRACT_A', specA)
+    state.setContractSpec('CONTRACT_B', specB)
+
+    getStoreState().setContractSpecError('CONTRACT_A', 'malformed spec')
+
+    expect(getStoreState().getContractSpec('CONTRACT_A')).toBeUndefined()
+    expect(getStoreState().getContractSpecError('CONTRACT_A')).toBe(
+      'malformed spec',
+    )
+    expect(getStoreState().getContractSpec('CONTRACT_B')).toEqual(specB)
+    expect(getStoreState().networkConfig).toBe(network)
+    expect(getStoreState().ledgerData).toBe(ledgerData)
   })
 })

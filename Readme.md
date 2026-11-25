@@ -23,6 +23,10 @@ Soroban stores data in the ledger as ScVal (Stellar Contract Values) within Cont
 
 - A running Soroban RPC node (or use the public Testnet/Mainnet endpoints)
 
+The web app decodes ledger values in a TypeScript worker. Rust and Soroban
+contract-authoring tools are optional for web app development. Install the
+appropriate tools separately if you are developing contracts.
+
 ### **Stack & Architecture**
 
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
@@ -59,6 +63,18 @@ bun run smoke:ledger-read -- <rpc-url> <present-ledger-key-xdr> <absent-ledger-k
 This command only calls `getLedgerEntries`, verifies both key results and the
 returned latest ledger, and exits with an error for RPC failures such as
 `-32602`. It never submits transactions.
+
+### Footprint simulation smoke check
+
+Run a read-only simulation with a deployed-contract transaction envelope and
+its network passphrase:
+
+```sh
+bun run smoke:footprint -- <rpc-url> <network-passphrase> <transaction-xdr>
+```
+
+The command reports read-only and read-write footprint key counts. It does not
+submit the transaction. Simulation errors exit with a nonzero status.
 
 ### **Browser Worker Regression**
 

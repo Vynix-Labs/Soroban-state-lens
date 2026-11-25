@@ -9,6 +9,11 @@ import {
   flattenTree,
 } from '../../../lib/tree/flattenTree'
 import { useContractLedgerPolling } from '../../../lib/network/useContractLedgerPolling'
+import {
+  DEMO_COUNTER_ENTRY_KEY,
+  DEMO_COUNTER_NEXT_VALUE,
+  readDemoCounterValue,
+} from '../../../lib/demo/demoLedgerEntries'
 import { isSampleContractId } from '../../../lib/demoContract'
 import { ContractLoadStatus } from '../../../store/types'
 import { useLensStore, useSnapshots } from '../../../store/lensStore'
@@ -148,6 +153,8 @@ function ContractExplorer() {
   const { normalizedContractId } = Route.useRouteContext()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
+  const isDemoExplorer =
+    search.mode === 'demo' && isSampleContractId(contractId)
 
   const setActiveContractId = useLensStore((state) => state.setActiveContractId)
   const setContractLoadStatus = useLensStore(
@@ -157,6 +164,8 @@ function ContractExplorer() {
     (state) => state.setContractLoadError,
   )
   const loadContract = useLensStore((state) => state.loadContract)
+  const loadDemoContract = useLensStore((state) => state.loadDemoContract)
+  const advanceDemoCounter = useLensStore((state) => state.advanceDemoCounter)
   const refreshActiveKeys = useLensStore((state) => state.refreshActiveKeys)
   const contractLoadStatus = useLensStore((state) => state.contractLoadStatus)
   const contractLoadError = useLensStore((state) => state.contractLoadError)
@@ -222,6 +231,23 @@ function ContractExplorer() {
     setCaptureStatus(`Captured ${label}.`)
   }
 
+  const isDemoMode = search.mode === 'demo' && isSampleContractId(contractId)
+
+  const demoCounterEntry = ledgerEntries.find(
+    (entry) => entry.key === DEMO_COUNTER_ENTRY_KEY,
+  )
+  const demoCounterAdvanced =
+    readDemoCounterValue(demoCounterEntry) === DEMO_COUNTER_NEXT_VALUE
+
+  const handleAdvanceDemoCounter = () => {
+    const advanced = advanceDemoCounter(contractId)
+    setCaptureStatus(
+      advanced
+        ? 'Demo counter advanced from 42 to 43. Capture another snapshot to compare.'
+        : 'Demo counter is already at 43.',
+    )
+  }
+
   const keys = useMemo(
     () => dedupeExplorerKeys(search.keys).split(',').filter(Boolean),
     [search.keys],
@@ -242,6 +268,7 @@ function ContractExplorer() {
             label: entry.displayKey ?? entry.displayName ?? entry.key,
             canonicalKey: entry.canonicalKey,
             durability: entry.durability,
+            ledgerType: entry.type,
             node: entry.value,
             expired: entry.expired,
           },
@@ -278,17 +305,26 @@ function ContractExplorer() {
   useEffect(() => {
     setActiveContractId(contractId)
 
+    // Demo mode hydrates the local counter fixture instead of reading RPC.
+    if (isDemoMode) {
+      loadDemoContract(contractId)
+      return
+    }
+
     if (keys.length === 0) {
       setContractLoadError(null)
       setContractLoadStatus(ContractLoadStatus.EMPTY)
       return
     }
 
-    void loadContract(contractId, keys)
+    void loadContract(contractId, keys, search.mode)
   }, [
     contractId,
+    isDemoMode,
     keys,
+    search.mode,
     loadContract,
+    loadDemoContract,
     setActiveContractId,
     setContractLoadError,
     setContractLoadStatus,
@@ -309,7 +345,11 @@ function ContractExplorer() {
       return
     }
 
-    void loadContract(contractId, keys)
+    void loadContract(contractId, keys, search.mode)
+  }
+
+  const handleReturnToSearch = () => {
+    void navigate({ to: '/' })
   }
 
   const handleActivateRow = (keyPath: string) => {
@@ -350,6 +390,16 @@ function ContractExplorer() {
               Capture Snapshot
             </Button>
           )}
+          {isDemoMode && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleAdvanceDemoCounter}
+              disabled={demoCounterAdvanced}
+            >
+              Demo: counter 42 → 43
+            </Button>
+          )}
           <Button variant="secondary" size="sm" onClick={handleRetry}>
             Retry Load
           </Button>
@@ -370,18 +420,29 @@ function ContractExplorer() {
         <Card>
           <div className="p-6 space-y-3">
             <Heading size="sm" as="h3" className="text-white">
-              No Contract Data Found
+              {isDemoExplorer
+                ? 'Demo Data Unavailable'
+                : 'No Contract Data Found'}
             </Heading>
             <p className="text-text-muted text-sm">
-              The current contract query completed, but no ledger entries were
-              returned for {keys.length} requested key
-              {keys.length === 1 ? '' : 's'}.
+              {isDemoExplorer
+                ? 'The local demo dataset returned no entries for the requested keys. Retry the sample or return to search.'
+                : `The current contract query completed, but no ledger entries were returned for ${keys.length} requested key${keys.length === 1 ? '' : 's'}.`}
             </p>
-            {keys.length === 0 && (
+            {keys.length === 0 && !isDemoExplorer && (
               <p className="text-text-muted text-xs">
                 Add one or more base64 ledger keys via `?keys=...` to load
                 entries in this route.
               </p>
+            )}
+            {isDemoExplorer && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleReturnToSearch}
+              >
+                Return to search
+              </Button>
             )}
           </div>
         </Card>
@@ -391,10 +452,15 @@ function ContractExplorer() {
         <Card>
           <div className="p-6 space-y-4 border border-red-500/20 bg-red-500/5 rounded-xl">
             <Heading size="sm" as="h3" className="text-red-300">
-              Failed To Load Contract Data
+              {isDemoExplorer
+                ? 'Unable to Load Demo Data'
+                : 'Failed To Load Contract Data'}
             </Heading>
             <p className="text-text-muted text-sm">
-              {contractLoadError || 'An unknown error occurred while loading.'}
+              {isDemoExplorer
+                ? `The local demo dataset is missing or invalid. ${contractLoadError || 'Try again or return to search.'}`
+                : contractLoadError ||
+                  'An unknown error occurred while loading.'}
             </p>
             {contractLoadErrorCode !== null && (
               <p className="text-text-muted text-xs">
@@ -415,6 +481,16 @@ function ContractExplorer() {
               >
                 Retry
               </Button>
+              {isDemoExplorer && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleReturnToSearch}
+                  className="ml-2"
+                >
+                  Return to search
+                </Button>
+              )}
             </div>
           </div>
         </Card>

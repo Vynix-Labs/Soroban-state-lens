@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute, redirect, useBlocker } from '@tanstack/react-router'
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
+import { decodeInvocationPreview } from '../../../lib/network/decodeInvocationPreview'
 import { normalizeFootprintKeys } from '../../../lib/network/normalizeFootprintKeys'
 import { simulateTransaction } from '../../../lib/network/simulateTransaction'
 import { isFunctionName } from '../../../lib/validation/isFunctionName'
@@ -74,11 +75,13 @@ export function DiscoveryStateView({
   state,
   onRetry,
   onPinKey,
+  onOpenInExplorer,
   emptyMessage,
 }: {
   state: DiscoveryLoadState
   onRetry?: () => void
   onPinKey?: (keyPath: string) => void
+  onOpenInExplorer?: () => void
   emptyMessage?: string
 }) {
   const handleRetry = useCallback(() => {
@@ -204,6 +207,12 @@ export function DiscoveryStateView({
           Discovered Keys
         </Heading>
 
+        {keys.length > 0 && onOpenInExplorer ? (
+          <Button variant="secondary" size="sm" onClick={onOpenInExplorer}>
+            Open in Explorer
+          </Button>
+        ) : null}
+
         <div className="grid gap-3">
           {keys.length > 0 ? (
             keys.map((item, idx) => (
@@ -256,8 +265,8 @@ export const Route = createFileRoute('/contracts/$contractId/discovery')({
 export function DiscoveryRoute() {
   const { contractId } = Route.useParams()
   const { normalizedContractId } = Route.useRouteContext()
+  const navigate = Route.useNavigate()
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
-  const rpcUrl = useLensStore((state) => state.networkConfig.rpcUrl)
   const [functionName, setFunctionName] = useState('')
   const [submittedDraft, setSubmittedDraft] = useState<{
     functionName: string
@@ -269,6 +278,10 @@ export function DiscoveryRoute() {
     arguments: '',
   })
   const { transaction } = inputState
+  const decodedInvocation = useMemo(
+    () => decodeInvocationPreview(transaction),
+    [transaction],
+  )
   const [attemptedSubmit, setAttemptedSubmit] = useState(false)
   const [watchlistFeedback, setWatchlistFeedback] = useState('')
   const [simulatedFunction, setSimulatedFunction] = useState('')
@@ -300,17 +313,67 @@ export function DiscoveryRoute() {
     [],
   )
 
-  const functionNameIsValid = isFunctionName(functionName)
+  useEffect(
+    () =>
+      useLensStore.subscribe((next, previous) => {
+        const current = next.networkConfig
+        const prior = previous.networkConfig
+        if (
+          current.networkId === prior.networkId &&
+          current.networkPassphrase === prior.networkPassphrase &&
+          current.rpcUrl === prior.rpcUrl
+        )
+          return
+
+        activeRequest.current?.abort()
+        activeRequest.current = null
+        setSimulatedFunction('')
+        setWatchlistFeedback('')
+        setState(
+          buildDiscoveryLoadState({ status: 'empty', requestedKeyCount: 0 }),
+        )
+      }),
+    [],
+  )
+
+  const resolvedFunctionName = functionName.trim()
+    ? functionName.trim()
+    : decodedInvocation.ok
+      ? decodedInvocation.preview.functionName
+      : ''
+  const functionNameMismatch =
+    functionName.trim().length > 0 &&
+    decodedInvocation.ok &&
+    functionName.trim() !== decodedInvocation.preview.functionName
+  const functionNameIsValid =
+    resolvedFunctionName.length > 0 &&
+    isFunctionName(resolvedFunctionName) &&
+    !functionNameMismatch
   const functionNameError =
     !functionNameIsValid && (functionName.length > 0 || attemptedSubmit)
-      ? 'Enter a valid Soroban function name (lowercase letters, numbers, and underscores).'
+      ? functionName.trim()
+        ? functionNameMismatch && isFunctionName(functionName.trim())
+          ? 'Function name must match the invocation in transaction XDR.'
+          : 'Enter a valid Soroban function name (lowercase letters, numbers, and underscores).'
+        : 'Enter transaction XDR with a decodable contract function.'
       : null
-  const transactionError =
-    attemptedSubmit && transaction.trim() === ''
+  const transactionError = attemptedSubmit
+    ? transaction.trim() === ''
       ? 'Transaction XDR is required.'
-      : null
+      : !decodedInvocation.ok && decodedInvocation.error === 'invalid_xdr'
+        ? 'Enter a valid transaction XDR.'
+        : null
+    : null
 
   const handleTransactionChange = (value: string) => {
+    if (value !== transaction) {
+      activeRequest.current?.abort()
+      activeRequest.current = null
+      setSimulatedFunction('')
+      setState(
+        buildDiscoveryLoadState({ status: 'empty', requestedKeyCount: 0 }),
+      )
+    }
     setInputState((previous) => ({ ...previous, transaction: value }))
   }
 
@@ -325,23 +388,82 @@ export function DiscoveryRoute() {
     )
   }
 
+  const handleOpenInExplorer = () => {
+    if (state.status !== 'success' || state.keys.length === 0) return
+
+    void navigate({
+      to: '/contracts/$contractId/explorer',
+      params: { contractId: normalizedContractId },
+      search: {
+        keys: state.keys.map(({ keyPath }) => keyPath).join(','),
+        mode: 'live',
+      },
+    })
+  }
+
   const runSimulation = async (
     requestedFunctionName: string,
     requestedTransaction: string,
   ) => {
     activeRequest.current?.abort()
+    activeRequest.current = null
+    const invocation = decodeInvocationPreview(requestedTransaction.trim())
+    if (!invocation.ok && invocation.error === 'invalid_xdr') {
+      setSimulatedFunction('')
+      setState(
+        buildDiscoveryLoadState({
+          status: 'error',
+          error: 'Enter a valid transaction XDR.',
+        }),
+      )
+      return
+    }
+    if (
+      invocation.ok &&
+      invocation.preview.contractId !== normalizedContractId
+    ) {
+      setSimulatedFunction('')
+      setState(
+        buildDiscoveryLoadState({
+          status: 'error',
+          error: `Transaction invokes ${invocation.preview.contractId}, but this page is for ${normalizedContractId}.`,
+        }),
+      )
+      return
+    }
+    if (!invocation.ok && invocation.error === 'unsupported_transaction') {
+      setSimulatedFunction('')
+      setState(
+        buildDiscoveryLoadState({
+          status: 'error',
+          error:
+            'Unsupported transaction operation. Discovery requires a single invoke-contract operation.',
+        }),
+      )
+      return
+    }
+
     const controller = new AbortController()
+    const network = useLensStore.getState().networkConfig
     activeRequest.current = controller
     setSimulatedFunction('')
     setState(buildDiscoveryLoadState({ status: 'loading' }))
 
     try {
       const result = await simulateTransaction({
-        rpcUrl,
+        rpcUrl: network.rpcUrl,
         transaction: requestedTransaction.trim(),
         signal: controller.signal,
       })
-      if (controller.signal.aborted) return
+      const currentNetwork = useLensStore.getState().networkConfig
+      if (
+        controller.signal.aborted ||
+        activeRequest.current !== controller ||
+        currentNetwork.networkId !== network.networkId ||
+        currentNetwork.networkPassphrase !== network.networkPassphrase ||
+        currentNetwork.rpcUrl !== network.rpcUrl
+      )
+        return
 
       if (!result.success) {
         setState(
@@ -373,7 +495,7 @@ export function DiscoveryRoute() {
         }),
       )
     } finally {
-      if (!controller.signal.aborted) {
+      if (activeRequest.current === controller) {
         activeRequest.current = null
       }
     }
@@ -383,12 +505,12 @@ export function DiscoveryRoute() {
     event.preventDefault()
     setAttemptedSubmit(true)
     if (!functionNameIsValid || transaction.trim() === '') return
-    void runSimulation(functionName, transaction)
+    void runSimulation(resolvedFunctionName, transaction)
   }
 
   const handleRetry = () => {
     if (functionNameIsValid && transaction.trim() !== '') {
-      void runSimulation(functionName, transaction)
+      void runSimulation(resolvedFunctionName, transaction)
     }
   }
 
@@ -426,11 +548,12 @@ export function DiscoveryRoute() {
               htmlFor="discovery-function-name"
               className="text-sm text-white"
             >
-              Function name
+              Function name (optional)
             </label>
             <input
               id="discovery-function-name"
               name="functionName"
+              aria-label="Function name"
               value={functionName}
               onChange={(event) => setFunctionName(event.target.value)}
               aria-invalid={functionNameError !== null}
@@ -439,6 +562,7 @@ export function DiscoveryRoute() {
               }
               className="w-full rounded border border-border-dark bg-surface-dark px-3 py-2 text-sm text-white"
               autoComplete="off"
+              placeholder="Inferred from transaction XDR when blank"
             />
             {functionNameError && (
               <p
@@ -470,6 +594,19 @@ export function DiscoveryRoute() {
               spellCheck={false}
               className="w-full resize-y rounded border border-border-dark bg-surface-dark px-3 py-2 font-mono text-sm text-white"
             />
+            {decodedInvocation.ok ? (
+              <div
+                className="rounded border border-border-dark bg-surface-dark px-3 py-2 text-xs text-text-muted"
+                aria-live="polite"
+                data-testid="invocation-preview"
+              >
+                <span className="font-semibold text-white">Invocation</span>
+                <span className="ml-2 font-mono break-all">
+                  {decodedInvocation.preview.contractId} ·{' '}
+                  {decodedInvocation.preview.functionName}
+                </span>
+              </div>
+            ) : null}
             {transactionError && (
               <p
                 id="transaction-error"
@@ -518,6 +655,7 @@ export function DiscoveryRoute() {
         state={state}
         onRetry={handleRetry}
         onPinKey={handlePinKey}
+        onOpenInExplorer={handleOpenInExplorer}
         emptyMessage={
           simulatedFunction
             ? 'No keys found in the transaction footprint.'

@@ -5,6 +5,7 @@ import { isSampleContractId } from '../../lib/demoContract'
 import { isContractId } from '../../lib/validation/isContractId'
 import { useLensStore } from '../../store/lensStore'
 import { ContractSpecLoadStatus } from '../../store/types'
+import { contractSpecKey } from '../../store/contractSpecSlice'
 import { buildInspectBreadcrumb } from './buildInspectBreadcrumb'
 import { LocalDemoNotice } from './LocalDemoNotice'
 import type { LedgerEntry } from '../../store/types'
@@ -37,7 +38,9 @@ export function InspectShell({
   )
   const schemaMismatch = useLensStore((state) =>
     (
-      state.contractSpecMismatches[normalizedContractId.toUpperCase()] ?? []
+      state.contractSpecMismatches[
+        contractSpecKey(state.networkConfig, normalizedContractId) ?? ''
+      ] ?? []
     ).find((mismatch) => mismatch.keyPath === keyPath),
   )
   const entry = useLensStore((state) =>

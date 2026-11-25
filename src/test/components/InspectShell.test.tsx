@@ -1,9 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { InspectShell } from '../../components/explorer/InspectShell'
 import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
 import { useLensStore } from '../../store/lensStore'
+import { contractSpecKey } from '../../store/contractSpecSlice'
+import type { ContractSpec } from '../../types/contract-spec'
 
 vi.mock('@stellar/design-system', () => ({
   Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
@@ -80,12 +82,37 @@ describe('InspectShell', () => {
     ).toContain('Ledger numbers are illustrative.')
   })
 
+  it('keeps the selected ledger entry visible when contract metadata is stored', () => {
+    useLensStore.setState({
+      watchlist: {},
+      ledgerData: { [storedEntry.key]: storedEntry },
+    })
+    const network = useLensStore.getState().networkConfig
+    const spec: ContractSpec = { entries: [] }
+    render(
+      <InspectShell
+        contractId="C123"
+        normalizedContractId="C123"
+        keyPath="/state/ledger"
+      />,
+    )
+
+    act(() => useLensStore.getState().setContractSpec('C123', spec))
+
+    expect(screen.getByText(storedEntry.rawXdr)).toBeTruthy()
+    expect(useLensStore.getState().ledgerData[storedEntry.key]).toBe(
+      storedEntry,
+    )
+    expect(useLensStore.getState().networkConfig).toBe(network)
+    expect(useLensStore.getState().getContractSpec('C123')).toEqual(spec)
+  })
+
   it('shows the affected key path and expected/actual types for a schema mismatch', () => {
     useLensStore.setState({
       watchlist: {},
       ledgerData: { [storedEntry.key]: storedEntry },
       contractSpecMismatches: {
-        C123: [
+        [contractSpecKey(useLensStore.getState().networkConfig, 'C123')!]: [
           {
             keyPath: '/state/ledger',
             expectedType: 'i128',
@@ -114,7 +141,9 @@ describe('InspectShell', () => {
     useLensStore.setState({
       watchlist: {},
       ledgerData: { [storedEntry.key]: storedEntry },
-      contractSpecMismatches: { C123: [] },
+      contractSpecMismatches: {
+        [contractSpecKey(useLensStore.getState().networkConfig, 'C123')!]: [],
+      },
     })
 
     render(
