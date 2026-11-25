@@ -63,7 +63,7 @@ describe('loadContractSpec', () => {
     expect(mockGetContractWasm).not.toHaveBeenCalled()
   })
 
-  it('records extraction failures as a bounded error state', async () => {
+  it('records a missing spec section as a distinct no-spec state', async () => {
     mockGetContractWasm.mockResolvedValue({
       success: true,
       wasm: new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]),
@@ -75,7 +75,7 @@ describe('loadContractSpec', () => {
       'contractspecv0',
     )
     expect(getStoreState().getContractSpecLoadStatus(TEST_CONTRACT_ID)).toBe(
-      ContractSpecLoadStatus.ERROR,
+      ContractSpecLoadStatus.NO_SPEC,
     )
   })
 
