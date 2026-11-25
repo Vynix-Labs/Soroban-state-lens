@@ -7,6 +7,7 @@ import { useLensStore } from '../../store/lensStore'
 import { ContractSpecLoadStatus } from '../../store/types'
 import { contractSpecKey } from '../../store/contractSpecSlice'
 import { buildInspectBreadcrumb } from './buildInspectBreadcrumb'
+import { InspectorEnum } from './InspectorEnum'
 import { LocalDemoNotice } from './LocalDemoNotice'
 import type { LedgerEntry } from '../../store/types'
 
@@ -222,6 +223,14 @@ export function InspectShell({
           ) : null}
         </div>
       </Card>
+
+      {entry && !keyPathError ? (
+        <InspectorEnum
+          contractId={inspectedContractId}
+          keyPath={keyPath}
+          entry={entry}
+        />
+      ) : null}
 
       <nav
         aria-label="Inspect breadcrumb"
