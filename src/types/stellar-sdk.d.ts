@@ -9,7 +9,6 @@ declare module '@stellar/stellar-sdk' {
     TransactionBuilder as BaseTransactionBuilder,
     xdr as BaseXdr,
   } from '@stellar/stellar-base'
-
   // Minimal surface needed by the app without pulling in full SDK types.
   export const xdr: any
   export namespace rpc {
@@ -57,7 +56,11 @@ declare module '@stellar/stellar-sdk' {
 
   export const BASE_FEE: string
   export const Asset: typeof BaseAsset
-  export const Contract: typeof BaseContract
+  export const Contract: typeof BaseContract & {
+    new (contractId: string): InstanceType<typeof BaseContract> & {
+      getFootprint: () => BaseXdr.LedgerKey
+    }
+  }
   export const FeeBumpTransaction: typeof BaseFeeBumpTransaction
   export const Networks: typeof BaseNetworks
   export function nativeToScVal(value: unknown): any
