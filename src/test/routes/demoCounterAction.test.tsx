@@ -4,7 +4,7 @@ import {
   createMemoryHistory,
   createRouter,
 } from '@tanstack/react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { routeTree } from '../../routeTree.gen'
 import {
@@ -13,6 +13,7 @@ import {
   DEMO_COUNTER_NEXT_VALUE,
   readDemoCounterValue,
 } from '../../lib/demo/demoLedgerEntries'
+import { DEMO_COUNTER_HINT_STORAGE_KEY } from '../../routes/contracts/$contractId/explorer'
 import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
 import { getStoreState, resetStore } from '../../store/lensStore'
 
@@ -92,6 +93,10 @@ function counterValue(): number | null {
 }
 
 describe('demo counter action (SSL-I050)', () => {
+  beforeEach(() => {
+    window.localStorage.removeItem(DEMO_COUNTER_HINT_STORAGE_KEY)
+  })
+
   afterEach(() => {
     vi.clearAllMocks()
     resetStore()
@@ -126,5 +131,45 @@ describe('demo counter action (SSL-I050)', () => {
     expect(
       screen.getByRole('button', { name: /Demo: counter/ }),
     ).toHaveProperty('disabled', true)
+  })
+
+  it('shows a dismissible first-run hint only for the demo explorer', async () => {
+    renderExplorer(`/contracts/${SAMPLE_CONTRACT_ID}/explorer?mode=demo`)
+
+    expect(
+      await screen.findByRole('heading', { name: /Try the counter row/i }),
+    ).toBeTruthy()
+    expect(screen.getByText(/Find the counter row/i)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /Dismiss/i }))
+
+    expect(
+      screen.queryByRole('heading', { name: /Try the counter row/i }),
+    ).toBeNull()
+    expect(window.localStorage.getItem(DEMO_COUNTER_HINT_STORAGE_KEY)).toBe(
+      'true',
+    )
+
+    renderExplorer(`/contracts/${LIVE_CONTRACT_ID}/explorer`)
+    await screen.findByRole('heading', { name: LIVE_CONTRACT_ID })
+    expect(
+      screen.queryByRole('heading', { name: /Try the counter row/i }),
+    ).toBeNull()
+  })
+
+  it('dismisses and inspects the real demo counter key', async () => {
+    renderExplorer(`/contracts/${SAMPLE_CONTRACT_ID}/explorer?mode=demo`)
+
+    const inspectButton = await screen.findByRole('button', {
+      name: /Inspect counter/i,
+    })
+    fireEvent.click(inspectButton)
+
+    await waitFor(() => {
+      expect(getStoreState().selectedKeyPath).toBe(DEMO_COUNTER_ENTRY_KEY)
+    })
+    expect(window.localStorage.getItem(DEMO_COUNTER_HINT_STORAGE_KEY)).toBe(
+      'true',
+    )
   })
 })
