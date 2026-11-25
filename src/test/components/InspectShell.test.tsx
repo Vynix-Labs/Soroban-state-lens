@@ -1,9 +1,14 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { xdr } from '@stellar/stellar-sdk'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { InspectShell } from '../../components/explorer/InspectShell'
+import { createDemoLedgerEntries } from '../../lib/demo/demoLedgerEntries'
+import { parseContractSpec } from '../../lib/spec/parseContractSpec'
+import { extractContractspecv0 } from '../../lib/wasm/wasmExtractor'
+import { createContractSpecWasm } from '../helpers/contractSpecFixtures'
 import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
-import { useLensStore } from '../../store/lensStore'
+import { resetStore, useLensStore } from '../../store/lensStore'
 import { contractSpecKey } from '../../store/contractSpecSlice'
 import type { ContractSpec } from '../../types/contract-spec'
 
@@ -31,6 +36,7 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 describe('InspectShell', () => {
+  beforeEach(resetStore)
   const storedEntry = {
     key: '/state/ledger',
     contractId: 'C123',
@@ -64,6 +70,269 @@ describe('InspectShell', () => {
     expect(screen.getByText('1235000')).toBeTruthy()
     expect(screen.getByText(storedEntry.rawXdr)).toBeTruthy()
     expect(screen.queryByRole('note')).toBeNull()
+  })
+
+  it('records an explicit compatible struct for a selected vector key', () => {
+    const vectorKey = storedEntry.key
+    const symbol = (value: string) => ({
+      kind: 'primitive' as const,
+      path: [],
+      scType: 'symbol' as const,
+      value,
+      raw: { switch: 'ScvSymbol', value },
+    })
+    const collection = {
+      kind: 'vec' as const,
+      path: [],
+      items: [
+        {
+          kind: 'map' as const,
+          path: [],
+          entries: [
+            {
+              key: symbol('first_value'),
+              value: {
+                kind: 'primitive' as const,
+                path: [],
+                scType: 'u32' as const,
+                value: 7,
+                raw: { switch: 'ScvU32', value: 7 },
+              },
+            },
+            {
+              key: symbol('second_value'),
+              value: {
+                kind: 'primitive' as const,
+                path: [],
+                scType: 'u32' as const,
+                value: 9,
+                raw: { switch: 'ScvU32', value: 9 },
+              },
+            },
+          ],
+          raw: { switch: 'ScvMap' },
+        },
+      ],
+      raw: { switch: 'ScvVec' },
+    }
+    const structWire = new xdr.ScSpecUdtStructV0({
+      doc: '',
+      lib: '',
+      name: 'DemoVector',
+      fields: ['first_value', 'second_value'].map(
+        (name) =>
+          new xdr.ScSpecUdtStructFieldV0({
+            doc: '',
+            name,
+            type: xdr.ScSpecTypeDef.scSpecTypeU32(),
+          }),
+      ),
+    })
+    const struct = {
+      kind: 'struct' as const,
+      name: 'DemoVector',
+      fields: structWire.fields(),
+      wire: structWire,
+    }
+    const incompatibleWire = new xdr.ScSpecUdtStructV0({
+      doc: '',
+      lib: '',
+      name: 'Other',
+      fields: [
+        new xdr.ScSpecUdtStructFieldV0({
+          doc: '',
+          name: 'unrelated',
+          type: xdr.ScSpecTypeDef.scSpecTypeU32(),
+        }),
+      ],
+    })
+    useLensStore.setState({
+      watchlist: {},
+      ledgerData: {
+        [storedEntry.key]: { ...storedEntry, value: collection },
+      },
+    })
+    useLensStore.getState().setContractSpec('C123', {
+      entries: [
+        struct,
+        {
+          kind: 'struct',
+          name: 'Other',
+          fields: incompatibleWire.fields(),
+          wire: incompatibleWire,
+        },
+      ],
+    })
+
+    render(
+      <InspectShell
+        contractId="C123"
+        normalizedContractId="C123"
+        keyPath={vectorKey}
+      />,
+    )
+
+    const selector = screen.getByRole('combobox', {
+      name: 'Struct interpretation',
+    })
+    expect(selector.querySelectorAll('option')).toHaveLength(2)
+    fireEvent.change(selector, { target: { value: 'DemoVector' } })
+
+    expect(screen.getByRole('status').textContent).toContain(
+      'This collection is explicitly interpreted as',
+    )
+    expect(screen.getByRole('status').textContent).toContain('DemoVector')
+    expect(
+      useLensStore
+        .getState()
+        .getCollectionStructInterpretation('C123', vectorKey),
+    ).toBe('DemoVector')
+  })
+
+  it('renders the parsed two-field fixture labels only after selection without changing raw paths', () => {
+    const entries = createDemoLedgerEntries()
+    const entry = entries.find(
+      (item) => (item.value as { kind: string }).kind === 'vec',
+    )!
+    const wire = new xdr.ScSpecUdtStructV0({
+      doc: '',
+      lib: '',
+      name: 'DemoVector',
+      fields: ['first_value', 'second_value'].map(
+        (name) =>
+          new xdr.ScSpecUdtStructFieldV0({
+            doc: '',
+            name,
+            type: xdr.ScSpecTypeDef.scSpecTypeU32(),
+          }),
+      ),
+    })
+    const extracted = extractContractspecv0(
+      createContractSpecWasm([xdr.ScSpecEntry.scSpecEntryUdtStructV0(wire)]),
+    )
+    if (!extracted.ok) throw new Error('Fixture extraction failed')
+    const parsed = parseContractSpec(extracted.payload)
+    if (!parsed.ok) throw new Error(parsed.reason)
+    useLensStore.setState({
+      ledgerData: Object.fromEntries(entries.map((item) => [item.key, item])),
+      collectionStructInterpretations: {},
+    })
+    const network = useLensStore.getState().networkConfig
+    useLensStore.getState().setContractSpec(entry.contractId, parsed.spec)
+    const { rerender } = render(
+      <InspectShell
+        contractId={entry.contractId}
+        normalizedContractId={entry.contractId}
+        keyPath={entry.key}
+      />,
+    )
+    expect(screen.queryByRole('definition')).toBeNull()
+    expect(screen.queryByText('first_value')).toBeNull()
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Struct interpretation' }),
+      { target: { value: 'DemoVector' } },
+    )
+    const fields = screen.getByLabelText('Interpreted fields')
+    expect(fields.textContent).toContain('first_value')
+    expect(fields.textContent).toContain('second_value')
+    expect(fields.textContent).toContain(`${entry.key}.item-0`)
+    expect(fields.textContent).toContain(`${entry.key}.item-1.item-0`)
+    expect(fields.textContent).toContain('7')
+    expect(fields.textContent).toContain('9')
+    expect(useLensStore.getState().ledgerData[entry.key]).toBe(entry)
+    expect(useLensStore.getState().networkConfig).toBe(network)
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Struct interpretation' }),
+      { target: { value: '' } },
+    )
+    expect(screen.queryByText('first_value')).toBeNull()
+    rerender(
+      <InspectShell
+        contractId="OTHER"
+        normalizedContractId="OTHER"
+        keyPath={entry.key}
+      />,
+    )
+    expect(screen.queryByText('first_value')).toBeNull()
+  })
+
+  it('feeds selected field type mismatches into the existing banner without dropping other diagnostics', () => {
+    const entries = createDemoLedgerEntries()
+    const entry = entries.find(
+      (item) => (item.value as { kind: string }).kind === 'vec',
+    )!
+    const network = useLensStore.getState().networkConfig
+    const wire = new xdr.ScSpecUdtStructV0({
+      doc: '',
+      lib: '',
+      name: 'WrongType',
+      fields: [
+        new xdr.ScSpecUdtStructFieldV0({
+          doc: '',
+          name: 'first_value',
+          type: xdr.ScSpecTypeDef.scSpecTypeU32(),
+        }),
+        new xdr.ScSpecUdtStructFieldV0({
+          doc: '',
+          name: 'second_value',
+          type: xdr.ScSpecTypeDef.scSpecTypeSymbol(),
+        }),
+      ],
+    })
+    useLensStore.setState({
+      ledgerData: Object.fromEntries(entries.map((item) => [item.key, item])),
+    })
+    useLensStore.getState().setContractSpec(entry.contractId, {
+      entries: [
+        { kind: 'struct', name: 'WrongType', fields: wire.fields(), wire },
+      ],
+    })
+    const unrelated = {
+      keyPath: 'unrelated.key',
+      expectedType: 'address',
+      actualType: 'u32',
+    }
+    useLensStore
+      .getState()
+      .setContractSpecMismatches(entry.contractId, [unrelated])
+    render(
+      <InspectShell
+        contractId={entry.contractId}
+        normalizedContractId={entry.contractId}
+        keyPath={entry.key}
+      />,
+    )
+    expect(screen.queryByRole('alert')).toBeNull()
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Struct interpretation' }),
+      { target: { value: 'WrongType' } },
+    )
+    const banner = screen.getByRole('alert')
+    expect(banner.textContent).toContain(`${entry.key}.item-1.item-0`)
+    expect(banner.textContent).toContain('symbol')
+    expect(banner.textContent).toContain('u32')
+    const mismatches =
+      useLensStore.getState().contractSpecMismatches[
+        contractSpecKey(network, entry.contractId)!
+      ]
+    expect(mismatches).toContainEqual(unrelated)
+    expect(mismatches).toContainEqual({
+      keyPath: `${entry.key}.item-1.item-0`,
+      expectedType: 'symbol',
+      actualType: 'u32',
+    })
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Struct interpretation' }),
+      { target: { value: '' } },
+    )
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(
+      useLensStore.getState().contractSpecMismatches[
+        contractSpecKey(network, entry.contractId)!
+      ],
+    ).toEqual([unrelated])
+    expect(useLensStore.getState().ledgerData[entry.key]).toBe(entry)
+    expect(useLensStore.getState().networkConfig).toBe(network)
   })
 
   it('labels the sample contract as local demo data', () => {

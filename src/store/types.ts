@@ -219,11 +219,13 @@ export interface ContractSpecSlice {
   contractSpecErrors: Record<string, string>
   contractSpecMismatches: Record<string, Array<ContractSchemaMismatch>>
   contractSpecLoadStatuses: Record<string, ContractSpecLoadStatus>
+  collectionStructInterpretations: Record<string, string>
   setContractSpec: (contractId: string, spec: ContractSpec) => void
   compareContractSpec: (
     contractId: string,
     expectedFields: Array<ContractSchemaField>,
     actualFields: Array<ContractSchemaField>,
+    scopeKeyPath?: string,
   ) => Array<ContractSchemaMismatch>
   setContractSpecMismatches: (
     contractId: string,
@@ -234,6 +236,15 @@ export interface ContractSpecSlice {
   getContractSpecError: (contractId: string) => string | undefined
   clearContractSpec: (contractId: string) => void
   getContractSpecLoadStatus: (contractId: string) => ContractSpecLoadStatus
+  setCollectionStructInterpretation: (
+    contractId: string,
+    collectionKeyPath: string,
+    structName: string,
+  ) => void
+  getCollectionStructInterpretation: (
+    contractId: string,
+    collectionKeyPath: string,
+  ) => string | undefined
   /** Fetch, validate, and cache the spec for a single contract. */
   loadContractSpec: (
     contractId: string,

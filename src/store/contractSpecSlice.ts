@@ -24,6 +24,16 @@ export function contractSpecKey(
     : null
 }
 
+function collectionStructInterpretationKey(
+  network: NetworkConfig,
+  contractId: string,
+  collectionKeyPath: string,
+): string | null {
+  const specKey = contractSpecKey(network, contractId)
+  if (!specKey || !collectionKeyPath.trim()) return null
+  return `${specKey}\u0000${collectionKeyPath}`
+}
+
 export const createContractSpecSlice = (
   set: (fn: (state: LensStore) => Partial<LensStore>) => void,
   get: () => LensStore,
@@ -32,6 +42,7 @@ export const createContractSpecSlice = (
   contractSpecErrors: {},
   contractSpecMismatches: {},
   contractSpecLoadStatuses: {},
+  collectionStructInterpretations: {},
 
   setContractSpec: (contractId: string, spec: ContractSpec) => {
     const normalizedContractId = contractSpecKey(
@@ -63,7 +74,12 @@ export const createContractSpecSlice = (
     }))
   },
 
-  compareContractSpec: (contractId, expectedFields, actualFields) => {
+  compareContractSpec: (
+    contractId,
+    expectedFields,
+    actualFields,
+    scopeKeyPath,
+  ) => {
     const mismatches = compareContractSchema(expectedFields, actualFields)
     const normalizedContractId = contractSpecKey(
       get().networkConfig,
@@ -73,7 +89,19 @@ export const createContractSpecSlice = (
       set((state) => ({
         contractSpecMismatches: {
           ...state.contractSpecMismatches,
-          [normalizedContractId]: mismatches,
+          [normalizedContractId]:
+            scopeKeyPath === undefined
+              ? mismatches
+              : [
+                  ...(
+                    state.contractSpecMismatches[normalizedContractId] ?? []
+                  ).filter(
+                    (mismatch) =>
+                      mismatch.keyPath !== scopeKeyPath &&
+                      !mismatch.keyPath.startsWith(`${scopeKeyPath}.`),
+                  ),
+                  ...mismatches,
+                ],
         },
       }))
     }
@@ -163,11 +191,17 @@ export const createContractSpecSlice = (
         state.contractSpecMismatches
       const { [normalizedContractId]: _status, ...contractSpecLoadStatuses } =
         state.contractSpecLoadStatuses
+      const interpretationPrefix = `${normalizedContractId}\u0000`
       return {
         contractSpecs,
         contractSpecErrors,
         contractSpecMismatches,
         contractSpecLoadStatuses,
+        collectionStructInterpretations: Object.fromEntries(
+          Object.entries(state.collectionStructInterpretations).filter(
+            ([key]) => !key.startsWith(interpretationPrefix),
+          ),
+        ),
       }
     }),
 
@@ -175,6 +209,43 @@ export const createContractSpecSlice = (
     const key = contractSpecKey(get().networkConfig, contractId)
     if (!key) return ContractSpecLoadStatus.IDLE
     return get().contractSpecLoadStatuses[key] ?? ContractSpecLoadStatus.IDLE
+  },
+
+  setCollectionStructInterpretation: (
+    contractId,
+    collectionKeyPath,
+    structName,
+  ) => {
+    const key = collectionStructInterpretationKey(
+      get().networkConfig,
+      contractId,
+      collectionKeyPath,
+    )
+    if (!key) return
+    const normalizedName = structName.trim()
+    set((state) => {
+      if (!normalizedName) {
+        const { [key]: _interpretation, ...collectionStructInterpretations } =
+          state.collectionStructInterpretations
+        return { collectionStructInterpretations }
+      }
+      return {
+        collectionStructInterpretations: {
+          ...state.collectionStructInterpretations,
+          [key]: normalizedName,
+        },
+      }
+    })
+  },
+
+  getCollectionStructInterpretation: (contractId, collectionKeyPath) => {
+    const key = collectionStructInterpretationKey(
+      get().networkConfig,
+      contractId,
+      collectionKeyPath,
+    )
+    if (!key) return undefined
+    return get().collectionStructInterpretations[key]
   },
 
   loadContractSpec: async (contractId, options = {}) => {
