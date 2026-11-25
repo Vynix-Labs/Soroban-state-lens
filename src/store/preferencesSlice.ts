@@ -1,6 +1,11 @@
 import { isValidBigIntDisplayMode, isValidByteDisplayMode } from './persistence'
 import { DEFAULT_PREFERENCES } from './types'
-import type { BigIntDisplayMode, ByteDisplayMode, LensStore, PreferencesSlice } from './types'
+import type {
+  BigIntDisplayMode,
+  ByteDisplayMode,
+  LensStore,
+  PreferencesSlice,
+} from './types'
 
 export const createPreferencesSlice = (
   set: (fn: (state: LensStore) => Partial<LensStore>) => void,
@@ -28,6 +33,14 @@ export const createPreferencesSlice = (
         preferences: { ...state.preferences, bigIntDisplayMode: mode },
       }
     }),
+
+  setAutoLoadSpec: (enabled: boolean) =>
+    set((state) => ({
+      preferences: {
+        ...state.preferences,
+        autoLoadSpec: typeof enabled === 'boolean' ? enabled : false,
+      },
+    })),
 
   resetPreferences: () =>
     set(() => ({

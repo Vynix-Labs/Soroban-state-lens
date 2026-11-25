@@ -67,6 +67,19 @@ export type ResolveLedgerKeyResult =
   | ResolveLedgerKeySuccess
   | ResolveLedgerKeyFailure
 
+export function getLedgerKeyResolutionMessage(
+  failure: ResolveLedgerKeyFailure,
+): string {
+  switch (failure.reason) {
+    case 'EMPTY_INPUT':
+      return 'Enter a contract ID or a contract-data ledger key.'
+    case 'MALFORMED':
+      return 'Malformed ledger key XDR. Enter a valid base64-encoded contract-data ledger key.'
+    case 'NOT_CONTRACT_DATA':
+      return `Unsupported ${failure.entryType ?? 'ledger key'} type. Enter a contract-data ledger key or a contract ID.`
+  }
+}
+
 /**
  * Resolves a base64-encoded LedgerKey XDR string into contract ID and lookup parameters.
  *

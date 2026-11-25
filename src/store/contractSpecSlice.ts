@@ -1,5 +1,11 @@
-import { normalizeContractIdInput } from '../lib/validation/normalizeContractIdInput'
+import { loadContractSpec as fetchAndParseContractSpec } from '../lib/spec/loadContractSpec'
+import { parseContractSpec } from '../lib/spec/parseContractSpec'
 import { compareContractSchema } from '../lib/spec/compareContractSchema'
+import { SpecLoadGuard } from '../lib/spec/specLoadGuard'
+import { isContractId } from '../lib/validation/isContractId'
+import { normalizeContractIdInput } from '../lib/validation/normalizeContractIdInput'
+import { ContractSpecLoadStatus } from './types'
+
 import type { ContractSpec } from '../types/contract-spec'
 import type { ContractSpecSlice, LensStore, NetworkConfig } from './types'
 
@@ -25,6 +31,7 @@ export const createContractSpecSlice = (
   contractSpecs: {},
   contractSpecErrors: {},
   contractSpecMismatches: {},
+  contractSpecLoadStatuses: {},
 
   setContractSpec: (contractId: string, spec: ContractSpec) => {
     const normalizedContractId = contractSpecKey(
@@ -49,6 +56,10 @@ export const createContractSpecSlice = (
           ([key]) => key !== normalizedContractId,
         ),
       ),
+      contractSpecLoadStatuses: {
+        ...state.contractSpecLoadStatuses,
+        [normalizedContractId]: ContractSpecLoadStatus.SUCCESS,
+      },
     }))
   },
 
@@ -118,6 +129,10 @@ export const createContractSpecSlice = (
         ...state.contractSpecMismatches,
         [normalizedContractId]: [],
       },
+      contractSpecLoadStatuses: {
+        ...state.contractSpecLoadStatuses,
+        [normalizedContractId]: ContractSpecLoadStatus.ERROR,
+      },
     }))
   },
 
@@ -146,6 +161,138 @@ export const createContractSpecSlice = (
         state.contractSpecErrors
       const { [normalizedContractId]: _mismatches, ...contractSpecMismatches } =
         state.contractSpecMismatches
-      return { contractSpecs, contractSpecErrors, contractSpecMismatches }
+      const { [normalizedContractId]: _status, ...contractSpecLoadStatuses } =
+        state.contractSpecLoadStatuses
+      return {
+        contractSpecs,
+        contractSpecErrors,
+        contractSpecMismatches,
+        contractSpecLoadStatuses,
+      }
     }),
+
+  getContractSpecLoadStatus: (contractId: string) => {
+    const key = contractSpecKey(get().networkConfig, contractId)
+    if (!key) return ContractSpecLoadStatus.IDLE
+    return get().contractSpecLoadStatuses[key] ?? ContractSpecLoadStatus.IDLE
+  },
+
+  loadContractSpec: async (contractId, options = {}) => {
+    const normalizedContractId = normalizeContractIdInput(contractId)
+    if (!isContractId(normalizedContractId)) {
+      return { ok: false, reason: 'Invalid contract ID' }
+    }
+    if (options.signal?.aborted) {
+      return { ok: false, reason: 'Spec load aborted', skipped: true }
+    }
+    const network = get().networkConfig
+    const key = contractSpecKey(network, normalizedContractId)
+    if (!key) return { ok: false, reason: 'Invalid contract ID' }
+
+    const updateStatus = (status: ContractSpecLoadStatus) =>
+      set((state) => ({
+        contractSpecLoadStatuses: {
+          ...state.contractSpecLoadStatuses,
+          [key]: status,
+        },
+      }))
+    const current = get()
+    const alreadyLoaded =
+      Object.prototype.hasOwnProperty.call(current.contractSpecs, key) ||
+      Object.prototype.hasOwnProperty.call(current.contractSpecErrors, key)
+    if (!options.force && alreadyLoaded) {
+      return { ok: true, skipped: true }
+    }
+    if (
+      current.contractSpecLoadStatuses[key] === ContractSpecLoadStatus.LOADING
+    ) {
+      return {
+        ok: false,
+        reason: 'Spec load already in progress',
+        skipped: true,
+      }
+    }
+
+    const scope = {
+      networkId: network.networkId,
+      networkPassphrase: network.networkPassphrase,
+      rpcUrl: network.rpcUrl,
+      contractId: normalizedContractId,
+    }
+    const guard = new SpecLoadGuard()
+    const attempt = guard.start(scope)
+    const cancelAttempt = () => guard.cancel()
+    options.signal?.addEventListener('abort', cancelAttempt, { once: true })
+    const currentScope = () => {
+      const activeNetwork = get().networkConfig
+      return {
+        networkId: activeNetwork.networkId,
+        networkPassphrase: activeNetwork.networkPassphrase,
+        rpcUrl: activeNetwork.rpcUrl,
+        contractId: normalizedContractId,
+      }
+    }
+    const commitIfCurrent = (commit: () => void) =>
+      attempt.commitIfCurrent(currentScope(), commit)
+    const abortedResult = () => {
+      guard.cancel()
+      return { ok: false, reason: 'Spec load aborted', skipped: true }
+    }
+    let committed = false
+
+    updateStatus(ContractSpecLoadStatus.LOADING)
+
+    try {
+      const result = await fetchAndParseContractSpec(
+        {
+          rpcUrl: network.rpcUrl,
+          contractId: normalizedContractId,
+          signal: attempt.signal,
+        },
+        (payload) => {
+          const parsed = parseContractSpec(payload)
+          return parsed.ok
+            ? { ok: true, value: parsed.spec }
+            : { ok: false, reason: parsed.reason }
+        },
+      )
+
+      if (!result.ok) {
+        if (
+          !commitIfCurrent(() =>
+            get().setContractSpecError(normalizedContractId, result.reason),
+          )
+        ) {
+          return abortedResult()
+        }
+        committed = true
+        return { ok: false, reason: result.reason }
+      }
+
+      if (
+        !commitIfCurrent(() =>
+          get().setContractSpec(normalizedContractId, result.spec),
+        )
+      ) {
+        return abortedResult()
+      }
+      committed = true
+      return { ok: true }
+    } catch (error) {
+      const reason =
+        error instanceof Error ? error.message : 'Failed to load contract spec'
+      if (
+        !commitIfCurrent(() =>
+          get().setContractSpecError(normalizedContractId, reason),
+        )
+      ) {
+        return abortedResult()
+      }
+      committed = true
+      return { ok: false, reason }
+    } finally {
+      options.signal?.removeEventListener('abort', cancelAttempt)
+      if (!committed) updateStatus(ContractSpecLoadStatus.IDLE)
+    }
+  },
 })

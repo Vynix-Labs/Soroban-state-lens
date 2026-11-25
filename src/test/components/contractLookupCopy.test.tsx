@@ -5,6 +5,10 @@ import SearchLandingScreen from '../../components/Home/SearchLandingScreen'
 import ContractLookUpInput from '../../components/global/ContractLookUpInput'
 import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
 import { resolveContractDataLedgerKey } from '../../lib/validation/resolveLedgerKey'
+import {
+  makeAccountFixture,
+  makeContractCodeFixture,
+} from '../network/ledgerEntryFixtures'
 
 const navigate = vi.fn()
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => navigate }))
@@ -18,6 +22,15 @@ const ledgerKey = xdr.LedgerKey.contractData(
 ).toXDR('base64')
 const resolvedLedgerKey = resolveContractDataLedgerKey(ledgerKey)
 if (!resolvedLedgerKey.ok) throw new Error('Test ledger key should be valid')
+
+const unsupportedKeys = [
+  [makeAccountFixture().keyXdr, /unsupported account type/i],
+  [makeContractCodeFixture().keyXdr, /unsupported contractcode type/i],
+  [
+    'not-valid-base64!@#$%^',
+    /malformed ledger key xdr.*contract-data ledger key/i,
+  ],
+] as const
 
 describe.each([
   [
@@ -41,7 +54,7 @@ describe.each([
     fireEvent.change(input, { target: { value: 'invalid' } })
     fireEvent.submit(input.closest('form')!)
     await waitFor(() =>
-      expect(screen.getByText(/invalid contract id/i)).toBeTruthy(),
+      expect(screen.getByText(/malformed ledger key xdr/i)).toBeTruthy(),
     )
     expect(navigate).not.toHaveBeenCalled()
 
@@ -65,4 +78,22 @@ describe.each([
       }),
     )
   })
+
+  it.each(unsupportedKeys)(
+    'explains unsupported or malformed ledger keys and preserves the input',
+    async (key, message) => {
+      navigate.mockClear()
+      render(<Component />)
+      const input = screen.getByRole('textbox', { name: label })
+
+      fireEvent.change(input, { target: { value: key } })
+      fireEvent.submit(input.closest('form')!)
+
+      await waitFor(() => {
+        expect(screen.getByText(message)).toBeTruthy()
+        expect((input as HTMLInputElement).value).toBe(key)
+      })
+      expect(navigate).not.toHaveBeenCalled()
+    },
+  )
 })

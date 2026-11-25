@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { validateContractId } from '../../lib/validation/contractId'
 import { normalizeContractIdInput } from '../../lib/validation/normalizeContractIdInput'
-import { resolveContractDataLedgerKey } from '../../lib/validation/resolveLedgerKey'
+import {
+  getLedgerKeyResolutionMessage,
+  resolveContractDataLedgerKey,
+} from '../../lib/validation/resolveLedgerKey'
 
 function ContractLookUpInput() {
   const navigate = useNavigate()
@@ -67,7 +70,7 @@ function ContractLookUpInput() {
       const validationResult = await validateContractId(inputValue)
 
       if (!validationResult.ok) {
-        setValidationError(validationResult.error || 'Invalid contract ID')
+        setValidationError(getLedgerKeyResolutionMessage(ledgerKeyResult))
         return
       }
 
@@ -109,12 +112,13 @@ function ContractLookUpInput() {
             const value = inputValue.trim()
             if (!value) return
             setValidationError(null)
-            if (resolveContractDataLedgerKey(value).ok) {
+            const ledgerKeyResult = resolveContractDataLedgerKey(value)
+            if (ledgerKeyResult.ok) {
               return
             }
             const result = await validateContractId(value)
             if (!result.ok) {
-              setValidationError(result.error || 'Invalid contract ID')
+              setValidationError(getLedgerKeyResolutionMessage(ledgerKeyResult))
             }
           }}
           disabled={isValidating}
