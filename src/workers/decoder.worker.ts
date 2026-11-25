@@ -147,10 +147,6 @@ function normalizeSdkScVal(value: unknown): ScVal {
         value as ReturnType<typeof xdr.ScVal.fromXDR>,
       ).toString()
       break
-    case 'scvBytes':
-      plainValue =
-        rawValue instanceof Uint8Array ? Array.from(rawValue) : rawValue
-      break
     case 'scvU64':
     case 'scvI64':
     case 'scvTimepoint':

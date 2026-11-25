@@ -55,3 +55,6 @@ jobs:
 
       - name: Run browser worker regression
         run: bun run test:worker-browser
+
+      - name: Run Discovery argument acceptance
+        run: bun run test:browser -- browser-tests/discovery-arguments.pw.ts

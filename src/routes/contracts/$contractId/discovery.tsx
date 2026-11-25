@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute, redirect, useBlocker } from '@tanstack/react-router'
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
+import { InvocationArguments } from '../../../components/discovery/InvocationArguments'
 import { decodeInvocationPreview } from '../../../lib/network/decodeInvocationPreview'
 import { normalizeFootprintKeys } from '../../../lib/network/normalizeFootprintKeys'
 import { simulateTransaction } from '../../../lib/network/simulateTransaction'
@@ -605,6 +606,9 @@ export function DiscoveryRoute() {
                   {decodedInvocation.preview.contractId} ·{' '}
                   {decodedInvocation.preview.functionName}
                 </span>
+                <InvocationArguments
+                  argumentXdr={decodedInvocation.preview.argumentXdr}
+                />
               </div>
             ) : null}
             {transactionError && (
