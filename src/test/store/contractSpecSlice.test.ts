@@ -55,6 +55,57 @@ describe('contractSpecSlice', () => {
     expect(getStoreState().getContractSpec('CONTRACT_B')).toEqual(specB)
   })
 
+  it('keeps collection struct choices scoped to their contract and network', () => {
+    const collectionPath = '/entry/item-0'
+    const originalNetwork = getStoreState().networkConfig
+    getStoreState().setCollectionStructInterpretation(
+      'CONTRACT_A',
+      collectionPath,
+      'Payment',
+    )
+    getStoreState().setCollectionStructInterpretation(
+      'CONTRACT_B',
+      collectionPath,
+      'Balance',
+    )
+
+    expect(
+      getStoreState().getCollectionStructInterpretation(
+        'CONTRACT_A',
+        collectionPath,
+      ),
+    ).toBe('Payment')
+    expect(
+      getStoreState().getCollectionStructInterpretation(
+        'CONTRACT_B',
+        collectionPath,
+      ),
+    ).toBe('Balance')
+
+    getStoreState().setNetworkConfig({ networkId: 'other-network' })
+    expect(
+      getStoreState().getCollectionStructInterpretation(
+        'CONTRACT_A',
+        collectionPath,
+      ),
+    ).toBeUndefined()
+    getStoreState().setNetworkConfig(originalNetwork)
+
+    getStoreState().clearContractSpec('CONTRACT_A')
+    expect(
+      getStoreState().getCollectionStructInterpretation(
+        'CONTRACT_A',
+        collectionPath,
+      ),
+    ).toBeUndefined()
+    expect(
+      getStoreState().getCollectionStructInterpretation(
+        'CONTRACT_B',
+        collectionPath,
+      ),
+    ).toBe('Balance')
+  })
+
   it('stores schema comparison details and clears them for matching fields', () => {
     const compare = getStoreState().compareContractSpec
     const expected = [{ keyPath: 'balance', type: 'i128' }]
