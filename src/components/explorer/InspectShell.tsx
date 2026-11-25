@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
 import { Link } from '@tanstack/react-router'
 import { isSampleContractId } from '../../lib/demoContract'
+import { resolveStructFieldRows } from '../../lib/spec/resolveStructFieldRows'
+import { findCompatibleStructs } from '../../lib/spec/findCompatibleStructs'
+import { resolveNodeAtPath } from '../../lib/tree/resolveNodeAtPath'
 import { isContractId } from '../../lib/validation/isContractId'
 import { useLensStore } from '../../store/lensStore'
 import { ContractSpecLoadStatus } from '../../store/types'
@@ -9,12 +12,22 @@ import { contractSpecKey } from '../../store/contractSpecSlice'
 import { buildInspectBreadcrumb } from './buildInspectBreadcrumb'
 import { LocalDemoNotice } from './LocalDemoNotice'
 import type { LedgerEntry } from '../../store/types'
+import type { Node } from '../../types/node'
 
 interface InspectShellProps {
   contractId: string
   normalizedContractId: string
   keyPath: string
   keyPathError?: string
+}
+
+function isNodeLike(value: unknown): value is Node {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'kind' in value &&
+    typeof value.kind === 'string'
+  )
 }
 
 export function InspectShell({
@@ -40,6 +53,18 @@ export function InspectShell({
   const hasSpec = useLensStore(
     (state) =>
       state.getContractSpec(normalizedContractId || contractId) !== undefined,
+  )
+  const contractSpec = useLensStore((state) =>
+    state.getContractSpec(normalizedContractId || contractId),
+  )
+  const selectedStructName = useLensStore((state) =>
+    state.getCollectionStructInterpretation(
+      normalizedContractId || contractId,
+      keyPath,
+    ),
+  )
+  const setCollectionStructInterpretation = useLensStore(
+    (state) => state.setCollectionStructInterpretation,
   )
   const schemaMismatch = useLensStore((state) =>
     (
@@ -70,6 +95,29 @@ export function InspectShell({
   const [watchlistFeedback, setWatchlistFeedback] = useState('')
   const copiedResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inspectedContractId = normalizedContractId || contractId
+  const inspectedNode =
+    entry && isNodeLike(entry.value)
+      ? resolveNodeAtPath(entry.value, entry.key, keyPath)
+      : undefined
+  const compatibleStructs = useMemo(
+    () =>
+      inspectedNode?.kind === 'vec'
+        ? findCompatibleStructs(
+            inspectedNode,
+            contractSpec?.entries.filter((item) => item.kind === 'struct') ??
+              [],
+          )
+        : [],
+    [contractSpec, inspectedNode],
+  )
+  const selectedStruct = compatibleStructs.find(
+    (struct) => struct.name === selectedStructName,
+  )
+
+  const interpretedFields =
+    inspectedNode && selectedStruct
+      ? resolveStructFieldRows(inspectedNode, selectedStruct, keyPath)
+      : undefined
 
   // Opt-in, route-scoped automatic metadata load. The action itself skips
   // cached specs/errors and de-duplicates concurrent loads, so re-opening the
@@ -339,6 +387,104 @@ export function InspectShell({
                 </div>
               </div>
             </div>
+          </div>
+        </Card>
+      ) : null}
+
+      {inspectedNode?.kind === 'vec' ? (
+        <Card>
+          <div className="p-6 space-y-3">
+            <Heading
+              size="sm"
+              as="h3"
+              className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
+            >
+              Struct interpretation
+            </Heading>
+            {!hasSpec ? (
+              <p className="text-sm text-text-muted">
+                Load this contract’s spec to choose a matching struct.
+              </p>
+            ) : compatibleStructs.length === 0 ? (
+              <p role="status" className="text-sm text-text-muted">
+                No parsed struct matches this collection shape.
+              </p>
+            ) : (
+              <>
+                <label
+                  htmlFor="collection-struct-interpretation"
+                  className="block text-sm text-text-muted"
+                >
+                  Choose field labels for named map items or scalar values in
+                  traversal order.
+                </label>
+                <select
+                  id="collection-struct-interpretation"
+                  aria-label="Struct interpretation"
+                  className="w-full rounded border border-white/15 bg-surface-dark px-3 py-2 text-sm text-white"
+                  value={selectedStruct?.name ?? ''}
+                  onChange={(event) =>
+                    setCollectionStructInterpretation(
+                      inspectedContractId,
+                      keyPath,
+                      event.currentTarget.value,
+                    )
+                  }
+                >
+                  <option value="">No interpretation selected</option>
+                  {compatibleStructs.map((struct) => (
+                    <option key={struct.name} value={struct.name}>
+                      {struct.name}
+                    </option>
+                  ))}
+                </select>
+                {selectedStruct ? (
+                  <div role="status" className="space-y-2 text-sm">
+                    <p className="text-text-muted">
+                      This collection is explicitly interpreted as{' '}
+                      <span className="font-mono text-white">
+                        {selectedStruct.name}
+                      </span>
+                      .
+                    </p>
+                    <p className="text-text-muted">
+                      Fields:{' '}
+                      <span className="font-mono text-white">
+                        {selectedStruct.fields
+                          .map((field) => {
+                            const name = field.name()
+                            return typeof name === 'string'
+                              ? name
+                              : new TextDecoder().decode(name)
+                          })
+                          .join(', ')}
+                      </span>
+                    </p>
+                    <dl aria-label="Interpreted fields" className="space-y-2">
+                      {interpretedFields?.map((field) => (
+                        <div
+                          key={field.keyPath}
+                          className="rounded bg-surface-dark p-3"
+                        >
+                          <dt className="font-mono text-white">
+                            {field.label}
+                          </dt>
+                          <dd>
+                            <code>{field.keyPath}</code>
+                            <span className="ml-3">
+                              {field.node.kind === 'primitive' ||
+                              field.node.kind === 'address'
+                                ? String(field.node.value)
+                                : field.node.kind}
+                            </span>
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
         </Card>
       ) : null}
