@@ -70,6 +70,24 @@ vi.mock('../../lib/network/getLedgerEntries', () => ({
   getLedgerEntries: mockGetLedgerEntries,
 }))
 
+vi.mock('../../lib/demo/demoContractData', async (importOriginal) => {
+  const actual = await importOriginal()
+  if (typeof actual !== 'object' || actual === null) {
+    throw new Error('Demo contract data module is unavailable')
+  }
+  return {
+    ...actual,
+    DEMO_CONTRACT_DATA: [
+      {
+        name: 'counter',
+        keyXdr: 'invalid-demo-key',
+        entryXdr: 'invalid-demo-entry',
+        valueXdr: 'invalid-demo-value',
+      },
+    ],
+  }
+})
+
 vi.mock('../../workers/createDecoderWorker', () => ({
   createDecoderWorker: () => ({
     ping: () => Promise.resolve({ status: 'pong' }),
@@ -170,7 +188,7 @@ describe('contract exploration smoke flow', () => {
     render(<RouterProvider router={router} />)
 
     const input = await screen.findByPlaceholderText(
-      'Search Contract ID (C...)',
+      'Search Contract ID (C...) or contract-data ledger key',
     )
     fireEvent.change(input, { target: { value: contractId } })
     fireEvent.submit(input.closest('form') as HTMLFormElement)
@@ -244,6 +262,20 @@ describe('contract exploration smoke flow', () => {
         `${SAMPLE_CONTRACT_ID}::ContractData::demo-key`
       ].value,
     ).toBe('demo value')
+    expect(mockGetLedgerEntries).not.toHaveBeenCalled()
+  })
+
+  it('rejects invalid local demo entries without calling RPC', async () => {
+    resetStore()
+    await getStoreState().loadContract(
+      SAMPLE_CONTRACT_ID,
+      ['invalid-demo-key'],
+      'demo',
+    )
+
+    expect(getStoreState().contractLoadStatus).toBe(ContractLoadStatus.ERROR)
+    expect(getStoreState().contractLoadError).toMatch(/XDR Read Error/i)
+    expect(getStoreState().ledgerData).toEqual({})
     expect(mockGetLedgerEntries).not.toHaveBeenCalled()
   })
 })

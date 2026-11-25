@@ -24,7 +24,9 @@ describe('ContractLookUpInput validation accessibility', () => {
     mockNavigate.mockClear()
     vi.mocked(validateContractId).mockResolvedValueOnce({ ok: true })
     render(<ContractLookUpInput />)
-    const input = screen.getByPlaceholderText('Search contract ID...')
+    const input = screen.getByPlaceholderText(
+      'Search contract ID or contract-data ledger key...',
+    )
     fireEvent.change(input, {
       target: { value: ` ${contractId.toLowerCase()} ` },
     })
@@ -41,7 +43,9 @@ describe('ContractLookUpInput validation accessibility', () => {
   it('links an active error to the input and clears the link after editing', async () => {
     render(<ContractLookUpInput />)
 
-    const input = screen.getByPlaceholderText('Search contract ID...')
+    const input = screen.getByPlaceholderText(
+      'Search contract ID or contract-data ledger key...',
+    )
     fireEvent.change(input, { target: { value: 'invalid' } })
     fireEvent.submit(input.closest('form')!)
 
@@ -50,7 +54,7 @@ describe('ContractLookUpInput validation accessibility', () => {
       expect(input.getAttribute('aria-describedby')).toBe(
         'contract-lookup-error',
       )
-      expect(screen.getByText('Invalid contract ID').id).toBe(
+      expect(screen.getByText(/malformed ledger key xdr/i).id).toBe(
         'contract-lookup-error',
       )
       expect((input as HTMLInputElement).value).toBe('invalid')
@@ -80,7 +84,9 @@ describe('ContractLookUpInput validation accessibility', () => {
     vi.mocked(validateContractId).mockReturnValueOnce(pendingValidation)
 
     render(<ContractLookUpInput />)
-    const input = screen.getByPlaceholderText('Search contract ID...')
+    const input = screen.getByPlaceholderText(
+      'Search contract ID or contract-data ledger key...',
+    )
     fireEvent.change(input, { target: { value: 'invalid' } })
     const form = input.closest('form')!
 
@@ -91,7 +97,7 @@ describe('ContractLookUpInput validation accessibility', () => {
 
     resolveValidation({ ok: false, error: 'Invalid contract ID' })
     await waitFor(() => {
-      expect(screen.getByText('Invalid contract ID')).toBeTruthy()
+      expect(screen.getByText(/malformed ledger key xdr/i)).toBeTruthy()
     })
   })
 })

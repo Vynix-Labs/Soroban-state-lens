@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { validateContractRouteParam } from '../../routes/contracts/$contractId/-validateContractRouteParam'
+import {
+  getLedgerKeyResolutionMessage,
+  resolveContractDataLedgerKey,
+} from '../../lib/validation/resolveLedgerKey'
 import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
 import { DEMO_CONTRACT_DATA } from '../../lib/demo/demoContractData'
 import { useLensStore } from '../../store/lensStore'
@@ -23,9 +27,19 @@ const SearchLandingScreen = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const ledgerKeyResult = resolveContractDataLedgerKey(inputValue)
+    if (ledgerKeyResult.ok) {
+      navigate({
+        to: ledgerKeyResult.to,
+        params: ledgerKeyResult.params,
+        search: ledgerKeyResult.search,
+      })
+      return
+    }
+
     const result = validateContractRouteParam(inputValue)
     if (!result.ok) {
-      setValidationError('Invalid contract ID')
+      setValidationError(getLedgerKeyResolutionMessage(ledgerKeyResult))
       return
     }
     navigate({
@@ -83,7 +97,8 @@ const SearchLandingScreen = () => {
             >
               <div className="text-center">
                 <p className="text-primary/80 font-mono text-xs uppercase tracking-[0.2em] font-bold">
-                  Enter a Contract ID to begin exploring
+                  Enter a Contract ID or contract-data ledger key to begin
+                  exploring
                 </p>
               </div>
               <label className="flex flex-col w-full relative">
@@ -107,8 +122,8 @@ const SearchLandingScreen = () => {
                       if (validationError) setValidationError(null)
                     }}
                     className="w-full bg-transparent border-none text-white placeholder-gray-600 focus:ring-0 focus:outline-none font-mono text-sm h-full placeholder:font-mono"
-                    placeholder="Search Contract ID (C...)"
-                    aria-label="Contract ID"
+                    placeholder="Search Contract ID (C...) or contract-data ledger key"
+                    aria-label="Contract ID or contract-data ledger key"
                     type="text"
                   />
                   <div className="pr-2 flex items-center">

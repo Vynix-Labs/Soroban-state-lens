@@ -65,7 +65,7 @@ function paymentEnvelope(): string {
     .build()
     .toXDR()
 }
-async function submit(transaction: string) {
+async function submit(transaction: string, functionName = 'read_state') {
   window.history.pushState({}, '', `/contracts/${routeContract}/discovery`)
   const router = createRouter({
     routeTree,
@@ -75,7 +75,7 @@ async function submit(transaction: string) {
   })
   render(<RouterProvider router={router} />)
   fireEvent.change(await screen.findByLabelText('Function name'), {
-    target: { value: 'read_state' },
+    target: { value: functionName },
   })
   fireEvent.change(screen.getByLabelText('Transaction XDR'), {
     target: { value: transaction },
@@ -126,6 +126,27 @@ describe('discovery invocation contract boundary', () => {
   })
   it('allows a matching invocation to simulate', async () => {
     await submit(envelope(routeContract))
+    expect(await screen.findByText('matching-key')).toBeTruthy()
+    expect(simulationCalls()).toHaveLength(1)
+  })
+  it('rejects a mismatched function annotation and allows a corrected retry', async () => {
+    await submit(envelope(routeContract), 'write_state')
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Function name must match the invocation in transaction XDR.',
+    )
+    expect(
+      screen.getByLabelText('Function name').getAttribute('aria-invalid'),
+    ).toBe('true')
+    expect(simulationCalls()).toHaveLength(0)
+
+    fireEvent.change(screen.getByLabelText('Function name'), {
+      target: { value: 'read_state' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Simulate transaction' }),
+    )
+
     expect(await screen.findByText('matching-key')).toBeTruthy()
     expect(simulationCalls()).toHaveLength(1)
   })

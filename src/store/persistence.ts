@@ -109,9 +109,15 @@ export function validateDisplayPreferences(value: unknown): DisplayPreferences {
     ? candidate.bigIntDisplayMode
     : DEFAULT_PREFERENCES.bigIntDisplayMode
 
+  const autoLoadSpec =
+    typeof candidate.autoLoadSpec === 'boolean'
+      ? candidate.autoLoadSpec
+      : DEFAULT_PREFERENCES.autoLoadSpec
+
   return {
     byteDisplayMode,
     bigIntDisplayMode,
+    autoLoadSpec,
   }
 }
 
@@ -553,7 +559,9 @@ export function mergePreferences(
       const original = hydratedState.preferences as Record<string, unknown>
       if (
         !isValidByteDisplayMode(original.byteDisplayMode) ||
-        !isValidBigIntDisplayMode(original.bigIntDisplayMode)
+        !isValidBigIntDisplayMode(original.bigIntDisplayMode) ||
+        ('autoLoadSpec' in original &&
+          typeof original.autoLoadSpec !== 'boolean')
       ) {
         console.warn(
           '[LensStore] Persisted preferences contain invalid values, applying defaults',

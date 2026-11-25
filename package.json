@@ -31,7 +31,8 @@
     "issues:list": "node scripts/github-issues.mjs list",
     "issues:labels": "node scripts/github-issues.mjs labels",
     "issues:publish": "node scripts/github-issues.mjs publish",
-    "issues:parity": "node scripts/github-issues.mjs parity"
+    "issues:parity": "node scripts/github-issues.mjs parity",
+    "smoke:footprint": "node scripts/footprint-smoke.mjs"
   },
   "dependencies": {
     "@stellar/design-system": "^3.2.7",
