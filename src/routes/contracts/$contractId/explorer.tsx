@@ -15,6 +15,7 @@ import {
   readDemoCounterValue,
 } from '../../../lib/demo/demoLedgerEntries'
 import { isSampleContractId } from '../../../lib/demoContract'
+import { resolveContractDataLedgerKey } from '../../../lib/validation/resolveLedgerKey'
 import { ContractLoadStatus } from '../../../store/types'
 import { useLensStore, useSnapshots } from '../../../store/lensStore'
 import { validateContractRouteParam } from './-validateContractRouteParam'
@@ -214,6 +215,8 @@ function ContractExplorer() {
   const snapshots = useSnapshots(contractId)
   const addSnapshot = useLensStore((state) => state.addSnapshot)
   const [captureStatus, setCaptureStatus] = useState<string | null>(null)
+  const [manualKeyInput, setManualKeyInput] = useState('')
+  const [manualKeyError, setManualKeyError] = useState<string | null>(null)
 
   const handleCaptureSnapshot = () => {
     if (ledgerEntries.length === 0) {
@@ -252,6 +255,36 @@ function ContractExplorer() {
     () => dedupeExplorerKeys(search.keys).split(',').filter(Boolean),
     [search.keys],
   )
+
+  const handleAddManualKey = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setManualKeyError(null)
+
+    const resolution = resolveContractDataLedgerKey(manualKeyInput)
+    if (!resolution.ok) {
+      setManualKeyError(
+        'Enter a valid base64 contract-data ledger key for this contract.',
+      )
+      return
+    }
+
+    if (resolution.contractId !== normalizedContractId) {
+      setManualKeyError(
+        'This key belongs to a different contract. Enter a key for the contract shown above.',
+      )
+      return
+    }
+
+    const nextKeys = dedupeExplorerKeys(
+      [...keys, resolution.canonicalKey].join(','),
+    )
+    setManualKeyInput('')
+    void navigate({
+      to: '/contracts/$contractId/explorer',
+      params: { contractId },
+      search: { keys: nextKeys, mode: 'live' },
+    })
+  }
 
   useContractLedgerPolling({ contractId, keys, rpcUrl, refreshActiveKeys })
 
@@ -429,11 +462,37 @@ function ContractExplorer() {
                 ? 'The local demo dataset returned no entries for the requested keys. Retry the sample or return to search.'
                 : `The current contract query completed, but no ledger entries were returned for ${keys.length} requested key${keys.length === 1 ? '' : 's'}.`}
             </p>
-            {keys.length === 0 && !isDemoExplorer && (
-              <p className="text-text-muted text-xs">
-                Add one or more base64 ledger keys via `?keys=...` to load
-                entries in this route.
-              </p>
+            {!isDemoExplorer && (
+              <form onSubmit={handleAddManualKey} className="space-y-2">
+                <label
+                  htmlFor="manual-contract-data-key"
+                  className="block text-text-muted text-xs"
+                >
+                  Add one contract-data ledger key
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="manual-contract-data-key"
+                    aria-label="Contract-data ledger key"
+                    value={manualKeyInput}
+                    onChange={(event) => {
+                      setManualKeyInput(event.target.value)
+                      if (manualKeyError) setManualKeyError(null)
+                    }}
+                    className="min-w-0 flex-1 rounded-md border border-border-dark bg-background-dark px-3 py-2 text-xs font-mono text-white"
+                    placeholder="Base64 ledger key XDR"
+                    type="text"
+                  />
+                  <Button type="submit" variant="primary" size="sm">
+                    Load key
+                  </Button>
+                </div>
+                {manualKeyError && (
+                  <p role="alert" className="text-red-400 text-xs">
+                    {manualKeyError}
+                  </p>
+                )}
+              </form>
             )}
             {isDemoExplorer && (
               <Button
