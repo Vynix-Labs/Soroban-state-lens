@@ -1107,6 +1107,7 @@ export const resetStore = () => {
     contractSpecErrors: {},
     contractSpecMismatches: {},
     contractSpecLoadStatuses: {},
+    collectionStructInterpretations: {},
     activeContractId: null,
     selectedKeyPath: null,
     contractLoadStatus: ContractLoadStatus.IDLE,
