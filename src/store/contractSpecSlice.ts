@@ -1,6 +1,7 @@
 import { loadContractSpec as fetchAndParseContractSpec } from '../lib/spec/loadContractSpec'
 import { parseContractSpec } from '../lib/spec/parseContractSpec'
 import { compareContractSchema } from '../lib/spec/compareContractSchema'
+import { SpecLoadGuard } from '../lib/spec/specLoadGuard'
 import { isContractId } from '../lib/validation/isContractId'
 import { normalizeContractIdInput } from '../lib/validation/normalizeContractIdInput'
 import { ContractSpecLoadStatus } from './types'
@@ -181,6 +182,9 @@ export const createContractSpecSlice = (
     if (!isContractId(normalizedContractId)) {
       return { ok: false, reason: 'Invalid contract ID' }
     }
+    if (options.signal?.aborted) {
+      return { ok: false, reason: 'Spec load aborted', skipped: true }
+    }
     const network = get().networkConfig
     const key = contractSpecKey(network, normalizedContractId)
     if (!key) return { ok: false, reason: 'Invalid contract ID' }
@@ -192,10 +196,6 @@ export const createContractSpecSlice = (
           [key]: status,
         },
       }))
-    const isCurrentScope = () =>
-      !options.signal?.aborted &&
-      contractSpecKey(get().networkConfig, normalizedContractId) === key
-
     const current = get()
     const alreadyLoaded =
       Object.prototype.hasOwnProperty.call(current.contractSpecs, key) ||
@@ -213,6 +213,33 @@ export const createContractSpecSlice = (
       }
     }
 
+    const scope = {
+      networkId: network.networkId,
+      networkPassphrase: network.networkPassphrase,
+      rpcUrl: network.rpcUrl,
+      contractId: normalizedContractId,
+    }
+    const guard = new SpecLoadGuard()
+    const attempt = guard.start(scope)
+    const cancelAttempt = () => guard.cancel()
+    options.signal?.addEventListener('abort', cancelAttempt, { once: true })
+    const currentScope = () => {
+      const activeNetwork = get().networkConfig
+      return {
+        networkId: activeNetwork.networkId,
+        networkPassphrase: activeNetwork.networkPassphrase,
+        rpcUrl: activeNetwork.rpcUrl,
+        contractId: normalizedContractId,
+      }
+    }
+    const commitIfCurrent = (commit: () => void) =>
+      attempt.commitIfCurrent(currentScope(), commit)
+    const abortedResult = () => {
+      guard.cancel()
+      return { ok: false, reason: 'Spec load aborted', skipped: true }
+    }
+    let committed = false
+
     updateStatus(ContractSpecLoadStatus.LOADING)
 
     try {
@@ -220,7 +247,7 @@ export const createContractSpecSlice = (
         {
           rpcUrl: network.rpcUrl,
           contractId: normalizedContractId,
-          signal: options.signal,
+          signal: attempt.signal,
         },
         (payload) => {
           const parsed = parseContractSpec(payload)
@@ -230,28 +257,42 @@ export const createContractSpecSlice = (
         },
       )
 
-      if (!isCurrentScope()) {
-        updateStatus(ContractSpecLoadStatus.IDLE)
-        return { ok: false, reason: 'Spec load aborted', skipped: true }
-      }
-
       if (!result.ok) {
-        get().setContractSpecError(normalizedContractId, result.reason)
+        if (
+          !commitIfCurrent(() =>
+            get().setContractSpecError(normalizedContractId, result.reason),
+          )
+        ) {
+          return abortedResult()
+        }
+        committed = true
         return { ok: false, reason: result.reason }
       }
 
-      get().setContractSpec(normalizedContractId, result.spec)
+      if (
+        !commitIfCurrent(() =>
+          get().setContractSpec(normalizedContractId, result.spec),
+        )
+      ) {
+        return abortedResult()
+      }
+      committed = true
       return { ok: true }
     } catch (error) {
-      if (!isCurrentScope()) {
-        updateStatus(ContractSpecLoadStatus.IDLE)
-        return { ok: false, reason: 'Spec load aborted', skipped: true }
-      }
-
       const reason =
         error instanceof Error ? error.message : 'Failed to load contract spec'
-      get().setContractSpecError(normalizedContractId, reason)
+      if (
+        !commitIfCurrent(() =>
+          get().setContractSpecError(normalizedContractId, reason),
+        )
+      ) {
+        return abortedResult()
+      }
+      committed = true
       return { ok: false, reason }
+    } finally {
+      options.signal?.removeEventListener('abort', cancelAttempt)
+      if (!committed) updateStatus(ContractSpecLoadStatus.IDLE)
     }
   },
 })

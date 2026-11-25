@@ -78,4 +78,56 @@ describe('loadContractSpec', () => {
       ContractSpecLoadStatus.ERROR,
     )
   })
+
+  it('rejects a late result after the network context changes', async () => {
+    let resolveFetch!: (result: { success: true; wasm: Uint8Array }) => void
+    mockGetContractWasm.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
+
+    const originalNetwork = getStoreState().networkConfig
+    const pending = getStoreState().loadContractSpec(TEST_CONTRACT_ID)
+    getStoreState().setNetworkConfig({ rpcUrl: 'https://rpc.changed.example' })
+    resolveFetch({ success: true, wasm: createContractSpecWasm() })
+
+    const result = await pending
+    expect(result.skipped).toBe(true)
+    getStoreState().setNetworkConfig(originalNetwork)
+    expect(getStoreState().getContractSpec(TEST_CONTRACT_ID)).toBeUndefined()
+    expect(
+      getStoreState().getContractSpecError(TEST_CONTRACT_ID),
+    ).toBeUndefined()
+    expect(getStoreState().getContractSpecLoadStatus(TEST_CONTRACT_ID)).toBe(
+      ContractSpecLoadStatus.IDLE,
+    )
+  })
+
+  it('aborts the fetch signal and rejects a late result after cancellation', async () => {
+    let resolveFetch!: (result: { success: true; wasm: Uint8Array }) => void
+    mockGetContractWasm.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
+
+    const controller = new AbortController()
+    const pending = getStoreState().loadContractSpec(TEST_CONTRACT_ID, {
+      signal: controller.signal,
+    })
+    const fetchSignal = mockGetContractWasm.mock.calls[0][0].signal
+    controller.abort()
+    expect(fetchSignal.aborted).toBe(true)
+    resolveFetch({ success: true, wasm: createContractSpecWasm() })
+
+    const result = await pending
+    expect(result.skipped).toBe(true)
+    expect(getStoreState().getContractSpec(TEST_CONTRACT_ID)).toBeUndefined()
+    expect(getStoreState().getContractSpecLoadStatus(TEST_CONTRACT_ID)).toBe(
+      ContractSpecLoadStatus.IDLE,
+    )
+  })
 })
