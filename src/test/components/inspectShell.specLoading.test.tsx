@@ -176,6 +176,40 @@ describe('Inspector opt-in spec loading', () => {
     )
   })
 
+  it('distinguishes fetched code identity from unverified uploaded metadata', async () => {
+    const wasmHash = 'ab'.repeat(32)
+    mockGetContractWasm.mockResolvedValueOnce({
+      success: true,
+      wasm: createContractSpecWasm(),
+      wasmHash,
+    })
+    renderInspector()
+    fireEvent.click(screen.getByRole('button', { name: 'Load contract spec' }))
+    await screen.findByText('Metadata source: Stellar RPC')
+    expect(screen.getByText(wasmHash)).toBeTruthy()
+    expect(screen.getByText(getStoreState().networkConfig.rpcUrl)).toBeTruthy()
+    expect(
+      screen.getByText(getStoreState().networkConfig.networkId),
+    ).toBeTruthy()
+    expect(
+      screen.queryByText(
+        'This file has not been verified against on-chain contract code.',
+      ),
+    ).toBeNull()
+    uploadWasm(createContractSpecWasm())
+    await screen.findByText('contract.wasm')
+    expect(
+      screen.getByText(
+        'This file has not been verified against on-chain contract code.',
+      ),
+    ).toBeTruthy()
+    expect(screen.queryByText('Metadata source: Stellar RPC')).toBeNull()
+    expect(screen.queryByText(wasmHash)).toBeNull()
+    uploadWasm(createWasmWithoutSpec())
+    await screen.findByText(/This WASM file has no contractspecv0 section/)
+    expect(screen.queryByText('contract.wasm')).toBeNull()
+  })
+
   it('loads once with opt-in on and fills the scoped cache', async () => {
     enableOptIn()
 
