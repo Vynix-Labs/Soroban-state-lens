@@ -95,6 +95,7 @@ describe('Display Preferences Validation', () => {
       const validPreferences = {
         byteDisplayMode: ByteDisplayMode.HEX,
         bigIntDisplayMode: BigIntDisplayMode.DECIMAL,
+        autoLoadSpec: true,
       }
       const result = validateDisplayPreferences(validPreferences)
       expect(result).toEqual(validPreferences)
@@ -133,7 +134,9 @@ describe('Display Preferences Validation', () => {
       }
       const result = validateDisplayPreferences(invalidPreferences)
       expect(result.byteDisplayMode).toBe(ByteDisplayMode.HEX)
-      expect(result.bigIntDisplayMode).toBe(DEFAULT_PREFERENCES.bigIntDisplayMode)
+      expect(result.bigIntDisplayMode).toBe(
+        DEFAULT_PREFERENCES.bigIntDisplayMode,
+      )
     })
 
     it('should correct both invalid modes', () => {
@@ -145,19 +148,31 @@ describe('Display Preferences Validation', () => {
       expect(result).toEqual(DEFAULT_PREFERENCES)
     })
 
+    it('should correct an invalid autoLoadSpec flag', () => {
+      const result = validateDisplayPreferences({
+        byteDisplayMode: ByteDisplayMode.HEX,
+        bigIntDisplayMode: BigIntDisplayMode.DECIMAL,
+        autoLoadSpec: 'yes',
+      })
+      expect(result.autoLoadSpec).toBe(DEFAULT_PREFERENCES.autoLoadSpec)
+    })
+
     it('should handle missing fields by applying defaults', () => {
       const partialPreferences = {
         byteDisplayMode: ByteDisplayMode.BASE64,
       }
       const result = validateDisplayPreferences(partialPreferences)
       expect(result.byteDisplayMode).toBe(ByteDisplayMode.BASE64)
-      expect(result.bigIntDisplayMode).toBe(DEFAULT_PREFERENCES.bigIntDisplayMode)
+      expect(result.bigIntDisplayMode).toBe(
+        DEFAULT_PREFERENCES.bigIntDisplayMode,
+      )
     })
 
     it('should handle extra unknown fields gracefully', () => {
       const extraFields = {
         byteDisplayMode: ByteDisplayMode.HEX,
         bigIntDisplayMode: BigIntDisplayMode.HEX,
+        autoLoadSpec: false,
         unknownField: 'should be ignored',
         anotherField: 123,
       }
@@ -165,6 +180,7 @@ describe('Display Preferences Validation', () => {
       expect(result).toEqual({
         byteDisplayMode: ByteDisplayMode.HEX,
         bigIntDisplayMode: BigIntDisplayMode.HEX,
+        autoLoadSpec: false,
       })
     })
   })
@@ -175,6 +191,7 @@ describe('Display Preferences Validation', () => {
         preferences: {
           byteDisplayMode: ByteDisplayMode.BASE64,
           bigIntDisplayMode: BigIntDisplayMode.HEX,
+          autoLoadSpec: true,
         },
       }
       const currentState = {
@@ -316,6 +333,7 @@ describe('Display Preferences Validation', () => {
         preferences: {
           byteDisplayMode: ByteDisplayMode.HEX,
           bigIntDisplayMode: BigIntDisplayMode.SCIENTIFIC,
+          autoLoadSpec: false,
         },
       }
       const result = mergePreferences(corruptedState, currentState)

@@ -55,6 +55,7 @@ import type {
   LedgerEntry,
   LedgerKey,
   LensStore,
+  LoadContractSpecOptions,
   NetworkConfig,
   NetworkConfigSlice,
   SnapshotSlice,
@@ -1105,6 +1106,7 @@ export const resetStore = () => {
     contractSpecs: {},
     contractSpecErrors: {},
     contractSpecMismatches: {},
+    contractSpecLoadStatuses: {},
     activeContractId: null,
     selectedKeyPath: null,
     contractLoadStatus: ContractLoadStatus.IDLE,
@@ -1148,6 +1150,8 @@ export const lensActions = {
   setSelectedKeyPath: (keyPath: string) =>
     useLensStore.getState().setSelectedKeyPath(keyPath),
   clearSelectedKeyPath: () => useLensStore.getState().clearSelectedKeyPath(),
+  setAutoLoadSpec: (enabled: boolean) =>
+    useLensStore.getState().setAutoLoadSpec(enabled),
   setContractLoadStatus: (status: ContractLoadStatus) =>
     useLensStore.getState().setContractLoadStatus(status),
   setContractLoadError: (
@@ -1158,6 +1162,8 @@ export const lensActions = {
     useLensStore.getState().resetContractLoadState(),
   loadContract: (contractId: string, keys: Array<string>) =>
     useLensStore.getState().loadContract(contractId, keys),
+  loadContractSpec: (contractId: string, options?: LoadContractSpecOptions) =>
+    useLensStore.getState().loadContractSpec(contractId, options),
   refreshActiveKeys: () => useLensStore.getState().refreshActiveKeys(),
   addSnapshot: (
     contractId: string,
