@@ -25,6 +25,11 @@ export function InspectShell({
 }: InspectShellProps) {
   const addToWatchlist = useLensStore((state) => state.addToWatchlist)
   const autoLoadSpec = useLensStore((state) => state.preferences.autoLoadSpec)
+  const networkId = useLensStore((state) => state.networkConfig.networkId)
+  const networkPassphrase = useLensStore(
+    (state) => state.networkConfig.networkPassphrase,
+  )
+  const rpcUrl = useLensStore((state) => state.networkConfig.rpcUrl)
   const loadContractSpec = useLensStore((state) => state.loadContractSpec)
   const specLoadStatus = useLensStore((state) =>
     state.getContractSpecLoadStatus(normalizedContractId || contractId),
@@ -71,8 +76,17 @@ export function InspectShell({
   // same contract never issues a second WASM request.
   useEffect(() => {
     if (!autoLoadSpec || !isContractId(inspectedContractId)) return
-    void loadContractSpec(inspectedContractId)
-  }, [autoLoadSpec, inspectedContractId, loadContractSpec])
+    const controller = new AbortController()
+    void loadContractSpec(inspectedContractId, { signal: controller.signal })
+    return () => controller.abort()
+  }, [
+    autoLoadSpec,
+    inspectedContractId,
+    loadContractSpec,
+    networkId,
+    networkPassphrase,
+    rpcUrl,
+  ])
 
   useEffect(() => {
     return () => {

@@ -50,12 +50,12 @@ import type { Node } from '../types/node'
 import type { PersistedState } from './persistence'
 import type {
   ContractLoadSlice,
-  LoadContractSpecOptions,
   ExpandedNodesSlice,
   LedgerDataSlice,
   LedgerEntry,
   LedgerKey,
   LensStore,
+  LoadContractSpecOptions,
   NetworkConfig,
   NetworkConfigSlice,
   SnapshotSlice,

@@ -1,19 +1,19 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { resetStore, getStoreState } from '../../store/lensStore'
+import { getStoreState, resetStore } from '../../store/lensStore'
 import { ContractSpecLoadStatus } from '../../store/types'
 import {
-  createContractSpecWasm,
   TEST_CONTRACT_ID,
+  createContractSpecWasm,
 } from '../helpers/contractSpecFixtures'
 
 const { mockGetContractWasm } = vi.hoisted(() => ({
   mockGetContractWasm: vi.fn(),
 }))
 
-vi.mock('../../lib/network/getContractWasm', () => ({
-  getContractWasm: mockGetContractWasm,
+vi.mock('../../lib/network/getContractWasmForSpec', () => ({
+  getContractWasmForSpec: mockGetContractWasm,
 }))
 
 describe('loadContractSpec', () => {

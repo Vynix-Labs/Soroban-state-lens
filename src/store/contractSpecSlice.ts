@@ -1,9 +1,8 @@
-import { getContractWasm } from '../lib/network/getContractWasm'
+import { loadContractSpec as fetchAndParseContractSpec } from '../lib/spec/loadContractSpec'
 import { parseContractSpec } from '../lib/spec/parseContractSpec'
 import { compareContractSchema } from '../lib/spec/compareContractSchema'
 import { isContractId } from '../lib/validation/isContractId'
 import { normalizeContractIdInput } from '../lib/validation/normalizeContractIdInput'
-import { extractContractspecv0 } from '../lib/wasm/wasmExtractor'
 import { ContractSpecLoadStatus } from './types'
 
 import type { ContractSpec } from '../types/contract-spec'
@@ -172,38 +171,40 @@ export const createContractSpecSlice = (
     }),
 
   getContractSpecLoadStatus: (contractId: string) => {
-    const normalizedContractId = normalizeContractSpecKey(contractId)
-    if (!normalizedContractId) return ContractSpecLoadStatus.IDLE
-    return (
-      get().contractSpecLoadStatuses[normalizedContractId] ??
-      ContractSpecLoadStatus.IDLE
-    )
+    const key = contractSpecKey(get().networkConfig, contractId)
+    if (!key) return ContractSpecLoadStatus.IDLE
+    return get().contractSpecLoadStatuses[key] ?? ContractSpecLoadStatus.IDLE
   },
 
   loadContractSpec: async (contractId, options = {}) => {
-    const normalizedContractId = normalizeContractSpecKey(contractId)
-    if (!normalizedContractId || !isContractId(normalizedContractId)) {
+    const normalizedContractId = normalizeContractIdInput(contractId)
+    if (!isContractId(normalizedContractId)) {
       return { ok: false, reason: 'Invalid contract ID' }
     }
+    const network = get().networkConfig
+    const key = contractSpecKey(network, normalizedContractId)
+    if (!key) return { ok: false, reason: 'Invalid contract ID' }
 
     const updateStatus = (status: ContractSpecLoadStatus) =>
       set((state) => ({
         contractSpecLoadStatuses: {
           ...state.contractSpecLoadStatuses,
-          [normalizedContractId]: status,
+          [key]: status,
         },
       }))
+    const isCurrentScope = () =>
+      !options.signal?.aborted &&
+      contractSpecKey(get().networkConfig, normalizedContractId) === key
 
     const current = get()
     const alreadyLoaded =
-      current.contractSpecs[normalizedContractId] !== undefined ||
-      current.contractSpecErrors[normalizedContractId] !== undefined
+      Object.prototype.hasOwnProperty.call(current.contractSpecs, key) ||
+      Object.prototype.hasOwnProperty.call(current.contractSpecErrors, key)
     if (!options.force && alreadyLoaded) {
       return { ok: true, skipped: true }
     }
     if (
-      current.contractSpecLoadStatuses[normalizedContractId] ===
-      ContractSpecLoadStatus.LOADING
+      current.contractSpecLoadStatuses[key] === ContractSpecLoadStatus.LOADING
     ) {
       return {
         ok: false,
@@ -215,38 +216,34 @@ export const createContractSpecSlice = (
     updateStatus(ContractSpecLoadStatus.LOADING)
 
     try {
-      const wasmResult = await getContractWasm({
-        rpcUrl: get().networkConfig.rpcUrl,
-        contractId: normalizedContractId,
-        signal: options.signal,
-      })
+      const result = await fetchAndParseContractSpec(
+        {
+          rpcUrl: network.rpcUrl,
+          contractId: normalizedContractId,
+          signal: options.signal,
+        },
+        (payload) => {
+          const parsed = parseContractSpec(payload)
+          return parsed.ok
+            ? { ok: true, value: parsed.spec }
+            : { ok: false, reason: parsed.reason }
+        },
+      )
 
-      if (options.signal?.aborted) {
+      if (!isCurrentScope()) {
         updateStatus(ContractSpecLoadStatus.IDLE)
         return { ok: false, reason: 'Spec load aborted', skipped: true }
       }
 
-      if (!wasmResult.success) {
-        get().setContractSpecError(normalizedContractId, wasmResult.error)
-        return { ok: false, reason: wasmResult.error }
+      if (!result.ok) {
+        get().setContractSpecError(normalizedContractId, result.reason)
+        return { ok: false, reason: result.reason }
       }
 
-      const extracted = extractContractspecv0(wasmResult.wasm)
-      if (!extracted.ok) {
-        get().setContractSpecError(normalizedContractId, extracted.reason)
-        return { ok: false, reason: extracted.reason }
-      }
-
-      const parsed = parseContractSpec(extracted.payload)
-      if (!parsed.ok) {
-        get().setContractSpecError(normalizedContractId, parsed.reason)
-        return { ok: false, reason: parsed.reason }
-      }
-
-      get().setContractSpec(normalizedContractId, parsed.spec)
+      get().setContractSpec(normalizedContractId, result.spec)
       return { ok: true }
     } catch (error) {
-      if (options.signal?.aborted) {
+      if (!isCurrentScope()) {
         updateStatus(ContractSpecLoadStatus.IDLE)
         return { ok: false, reason: 'Spec load aborted', skipped: true }
       }

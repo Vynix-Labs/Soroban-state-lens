@@ -1,41 +1,24 @@
 import { xdr } from '@stellar/stellar-sdk'
 import { buildEnumLookup } from './resolveEnumValue'
 
+import type { ContractSpec, ContractSpecEntry } from '../../types/contract-spec'
 import type { EnumLookup, SpecEnumEntry } from './resolveEnumValue'
 
-/** Concrete spec entry type from the Stellar SDK wire definitions. */
-export type ScSpecEntry = ReturnType<typeof xdr.ScSpecEntry.fromXDR>
-
-/** Bounds the work done for a single RPC-provided spec payload. */
 const MAX_SPEC_ENTRIES = 1024
 
-/** A validated entry from the `contractspecv0` custom section. */
-export interface ParsedContractSpecEntry {
-  kind: string
-  name: string
-  /** The concrete wire type produced by the Stellar SDK XDR decoder. */
-  entry: ScSpecEntry
-}
+export type ScSpecEntry = ReturnType<typeof xdr.ScSpecEntry.fromXDR>
 
-/**
- * An explicit interpretation of WASM metadata. Only XDR-decoded entries are
- * stored; raw storage bytes are never treated as a struct or enum.
- */
-export interface ParsedContractSpec {
+export interface ParsedContractSpec extends ContractSpec {
   format: 'contractspecv0'
-  entries: Array<ParsedContractSpecEntry>
   enumEntries: Array<SpecEnumEntry>
   enumLookup: EnumLookup
 }
 
 export type ParseContractSpecResult =
-  { ok: true; spec: ParsedContractSpec } | { ok: false; reason: string }
+  | { ok: true; spec: ParsedContractSpec }
+  | { ok: false; reason: string }
 
-/**
- * Minimal reader for the `read*` methods used by js-xdr. Reading opaque data
- * advances to the next four-byte boundary, as required by XDR. Every read is
- * bounds checked so external WASM data cannot read outside the payload.
- */
+/** Minimal js-xdr reader backed by Uint8Array, so browser needs no Buffer global. */
 class XdrPayloadReader {
   private offset = 0
   private readonly view: DataView
@@ -48,108 +31,141 @@ class XdrPayloadReader {
     return this.offset
   }
 
-  private require(size: number): void {
+  private advance(size: number): number {
     if (size < 0 || this.offset + size > this.bytes.length) {
       throw new Error('Truncated contract spec payload')
     }
-  }
-
-  private advance(size: number): number {
-    this.require(size)
     const start = this.offset
     this.offset += size
     return start
   }
 
   read(size: number): Uint8Array {
-    const padded = Math.ceil(size / 4) * 4
-    const start = this.advance(padded)
+    const paddedSize = Math.ceil(size / 4) * 4
+    const start = this.advance(paddedSize)
     return this.bytes.slice(start, start + size)
   }
 
   readInt32BE(): number {
-    const start = this.advance(4)
-    return this.view.getInt32(start, false)
+    return this.view.getInt32(this.advance(4), false)
   }
 
   readUInt32BE(): number {
-    const start = this.advance(4)
-    return this.view.getUint32(start, false)
+    return this.view.getUint32(this.advance(4), false)
   }
 
   readBigInt64BE(): bigint {
-    const start = this.advance(8)
-    return this.view.getBigInt64(start, false)
+    return this.view.getBigInt64(this.advance(8), false)
   }
 
   readBigUInt64BE(): bigint {
-    const start = this.advance(8)
-    return this.view.getBigUint64(start, false)
+    return this.view.getBigUint64(this.advance(8), false)
   }
 
   readFloatBE(): number {
-    const start = this.advance(4)
-    return this.view.getFloat32(start, false)
+    return this.view.getFloat32(this.advance(4), false)
   }
 
   readDoubleBE(): number {
-    const start = this.advance(8)
-    return this.view.getFloat64(start, false)
+    return this.view.getFloat64(this.advance(8), false)
   }
 }
 
-/** XDR strings are Buffers in Node and Uint8Arrays in the browser. */
-function decodeXdrString(value: unknown): string {
-  if (typeof value === 'string') return value
-  if (value instanceof Uint8Array) {
-    return new TextDecoder('utf-8', { fatal: true }).decode(value)
-  }
-  return value === undefined || value === null ? '' : String(value)
+function decodeXdrString(value: string | Uint8Array): string {
+  return typeof value === 'string'
+    ? value
+    : new TextDecoder('utf-8', { fatal: true }).decode(value)
 }
 
-function toEnumEntries(entries: Array<ScSpecEntry>): Array<SpecEnumEntry> {
-  const enumEntries: Array<SpecEnumEntry> = []
-
-  for (const entry of entries) {
-    if (
-      entry.switch().value !== xdr.ScSpecEntryKind.scSpecEntryUdtEnumV0().value
-    ) {
-      continue
+function parseEntries(payload: Uint8Array): Array<ScSpecEntry> {
+  const reader = new XdrPayloadReader(payload)
+  const entries: Array<ScSpecEntry> = []
+  while (reader.position < payload.length) {
+    if (entries.length >= MAX_SPEC_ENTRIES) {
+      throw new Error('Contract spec has too many entries')
     }
-
-    const enumEntry = entry.udtEnumV0()
-    const name = decodeXdrString(enumEntry.name())
-    if (!name) continue
-
-    const rawCases = enumEntry.cases() as Array<{
-      name(): unknown
-      value(): number
-    }>
-    const cases = rawCases
-      .map((candidate) => ({
-        name: decodeXdrString(candidate.name()),
-        value: Number(candidate.value()),
-      }))
-      .filter(
-        (candidate: { name: string; value: number }) =>
-          candidate.name.length > 0 &&
-          Number.isInteger(candidate.value) &&
-          candidate.value >= 0,
-      )
-
-    if (cases.length > 0) {
-      enumEntries.push({ name, cases })
+    const entry = xdr.ScSpecEntry.read(
+      reader as Parameters<typeof xdr.ScSpecEntry.read>[0],
+    )
+    if (reader.position > payload.length) {
+      throw new Error('Truncated contract spec payload')
     }
+    entries.push(entry)
   }
-
-  return enumEntries
+  return entries
 }
 
-/**
- * Decodes a `contractspecv0` payload into concrete spec entries and derived
- * metadata. Invalid or truncated payloads return a bounded reason instead of
- * throwing, so the caller can surface a safe error.
- */
+function toContractSpecEntry(entry: ScSpecEntry): ContractSpecEntry {
+  switch (entry.switch().name) {
+    case 'scSpecEntryFunctionV0': {
+      const wire = entry.functionV0()
+      return {
+        kind: 'function',
+        name: decodeXdrString(wire.name()),
+        inputs: wire.inputs(),
+        outputs: wire.outputs(),
+        wire,
+      }
+    }
+    case 'scSpecEntryUdtStructV0': {
+      const wire = entry.udtStructV0()
+      return {
+        kind: 'struct',
+        name: decodeXdrString(wire.name()),
+        fields: wire.fields(),
+        wire,
+      }
+    }
+    case 'scSpecEntryUdtEnumV0': {
+      const wire = entry.udtEnumV0()
+      return {
+        kind: 'enum',
+        name: decodeXdrString(wire.name()),
+        cases: wire.cases(),
+        wire,
+      }
+    }
+    case 'scSpecEntryUdtErrorEnumV0': {
+      const wire = entry.udtErrorEnumV0()
+      return {
+        kind: 'error-enum',
+        name: decodeXdrString(wire.name()),
+        cases: wire.cases(),
+        wire,
+      }
+    }
+    case 'scSpecEntryUdtUnionV0': {
+      const wire = entry.udtUnionV0()
+      return {
+        kind: 'union',
+        name: decodeXdrString(wire.name()),
+        cases: wire.cases(),
+        wire,
+      }
+    }
+    default:
+      throw new Error(`Unsupported contract spec entry: ${entry.switch().name}`)
+  }
+}
+
+function collectEnumEntries(
+  entries: Array<ContractSpecEntry>,
+): Array<SpecEnumEntry> {
+  return entries.flatMap((entry) => {
+    if (entry.kind !== 'enum' && entry.kind !== 'error-enum') return []
+    return [
+      {
+        name: entry.name,
+        cases: entry.cases.map((item) => ({
+          name: decodeXdrString(item.name()),
+          value: item.value(),
+        })),
+      },
+    ]
+  })
+}
+
+/** Decode the contractspecv0 XDR stream into concrete Stellar wire types. */
 export function parseContractSpec(
   payload: Uint8Array,
 ): ParseContractSpecResult {
@@ -158,40 +174,16 @@ export function parseContractSpec(
   }
 
   try {
-    const reader = new XdrPayloadReader(payload)
-    const entries: Array<ScSpecEntry> = []
-
-    while (reader.position < payload.length) {
-      if (entries.length >= MAX_SPEC_ENTRIES) {
-        return { ok: false, reason: 'Contract spec has too many entries' }
-      }
-
-      // js-xdr accepts a reader with this interface at runtime; its published
-      // declaration only names Buffer.
-      const entry = xdr.ScSpecEntry.read(
-        reader as unknown as Parameters<typeof xdr.ScSpecEntry.read>[0],
-      )
-      if (reader.position > payload.length) {
-        return { ok: false, reason: 'Truncated contract spec payload' }
-      }
-      entries.push(entry)
-    }
-
+    const entries = parseEntries(payload).map(toContractSpecEntry)
     if (entries.length === 0) {
       return { ok: false, reason: 'Contract spec payload is empty' }
     }
-
-    const enumEntries = toEnumEntries(entries)
-
+    const enumEntries = collectEnumEntries(entries)
     return {
       ok: true,
       spec: {
         format: 'contractspecv0',
-        entries: entries.map((entry) => ({
-          kind: entry.switch().name,
-          name: decodeXdrString(entry.value().name()),
-          entry,
-        })),
+        entries,
         enumEntries,
         enumLookup: buildEnumLookup(enumEntries),
       },

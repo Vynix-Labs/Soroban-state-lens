@@ -4,19 +4,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { InspectShell } from '../../components/explorer/InspectShell'
 import { getStoreState, resetStore, useLensStore } from '../../store/lensStore'
 import { DEFAULT_PREFERENCES } from '../../store/types'
-import type { ParsedContractSpec } from '../../lib/spec/parseContractSpec'
 import {
   OTHER_CONTRACT_ID,
   TEST_CONTRACT_ID,
   createContractSpecWasm,
 } from '../helpers/contractSpecFixtures'
 
+import type { ParsedContractSpec } from '../../lib/spec/parseContractSpec'
+
 const { mockGetContractWasm } = vi.hoisted(() => ({
   mockGetContractWasm: vi.fn(),
 }))
 
-vi.mock('../../lib/network/getContractWasm', () => ({
-  getContractWasm: mockGetContractWasm,
+vi.mock('../../lib/network/getContractWasmForSpec', () => ({
+  getContractWasmForSpec: mockGetContractWasm,
 }))
 
 vi.mock('@stellar/design-system', () => ({
@@ -121,7 +122,7 @@ describe('Inspector opt-in spec loading', () => {
   })
 
   it('preserves unrelated contract and network state', async () => {
-    const otherSpec = { functions: ['balance'] }
+    const otherSpec = { entries: [] }
     const ledgerSnapshot = {
       'other-contract-entry': {
         key: 'other-contract-entry',

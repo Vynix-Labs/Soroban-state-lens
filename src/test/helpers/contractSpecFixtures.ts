@@ -1,9 +1,13 @@
-import { xdr } from '@stellar/stellar-sdk'
+import { Address, xdr } from '@stellar/stellar-sdk'
 
 import type { ScSpecEntry } from '../../lib/spec/parseContractSpec'
 
-export const TEST_CONTRACT_ID = 'C'.repeat(56)
-export const OTHER_CONTRACT_ID = 'C' + '2'.repeat(55)
+export const TEST_CONTRACT_ID = Address.contract(
+  new Uint8Array(32).fill(1),
+).toString()
+export const OTHER_CONTRACT_ID = Address.contract(
+  new Uint8Array(32).fill(2),
+).toString()
 
 function encodeLeb128(value: number): Uint8Array {
   const bytes: Array<number> = []
