@@ -37,7 +37,7 @@ export async function getContractWasmForSpec(
     const executable = value.instance().executable()
     if (executable.switch().name !== 'contractExecutableWasm')
       return { success: false, error: 'Contract has no WASM executable' }
-    const hash = executable.wasmHash()
+    const hash: Uint8Array = executable.wasmHash()
     const codeKey = xdr.LedgerKey.contractCode(
       new xdr.LedgerKeyContractCode({ hash }),
     ).toXDR('base64')
@@ -52,6 +52,9 @@ export async function getContractWasmForSpec(
     return {
       success: true,
       wasm: new Uint8Array(codeData.contractCode().code()),
+      wasmHash: Array.from(hash, (byte) =>
+        byte.toString(16).padStart(2, '0'),
+      ).join(''),
     }
   } catch (error) {
     return {
