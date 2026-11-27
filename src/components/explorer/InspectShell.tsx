@@ -11,6 +11,7 @@ import { useLensStore } from '../../store/lensStore'
 import { ContractSpecLoadStatus } from '../../store/types'
 import { contractSpecKey } from '../../store/contractSpecSlice'
 import { buildInspectBreadcrumb } from './buildInspectBreadcrumb'
+import { InspectorEnum } from './InspectorEnum'
 import { LocalDemoNotice } from './LocalDemoNotice'
 import type { LedgerEntry } from '../../store/types'
 import type { Node } from '../../types/node'
@@ -45,6 +46,9 @@ export function InspectShell({
   )
   const rpcUrl = useLensStore((state) => state.networkConfig.rpcUrl)
   const loadContractSpec = useLensStore((state) => state.loadContractSpec)
+  const uploadContractSpec = useLensStore(
+    (state) => state.loadContractSpecFromUpload,
+  )
   const specLoadStatus = useLensStore((state) =>
     state.getContractSpecLoadStatus(normalizedContractId || contractId),
   )
@@ -54,6 +58,15 @@ export function InspectShell({
   const hasSpec = useLensStore(
     (state) =>
       state.getContractSpec(normalizedContractId || contractId) !== undefined,
+  )
+  const specSource = useLensStore(
+    (state) =>
+      state.contractSpecSources[
+        contractSpecKey(
+          state.networkConfig,
+          normalizedContractId || contractId,
+        ) ?? ''
+      ],
   )
   const contractSpec = useLensStore((state) =>
     state.getContractSpec(normalizedContractId || contractId),
@@ -119,12 +132,10 @@ export function InspectShell({
   const selectedStruct = compatibleStructs.find(
     (struct) => struct.name === selectedStructName,
   )
-
   const interpretedFields =
     inspectedNode && selectedStruct
       ? resolveStructFieldRows(inspectedNode, selectedStruct, keyPath)
       : undefined
-
   useEffect(() => {
     if (!selectedStructName) return
     const fields =
@@ -275,11 +286,35 @@ export function InspectShell({
             >
               {specLoadStatus === ContractSpecLoadStatus.LOADING
                 ? 'Loading spec…'
-                : hasSpec
-                  ? 'Reload spec'
-                  : 'Load contract spec'}
+                : specLoadStatus === ContractSpecLoadStatus.ERROR
+                  ? 'Retry spec load'
+                  : hasSpec
+                    ? 'Reload spec'
+                    : 'Load contract spec'}
             </Button>
           </div>
+          <label className="block text-sm text-text-muted">
+            Upload contract WASM
+            <input
+              type="file"
+              accept=".wasm,application/wasm"
+              disabled={
+                !isContractId(inspectedContractId) ||
+                specLoadStatus === ContractSpecLoadStatus.LOADING
+              }
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0]
+                event.currentTarget.value = ''
+                if (file) void uploadContractSpec(inspectedContractId, file)
+              }}
+            />
+          </label>
+          {specLoadStatus === ContractSpecLoadStatus.NO_SPEC ? (
+            <p role="status" className="text-sm text-text-muted">
+              This WASM file has no contractspecv0 section. Raw values remain
+              available; schema labels are unavailable.
+            </p>
+          ) : null}
           {specLoadStatus === ContractSpecLoadStatus.LOADING ? (
             <p role="status" className="text-sm text-text-muted">
               Loading contract spec…
@@ -291,7 +326,41 @@ export function InspectShell({
             </p>
           ) : null}
           {specLoadStatus === ContractSpecLoadStatus.SUCCESS && hasSpec ? (
-            <p className="text-sm text-text-muted">Contract spec loaded.</p>
+            <div className="space-y-2 text-sm text-text-muted">
+              <p>Contract spec loaded.</p>
+              {specSource?.kind === 'upload' ? (
+                <>
+                  <p>
+                    Metadata source: uploaded file{' '}
+                    <code>{specSource.filename}</code>
+                  </p>
+                  <p>
+                    This file has not been verified against on-chain contract
+                    code.
+                  </p>
+                </>
+              ) : specSource?.kind === 'rpc' ? (
+                <>
+                  <p>Metadata source: Stellar RPC</p>
+                  <p>
+                    Network: <code>{specSource.networkId}</code>
+                  </p>
+                  <p>
+                    Contract: <code>{specSource.contractId}</code>
+                  </p>
+                  <p>
+                    RPC endpoint: <code>{specSource.rpcUrl}</code>
+                  </p>
+                  {specSource.wasmHash ? (
+                    <p>
+                      Code hash: <code>{specSource.wasmHash}</code>
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p>Metadata source was not recorded.</p>
+              )}
+            </div>
           ) : null}
           {!isContractId(inspectedContractId) ? (
             <p className="text-sm text-text-muted">
@@ -300,6 +369,14 @@ export function InspectShell({
           ) : null}
         </div>
       </Card>
+
+      {entry && !keyPathError ? (
+        <InspectorEnum
+          contractId={inspectedContractId}
+          keyPath={keyPath}
+          entry={entry}
+        />
+      ) : null}
 
       <nav
         aria-label="Inspect breadcrumb"

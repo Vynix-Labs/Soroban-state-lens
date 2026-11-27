@@ -25,6 +25,8 @@ import type { FlattenTreeRoot } from '../../../lib/tree/flatTreeRow'
 import type { Node } from '../../../types/node'
 
 const EMPTY_EXPANDED_NODES: Array<string> = []
+export const DEMO_COUNTER_HINT_STORAGE_KEY =
+  'ssl.demo-counter-hint-dismissed.v1'
 
 export function ContractLoadStatusAnnouncement({
   status,
@@ -217,6 +219,7 @@ function ContractExplorer() {
   const [captureStatus, setCaptureStatus] = useState<string | null>(null)
   const [manualKeyInput, setManualKeyInput] = useState('')
   const [manualKeyError, setManualKeyError] = useState<string | null>(null)
+  const [showDemoCounterHint, setShowDemoCounterHint] = useState(false)
 
   const handleCaptureSnapshot = () => {
     if (ledgerEntries.length === 0) {
@@ -235,6 +238,21 @@ function ContractExplorer() {
   }
 
   const isDemoMode = search.mode === 'demo' && isSampleContractId(contractId)
+
+  useEffect(() => {
+    if (!isDemoMode) {
+      setShowDemoCounterHint(false)
+      return
+    }
+
+    try {
+      setShowDemoCounterHint(
+        window.localStorage.getItem(DEMO_COUNTER_HINT_STORAGE_KEY) !== 'true',
+      )
+    } catch {
+      setShowDemoCounterHint(true)
+    }
+  }, [isDemoMode])
 
   const demoCounterEntry = ledgerEntries.find(
     (entry) => entry.key === DEMO_COUNTER_ENTRY_KEY,
@@ -391,6 +409,20 @@ function ContractExplorer() {
       to: '/contracts/$contractId/inspect/$keyPath',
       params: { contractId, keyPath },
     })
+  }
+
+  const handleDismissDemoCounterHint = () => {
+    setShowDemoCounterHint(false)
+    try {
+      window.localStorage.setItem(DEMO_COUNTER_HINT_STORAGE_KEY, 'true')
+    } catch {
+      // The hint remains dismissed for this session even if storage is unavailable.
+    }
+  }
+
+  const handleInspectDemoCounter = () => {
+    handleDismissDemoCounterHint()
+    handleActivateRow(DEMO_COUNTER_ENTRY_KEY)
   }
 
   return (
@@ -554,6 +586,36 @@ function ContractExplorer() {
           </div>
         </Card>
       )}
+
+      {contractLoadStatus === ContractLoadStatus.SUCCESS &&
+        showDemoCounterHint && (
+          <Card>
+            <div className="p-6 space-y-4">
+              <Heading size="sm" as="h3">
+                Try the counter row
+              </Heading>
+              <p className="text-sm text-text-muted">
+                Find the counter row, then inspect it to see the demo value.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleInspectDemoCounter}
+                >
+                  Inspect counter
+                </Button>
+                <Button
+                  variant="tertiary"
+                  size="sm"
+                  onClick={handleDismissDemoCounterHint}
+                >
+                  Dismiss hint
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
 
       {contractLoadStatus === ContractLoadStatus.SUCCESS && (
         <Card>

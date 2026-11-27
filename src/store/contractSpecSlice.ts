@@ -1,3 +1,8 @@
+import { readWasmUpload } from '../lib/wasm/readWasmUpload'
+import {
+  NO_CONTRACT_SPEC_REASON,
+  extractContractspecv0,
+} from '../lib/wasm/wasmExtractor'
 import { loadContractSpec as fetchAndParseContractSpec } from '../lib/spec/loadContractSpec'
 import { parseContractSpec } from '../lib/spec/parseContractSpec'
 import { compareContractSchema } from '../lib/spec/compareContractSchema'
@@ -6,7 +11,6 @@ import { isContractId } from '../lib/validation/isContractId'
 import { normalizeContractIdInput } from '../lib/validation/normalizeContractIdInput'
 import { ContractSpecLoadStatus } from './types'
 
-import type { ContractSpec } from '../types/contract-spec'
 import type { ContractSpecSlice, LensStore, NetworkConfig } from './types'
 
 export function contractSpecKey(
@@ -39,12 +43,13 @@ export const createContractSpecSlice = (
   get: () => LensStore,
 ): ContractSpecSlice => ({
   contractSpecs: {},
+  contractSpecSources: {},
   contractSpecErrors: {},
   contractSpecMismatches: {},
   contractSpecLoadStatuses: {},
   collectionStructInterpretations: {},
 
-  setContractSpec: (contractId: string, spec: ContractSpec) => {
+  setContractSpec: (contractId, spec, source) => {
     const normalizedContractId = contractSpecKey(
       get().networkConfig,
       contractId,
@@ -57,6 +62,14 @@ export const createContractSpecSlice = (
       contractSpecs: {
         ...state.contractSpecs,
         [normalizedContractId]: spec,
+      },
+      contractSpecSources: {
+        ...Object.fromEntries(
+          Object.entries(state.contractSpecSources).filter(
+            ([key]) => key !== normalizedContractId,
+          ),
+        ),
+        ...(source ? { [normalizedContractId]: source } : {}),
       },
       contractSpecMismatches: {
         ...state.contractSpecMismatches,
@@ -148,6 +161,11 @@ export const createContractSpecSlice = (
         ...state.contractSpecErrors,
         [normalizedContractId]: normalizedError,
       },
+      contractSpecSources: Object.fromEntries(
+        Object.entries(state.contractSpecSources).filter(
+          ([key]) => key !== normalizedContractId,
+        ),
+      ),
       contractSpecs: Object.fromEntries(
         Object.entries(state.contractSpecs).filter(
           ([key]) => key !== normalizedContractId,
@@ -159,7 +177,10 @@ export const createContractSpecSlice = (
       },
       contractSpecLoadStatuses: {
         ...state.contractSpecLoadStatuses,
-        [normalizedContractId]: ContractSpecLoadStatus.ERROR,
+        [normalizedContractId]:
+          normalizedError === NO_CONTRACT_SPEC_REASON
+            ? ContractSpecLoadStatus.NO_SPEC
+            : ContractSpecLoadStatus.ERROR,
       },
     }))
   },
@@ -183,6 +204,8 @@ export const createContractSpecSlice = (
         return state
       }
 
+      const { [normalizedContractId]: _source, ...contractSpecSources } =
+        state.contractSpecSources
       const { [normalizedContractId]: _spec, ...contractSpecs } =
         state.contractSpecs
       const { [normalizedContractId]: _error, ...contractSpecErrors } =
@@ -194,6 +217,7 @@ export const createContractSpecSlice = (
       const interpretationPrefix = `${normalizedContractId}\u0000`
       return {
         contractSpecs,
+        contractSpecSources,
         contractSpecErrors,
         contractSpecMismatches,
         contractSpecLoadStatuses,
@@ -209,6 +233,68 @@ export const createContractSpecSlice = (
     const key = contractSpecKey(get().networkConfig, contractId)
     if (!key) return ContractSpecLoadStatus.IDLE
     return get().contractSpecLoadStatuses[key] ?? ContractSpecLoadStatus.IDLE
+  },
+
+  loadContractSpecFromUpload: async (contractId, file) => {
+    const normalized = normalizeContractIdInput(contractId)
+    if (!isContractId(normalized))
+      return { ok: false, reason: 'Invalid contract ID' }
+    const key = contractSpecKey(get().networkConfig, normalized)!
+    const previousStatus =
+      get().contractSpecLoadStatuses[key] ?? ContractSpecLoadStatus.IDLE
+    if (previousStatus === ContractSpecLoadStatus.LOADING)
+      return {
+        ok: false,
+        skipped: true,
+        reason: 'A spec load is already in progress',
+      }
+    set((state) => ({
+      contractSpecLoadStatuses: {
+        ...state.contractSpecLoadStatuses,
+        [key]: ContractSpecLoadStatus.LOADING,
+      },
+    }))
+    let committed = false
+    try {
+      const read = await readWasmUpload(file)
+      if (contractSpecKey(get().networkConfig, normalized) !== key)
+        return {
+          ok: false,
+          skipped: true,
+          reason: 'Spec upload context changed',
+        }
+      const fail = (reason: string) => {
+        get().setContractSpecError(normalized, reason)
+        committed = true
+        return { ok: false, reason }
+      }
+      if (!read.ok)
+        return fail(
+          read.reason === 'TOO_LARGE'
+            ? 'Choose a WASM file no larger than 8 MiB.'
+            : read.reason === 'INVALID_WASM'
+              ? 'Choose a valid WASM version 1 file.'
+              : 'The file could not be read. Choose it again.',
+        )
+      const extracted = extractContractspecv0(read.bytes)
+      if (!extracted.ok) return fail(extracted.reason)
+      const parsed = parseContractSpec(extracted.payload)
+      if (!parsed.ok) return fail(parsed.reason)
+      get().setContractSpec(normalized, parsed.spec, {
+        kind: 'upload',
+        filename: file.name?.slice(0, 255) || 'Unnamed WASM file',
+      })
+      committed = true
+      return { ok: true }
+    } finally {
+      if (!committed)
+        set((state) => ({
+          contractSpecLoadStatuses: {
+            ...state.contractSpecLoadStatuses,
+            [key]: previousStatus,
+          },
+        }))
+    }
   },
 
   setCollectionStructInterpretation: (
@@ -342,7 +428,13 @@ export const createContractSpecSlice = (
 
       if (
         !commitIfCurrent(() =>
-          get().setContractSpec(normalizedContractId, result.spec),
+          get().setContractSpec(normalizedContractId, result.spec, {
+            kind: 'rpc',
+            networkId: network.networkId,
+            rpcUrl: network.rpcUrl,
+            contractId: normalizedContractId,
+            ...(result.wasmHash ? { wasmHash: result.wasmHash } : {}),
+          }),
         )
       ) {
         return abortedResult()
