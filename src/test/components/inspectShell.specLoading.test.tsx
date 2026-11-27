@@ -325,4 +325,29 @@ describe('Inspector opt-in spec loading', () => {
     })
     expect(mockGetContractWasm).toHaveBeenCalledTimes(1)
   })
+
+  it('retries a failed load for the current contract and clears stale failure UI', async () => {
+    mockGetContractWasm
+      .mockResolvedValueOnce({ success: false, error: 'RPC unavailable' })
+      .mockResolvedValueOnce({
+        success: true,
+        wasm: createContractSpecWasm(),
+      })
+    enableOptIn()
+
+    renderInspector()
+    await screen.findByRole('alert')
+    expect(screen.getByRole('button', { name: 'Retry spec load' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry spec load' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Contract spec loaded.')).toBeTruthy()
+    })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(mockGetContractWasm).toHaveBeenCalledTimes(2)
+    expect(mockGetContractWasm).toHaveBeenLastCalledWith(
+      expect.objectContaining({ contractId: TEST_CONTRACT_ID }),
+    )
+  })
 })

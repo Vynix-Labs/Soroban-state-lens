@@ -231,6 +231,7 @@ export interface ContractSpecSlice {
   contractSpecErrors: Record<string, string>
   contractSpecMismatches: Record<string, Array<ContractSchemaMismatch>>
   contractSpecLoadStatuses: Record<string, ContractSpecLoadStatus>
+  collectionStructInterpretations: Record<string, string>
   setContractSpec: (
     contractId: string,
     spec: ContractSpec,
@@ -254,6 +255,15 @@ export interface ContractSpecSlice {
     contractId: string,
     file: Pick<File, 'size' | 'arrayBuffer'> & { name?: string },
   ) => Promise<LoadContractSpecResult>
+  setCollectionStructInterpretation: (
+    contractId: string,
+    collectionKeyPath: string,
+    structName: string,
+  ) => void
+  getCollectionStructInterpretation: (
+    contractId: string,
+    collectionKeyPath: string,
+  ) => string | undefined
   /** Fetch, validate, and cache the spec for a single contract. */
   loadContractSpec: (
     contractId: string,
