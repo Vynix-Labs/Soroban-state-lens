@@ -55,6 +55,40 @@ describe('contractSpecSlice', () => {
     expect(getStoreState().getContractSpec('CONTRACT_B')).toEqual(specB)
   })
 
+  it('keeps provenance scoped and clears it with errors or replacement metadata', () => {
+    const spec = makeSpec('A')
+    const originalNetwork = getStoreState().networkConfig
+    getStoreState().setContractSpec('CONTRACT_A', spec, {
+      kind: 'upload',
+      filename: 'a.wasm',
+    })
+    getStoreState().setContractSpec('CONTRACT_B', spec, {
+      kind: 'upload',
+      filename: 'b.wasm',
+    })
+    expect(getStoreState().contractSpecSources[key('CONTRACT_A')]).toEqual({
+      kind: 'upload',
+      filename: 'a.wasm',
+    })
+    getStoreState().setNetworkConfig(DEFAULT_NETWORKS.mainnet)
+    expect(
+      getStoreState().contractSpecSources[key('CONTRACT_A')],
+    ).toBeUndefined()
+    getStoreState().setNetworkConfig(originalNetwork)
+    getStoreState().setContractSpecError('CONTRACT_A', 'bad metadata')
+    expect(
+      getStoreState().contractSpecSources[key('CONTRACT_A')],
+    ).toBeUndefined()
+    expect(getStoreState().contractSpecSources[key('CONTRACT_B')]).toEqual({
+      kind: 'upload',
+      filename: 'b.wasm',
+    })
+    getStoreState().setContractSpec('CONTRACT_B', spec)
+    expect(
+      getStoreState().contractSpecSources[key('CONTRACT_B')],
+    ).toBeUndefined()
+  })
+
   it('keeps collection struct choices scoped to their contract and network', () => {
     const collectionPath = '/entry/item-0'
     const originalNetwork = getStoreState().networkConfig
