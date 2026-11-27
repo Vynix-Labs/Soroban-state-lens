@@ -197,6 +197,7 @@ export enum ContractSpecLoadStatus {
   LOADING = 'loading',
   SUCCESS = 'success',
   ERROR = 'error',
+  NO_SPEC = 'no-spec',
 }
 
 export interface LoadContractSpecOptions {
@@ -235,6 +236,10 @@ export interface ContractSpecSlice {
   getContractSpecError: (contractId: string) => string | undefined
   clearContractSpec: (contractId: string) => void
   getContractSpecLoadStatus: (contractId: string) => ContractSpecLoadStatus
+  loadContractSpecFromUpload: (
+    contractId: string,
+    file: Pick<File, 'size' | 'arrayBuffer'>,
+  ) => Promise<LoadContractSpecResult>
   setCollectionStructInterpretation: (
     contractId: string,
     collectionKeyPath: string,
