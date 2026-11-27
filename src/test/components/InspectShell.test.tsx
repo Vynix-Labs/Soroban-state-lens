@@ -3,6 +3,10 @@ import { xdr } from '@stellar/stellar-sdk'
 import { describe, expect, it, vi } from 'vitest'
 
 import { InspectShell } from '../../components/explorer/InspectShell'
+import { createDemoLedgerEntries } from '../../lib/demo/demoLedgerEntries'
+import { parseContractSpec } from '../../lib/spec/parseContractSpec'
+import { extractContractspecv0 } from '../../lib/wasm/wasmExtractor'
+import { createContractSpecWasm } from '../helpers/contractSpecFixtures'
 import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
 import { useLensStore } from '../../store/lensStore'
 import { contractSpecKey } from '../../store/contractSpecSlice'
@@ -182,6 +186,73 @@ describe('InspectShell', () => {
         .getState()
         .getCollectionStructInterpretation('C123', vectorKey),
     ).toBe('DemoVector')
+  })
+
+  it('renders the parsed two-field fixture labels only after selection without changing raw paths', () => {
+    const entries = createDemoLedgerEntries()
+    const entry = entries.find(
+      (item) => (item.value as { kind: string }).kind === 'vec',
+    )!
+    const wire = new xdr.ScSpecUdtStructV0({
+      doc: '',
+      lib: '',
+      name: 'DemoVector',
+      fields: ['first_value', 'second_value'].map(
+        (name) =>
+          new xdr.ScSpecUdtStructFieldV0({
+            doc: '',
+            name,
+            type: xdr.ScSpecTypeDef.scSpecTypeU32(),
+          }),
+      ),
+    })
+    const extracted = extractContractspecv0(
+      createContractSpecWasm([xdr.ScSpecEntry.scSpecEntryUdtStructV0(wire)]),
+    )
+    if (!extracted.ok) throw new Error('Fixture extraction failed')
+    const parsed = parseContractSpec(extracted.payload)
+    if (!parsed.ok) throw new Error(parsed.reason)
+    useLensStore.setState({
+      ledgerData: Object.fromEntries(entries.map((item) => [item.key, item])),
+      collectionStructInterpretations: {},
+    })
+    const network = useLensStore.getState().networkConfig
+    useLensStore.getState().setContractSpec(entry.contractId, parsed.spec)
+    const { rerender } = render(
+      <InspectShell
+        contractId={entry.contractId}
+        normalizedContractId={entry.contractId}
+        keyPath={entry.key}
+      />,
+    )
+    expect(screen.queryByRole('definition')).toBeNull()
+    expect(screen.queryByText('first_value')).toBeNull()
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Struct interpretation' }),
+      { target: { value: 'DemoVector' } },
+    )
+    const fields = screen.getByLabelText('Interpreted fields')
+    expect(fields.textContent).toContain('first_value')
+    expect(fields.textContent).toContain('second_value')
+    expect(fields.textContent).toContain(`${entry.key}.item-0`)
+    expect(fields.textContent).toContain(`${entry.key}.item-1.item-0`)
+    expect(fields.textContent).toContain('7')
+    expect(fields.textContent).toContain('9')
+    expect(useLensStore.getState().ledgerData[entry.key]).toBe(entry)
+    expect(useLensStore.getState().networkConfig).toBe(network)
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Struct interpretation' }),
+      { target: { value: '' } },
+    )
+    expect(screen.queryByText('first_value')).toBeNull()
+    rerender(
+      <InspectShell
+        contractId="OTHER"
+        normalizedContractId="OTHER"
+        keyPath={entry.key}
+      />,
+    )
+    expect(screen.queryByText('first_value')).toBeNull()
   })
 
   it('labels the sample contract as local demo data', () => {

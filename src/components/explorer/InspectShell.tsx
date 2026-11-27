@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
 import { Link } from '@tanstack/react-router'
 import { isSampleContractId } from '../../lib/demoContract'
+import { resolveStructFieldRows } from '../../lib/spec/resolveStructFieldRows'
 import { findCompatibleStructs } from '../../lib/spec/findCompatibleStructs'
 import { resolveNodeAtPath } from '../../lib/tree/resolveNodeAtPath'
 import { isContractId } from '../../lib/validation/isContractId'
@@ -125,6 +126,10 @@ export function InspectShell({
   const selectedStruct = compatibleStructs.find(
     (struct) => struct.name === selectedStructName,
   )
+  const interpretedFields =
+    inspectedNode && selectedStruct
+      ? resolveStructFieldRows(inspectedNode, selectedStruct, keyPath)
+      : undefined
 
   // Opt-in, route-scoped automatic metadata load. The action itself skips
   // cached specs/errors and de-duplicates concurrent loads, so re-opening the
@@ -480,7 +485,7 @@ export function InspectShell({
               </p>
             ) : compatibleStructs.length === 0 ? (
               <p role="status" className="text-sm text-text-muted">
-                No parsed struct matches every item in this vector.
+                No parsed struct matches this collection shape.
               </p>
             ) : (
               <>
@@ -488,7 +493,8 @@ export function InspectShell({
                   htmlFor="collection-struct-interpretation"
                   className="block text-sm text-text-muted"
                 >
-                  Choose a struct with the same field names as the vector items.
+                  Choose field labels for named map items or scalar values in
+                  traversal order.
                 </label>
                 <select
                   id="collection-struct-interpretation"
@@ -523,10 +529,36 @@ export function InspectShell({
                       Fields:{' '}
                       <span className="font-mono text-white">
                         {selectedStruct.fields
-                          .map((field) => field.name().toString())
+                          .map((field) => {
+                            const name = field.name()
+                            return typeof name === 'string'
+                              ? name
+                              : new TextDecoder().decode(name)
+                          })
                           .join(', ')}
                       </span>
                     </p>
+                    <dl aria-label="Interpreted fields" className="space-y-2">
+                      {interpretedFields?.map((field) => (
+                        <div
+                          key={field.keyPath}
+                          className="rounded bg-surface-dark p-3"
+                        >
+                          <dt className="font-mono text-white">
+                            {field.label}
+                          </dt>
+                          <dd>
+                            <code>{field.keyPath}</code>
+                            <span className="ml-3">
+                              {field.node.kind === 'primitive' ||
+                              field.node.kind === 'address'
+                                ? String(field.node.value)
+                                : field.node.kind}
+                            </span>
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
                   </div>
                 ) : null}
               </>
