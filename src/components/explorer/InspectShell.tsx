@@ -239,9 +239,11 @@ export function InspectShell({
             >
               {specLoadStatus === ContractSpecLoadStatus.LOADING
                 ? 'Loading spec…'
-                : hasSpec
-                  ? 'Reload spec'
-                  : 'Load contract spec'}
+                : specLoadStatus === ContractSpecLoadStatus.ERROR
+                  ? 'Retry spec load'
+                  : hasSpec
+                    ? 'Reload spec'
+                    : 'Load contract spec'}
             </Button>
           </div>
           {specLoadStatus === ContractSpecLoadStatus.LOADING ? (
