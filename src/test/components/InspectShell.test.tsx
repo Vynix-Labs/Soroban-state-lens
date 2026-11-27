@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { xdr } from '@stellar/stellar-sdk'
 import { describe, expect, it, vi } from 'vitest'
 
 import { InspectShell } from '../../components/explorer/InspectShell'
@@ -64,6 +65,123 @@ describe('InspectShell', () => {
     expect(screen.getByText('1235000')).toBeTruthy()
     expect(screen.getByText(storedEntry.rawXdr)).toBeTruthy()
     expect(screen.queryByRole('note')).toBeNull()
+  })
+
+  it('records an explicit compatible struct for a selected vector key', () => {
+    const vectorKey = storedEntry.key
+    const symbol = (value: string) => ({
+      kind: 'primitive' as const,
+      path: [],
+      scType: 'symbol' as const,
+      value,
+      raw: { switch: 'ScvSymbol', value },
+    })
+    const collection = {
+      kind: 'vec' as const,
+      path: [],
+      items: [
+        {
+          kind: 'map' as const,
+          path: [],
+          entries: [
+            {
+              key: symbol('first_value'),
+              value: {
+                kind: 'primitive' as const,
+                path: [],
+                scType: 'u32' as const,
+                value: 7,
+                raw: { switch: 'ScvU32', value: 7 },
+              },
+            },
+            {
+              key: symbol('second_value'),
+              value: {
+                kind: 'primitive' as const,
+                path: [],
+                scType: 'u32' as const,
+                value: 9,
+                raw: { switch: 'ScvU32', value: 9 },
+              },
+            },
+          ],
+          raw: { switch: 'ScvMap' },
+        },
+      ],
+      raw: { switch: 'ScvVec' },
+    }
+    const structWire = new xdr.ScSpecUdtStructV0({
+      doc: '',
+      lib: '',
+      name: 'DemoVector',
+      fields: ['first_value', 'second_value'].map(
+        (name) =>
+          new xdr.ScSpecUdtStructFieldV0({
+            doc: '',
+            name,
+            type: xdr.ScSpecTypeDef.scSpecTypeU32(),
+          }),
+      ),
+    })
+    const struct = {
+      kind: 'struct' as const,
+      name: 'DemoVector',
+      fields: structWire.fields(),
+      wire: structWire,
+    }
+    const incompatibleWire = new xdr.ScSpecUdtStructV0({
+      doc: '',
+      lib: '',
+      name: 'Other',
+      fields: [
+        new xdr.ScSpecUdtStructFieldV0({
+          doc: '',
+          name: 'unrelated',
+          type: xdr.ScSpecTypeDef.scSpecTypeU32(),
+        }),
+      ],
+    })
+    useLensStore.setState({
+      watchlist: {},
+      ledgerData: {
+        [storedEntry.key]: { ...storedEntry, value: collection },
+      },
+    })
+    useLensStore.getState().setContractSpec('C123', {
+      entries: [
+        struct,
+        {
+          kind: 'struct',
+          name: 'Other',
+          fields: incompatibleWire.fields(),
+          wire: incompatibleWire,
+        },
+      ],
+    })
+
+    render(
+      <InspectShell
+        contractId="C123"
+        normalizedContractId="C123"
+        keyPath={vectorKey}
+      />,
+    )
+
+    const selector = screen.getByRole('combobox', {
+      name: 'Struct interpretation',
+    })
+    expect(selector.querySelectorAll('option')).toHaveLength(2)
+    fireEvent.change(selector, { target: { value: 'DemoVector' } })
+
+    expect(screen.getByRole('status').textContent).toContain(
+      'This collection is explicitly interpreted as',
+    )
+    expect(screen.getByRole('status').textContent).toContain('DemoVector')
+    expect(
+      useLensStore
+        .getState()
+        .getCollectionStructInterpretation('C123', vectorKey),
+    ).toBe('DemoVector')
   })
 
   it('labels the sample contract as local demo data', () => {
