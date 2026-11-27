@@ -44,6 +44,9 @@ export function InspectShell({
   )
   const rpcUrl = useLensStore((state) => state.networkConfig.rpcUrl)
   const loadContractSpec = useLensStore((state) => state.loadContractSpec)
+  const uploadContractSpec = useLensStore(
+    (state) => state.loadContractSpecFromUpload,
+  )
   const specLoadStatus = useLensStore((state) =>
     state.getContractSpecLoadStatus(normalizedContractId || contractId),
   )
@@ -247,6 +250,28 @@ export function InspectShell({
                     : 'Load contract spec'}
             </Button>
           </div>
+          <label className="block text-sm text-text-muted">
+            Upload contract WASM
+            <input
+              type="file"
+              accept=".wasm,application/wasm"
+              disabled={
+                !isContractId(inspectedContractId) ||
+                specLoadStatus === ContractSpecLoadStatus.LOADING
+              }
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0]
+                event.currentTarget.value = ''
+                if (file) void uploadContractSpec(inspectedContractId, file)
+              }}
+            />
+          </label>
+          {specLoadStatus === ContractSpecLoadStatus.NO_SPEC ? (
+            <p role="status" className="text-sm text-text-muted">
+              This WASM file has no contractspecv0 section. Raw values remain
+              available; schema labels are unavailable.
+            </p>
+          ) : null}
           {specLoadStatus === ContractSpecLoadStatus.LOADING ? (
             <p role="status" className="text-sm text-text-muted">
               Loading contract spec…
