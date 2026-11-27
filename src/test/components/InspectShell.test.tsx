@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { xdr } from '@stellar/stellar-sdk'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { InspectShell } from '../../components/explorer/InspectShell'
 import { createDemoLedgerEntries } from '../../lib/demo/demoLedgerEntries'
@@ -8,7 +8,7 @@ import { parseContractSpec } from '../../lib/spec/parseContractSpec'
 import { extractContractspecv0 } from '../../lib/wasm/wasmExtractor'
 import { createContractSpecWasm } from '../helpers/contractSpecFixtures'
 import { SAMPLE_CONTRACT_ID } from '../../lib/demoContract'
-import { useLensStore } from '../../store/lensStore'
+import { resetStore, useLensStore } from '../../store/lensStore'
 import { contractSpecKey } from '../../store/contractSpecSlice'
 import type { ContractSpec } from '../../types/contract-spec'
 
@@ -36,6 +36,7 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 describe('InspectShell', () => {
+  beforeEach(resetStore)
   const storedEntry = {
     key: '/state/ledger',
     contractId: 'C123',
@@ -253,6 +254,85 @@ describe('InspectShell', () => {
       />,
     )
     expect(screen.queryByText('first_value')).toBeNull()
+  })
+
+  it('feeds selected field type mismatches into the existing banner without dropping other diagnostics', () => {
+    const entries = createDemoLedgerEntries()
+    const entry = entries.find(
+      (item) => (item.value as { kind: string }).kind === 'vec',
+    )!
+    const network = useLensStore.getState().networkConfig
+    const wire = new xdr.ScSpecUdtStructV0({
+      doc: '',
+      lib: '',
+      name: 'WrongType',
+      fields: [
+        new xdr.ScSpecUdtStructFieldV0({
+          doc: '',
+          name: 'first_value',
+          type: xdr.ScSpecTypeDef.scSpecTypeU32(),
+        }),
+        new xdr.ScSpecUdtStructFieldV0({
+          doc: '',
+          name: 'second_value',
+          type: xdr.ScSpecTypeDef.scSpecTypeSymbol(),
+        }),
+      ],
+    })
+    useLensStore.setState({
+      ledgerData: Object.fromEntries(entries.map((item) => [item.key, item])),
+    })
+    useLensStore.getState().setContractSpec(entry.contractId, {
+      entries: [
+        { kind: 'struct', name: 'WrongType', fields: wire.fields(), wire },
+      ],
+    })
+    const unrelated = {
+      keyPath: 'unrelated.key',
+      expectedType: 'address',
+      actualType: 'u32',
+    }
+    useLensStore
+      .getState()
+      .setContractSpecMismatches(entry.contractId, [unrelated])
+    render(
+      <InspectShell
+        contractId={entry.contractId}
+        normalizedContractId={entry.contractId}
+        keyPath={entry.key}
+      />,
+    )
+    expect(screen.queryByRole('alert')).toBeNull()
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Struct interpretation' }),
+      { target: { value: 'WrongType' } },
+    )
+    const banner = screen.getByRole('alert')
+    expect(banner.textContent).toContain(`${entry.key}.item-1.item-0`)
+    expect(banner.textContent).toContain('symbol')
+    expect(banner.textContent).toContain('u32')
+    const mismatches =
+      useLensStore.getState().contractSpecMismatches[
+        contractSpecKey(network, entry.contractId)!
+      ]
+    expect(mismatches).toContainEqual(unrelated)
+    expect(mismatches).toContainEqual({
+      keyPath: `${entry.key}.item-1.item-0`,
+      expectedType: 'symbol',
+      actualType: 'u32',
+    })
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Struct interpretation' }),
+      { target: { value: '' } },
+    )
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(
+      useLensStore.getState().contractSpecMismatches[
+        contractSpecKey(network, entry.contractId)!
+      ],
+    ).toEqual([unrelated])
+    expect(useLensStore.getState().ledgerData[entry.key]).toBe(entry)
+    expect(useLensStore.getState().networkConfig).toBe(network)
   })
 
   it('labels the sample contract as local demo data', () => {

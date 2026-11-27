@@ -87,7 +87,12 @@ export const createContractSpecSlice = (
     }))
   },
 
-  compareContractSpec: (contractId, expectedFields, actualFields) => {
+  compareContractSpec: (
+    contractId,
+    expectedFields,
+    actualFields,
+    scopeKeyPath,
+  ) => {
     const mismatches = compareContractSchema(expectedFields, actualFields)
     const normalizedContractId = contractSpecKey(
       get().networkConfig,
@@ -97,7 +102,19 @@ export const createContractSpecSlice = (
       set((state) => ({
         contractSpecMismatches: {
           ...state.contractSpecMismatches,
-          [normalizedContractId]: mismatches,
+          [normalizedContractId]:
+            scopeKeyPath === undefined
+              ? mismatches
+              : [
+                  ...(
+                    state.contractSpecMismatches[normalizedContractId] ?? []
+                  ).filter(
+                    (mismatch) =>
+                      mismatch.keyPath !== scopeKeyPath &&
+                      !mismatch.keyPath.startsWith(`${scopeKeyPath}.`),
+                  ),
+                  ...mismatches,
+                ],
         },
       }))
     }

@@ -241,6 +241,7 @@ export interface ContractSpecSlice {
     contractId: string,
     expectedFields: Array<ContractSchemaField>,
     actualFields: Array<ContractSchemaField>,
+    scopeKeyPath?: string,
   ) => Array<ContractSchemaMismatch>
   setContractSpecMismatches: (
     contractId: string,

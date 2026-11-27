@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
 import { Link } from '@tanstack/react-router'
 import { isSampleContractId } from '../../lib/demoContract'
+import { structSchemaFields } from '../../lib/spec/structSchemaFields'
 import { resolveStructFieldRows } from '../../lib/spec/resolveStructFieldRows'
 import { findCompatibleStructs } from '../../lib/spec/findCompatibleStructs'
 import { resolveNodeAtPath } from '../../lib/tree/resolveNodeAtPath'
@@ -79,12 +80,17 @@ export function InspectShell({
   const setCollectionStructInterpretation = useLensStore(
     (state) => state.setCollectionStructInterpretation,
   )
+  const compareContractSpec = useLensStore((state) => state.compareContractSpec)
   const schemaMismatch = useLensStore((state) =>
     (
       state.contractSpecMismatches[
         contractSpecKey(state.networkConfig, normalizedContractId) ?? ''
       ] ?? []
-    ).find((mismatch) => mismatch.keyPath === keyPath),
+    ).find(
+      (mismatch) =>
+        mismatch.keyPath === keyPath ||
+        mismatch.keyPath.startsWith(`${keyPath}.`),
+    ),
   )
   const entry = useLensStore((state) =>
     Object.values(state.ledgerData).reduce<LedgerEntry | undefined>(
@@ -130,6 +136,29 @@ export function InspectShell({
     inspectedNode && selectedStruct
       ? resolveStructFieldRows(inspectedNode, selectedStruct, keyPath)
       : undefined
+  useEffect(() => {
+    if (!selectedStructName) return
+    const fields =
+      selectedStruct && inspectedNode
+        ? structSchemaFields(inspectedNode, selectedStruct, keyPath)
+        : { expected: [], actual: [] }
+    compareContractSpec(
+      inspectedContractId,
+      fields.expected,
+      fields.actual,
+      keyPath,
+    )
+  }, [
+    selectedStructName,
+    selectedStruct,
+    inspectedNode,
+    inspectedContractId,
+    keyPath,
+    compareContractSpec,
+    networkId,
+    networkPassphrase,
+    rpcUrl,
+  ])
 
   // Opt-in, route-scoped automatic metadata load. The action itself skips
   // cached specs/errors and de-duplicates concurrent loads, so re-opening the
@@ -501,13 +530,15 @@ export function InspectShell({
                   aria-label="Struct interpretation"
                   className="w-full rounded border border-white/15 bg-surface-dark px-3 py-2 text-sm text-white"
                   value={selectedStruct?.name ?? ''}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    if (!event.currentTarget.value)
+                      compareContractSpec(inspectedContractId, [], [], keyPath)
                     setCollectionStructInterpretation(
                       inspectedContractId,
                       keyPath,
                       event.currentTarget.value,
                     )
-                  }
+                  }}
                 >
                   <option value="">No interpretation selected</option>
                   {compatibleStructs.map((struct) => (
