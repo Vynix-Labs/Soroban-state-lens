@@ -93,7 +93,22 @@ function counterValue(): number | null {
 }
 
 describe('demo counter action (SSL-I050)', () => {
+  const hintStorage = new Map<string, string>()
+
   beforeEach(() => {
+    const storage = {
+      getItem: (key: string) => hintStorage.get(key) ?? null,
+      setItem: (key: string, value: string) => hintStorage.set(key, value),
+      removeItem: (key: string) => hintStorage.delete(key),
+    }
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: storage,
+    })
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: storage,
+    })
     window.localStorage.removeItem(DEMO_COUNTER_HINT_STORAGE_KEY)
   })
 
@@ -140,6 +155,7 @@ describe('demo counter action (SSL-I050)', () => {
       await screen.findByRole('heading', { name: /Try the counter row/i }),
     ).toBeTruthy()
     expect(screen.getByText(/Find the counter row/i)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /Explorer Rows/ })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: /Dismiss/i }))
 

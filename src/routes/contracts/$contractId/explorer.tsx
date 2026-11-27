@@ -219,6 +219,7 @@ function ContractExplorer() {
   const [captureStatus, setCaptureStatus] = useState<string | null>(null)
   const [manualKeyInput, setManualKeyInput] = useState('')
   const [manualKeyError, setManualKeyError] = useState<string | null>(null)
+  const [showDemoCounterHint, setShowDemoCounterHint] = useState(false)
 
   const handleCaptureSnapshot = () => {
     if (ledgerEntries.length === 0) {
@@ -237,6 +238,21 @@ function ContractExplorer() {
   }
 
   const isDemoMode = search.mode === 'demo' && isSampleContractId(contractId)
+
+  useEffect(() => {
+    if (!isDemoMode) {
+      setShowDemoCounterHint(false)
+      return
+    }
+
+    try {
+      setShowDemoCounterHint(
+        window.localStorage.getItem(DEMO_COUNTER_HINT_STORAGE_KEY) !== 'true',
+      )
+    } catch {
+      setShowDemoCounterHint(true)
+    }
+  }, [isDemoMode])
 
   const demoCounterEntry = ledgerEntries.find(
     (entry) => entry.key === DEMO_COUNTER_ENTRY_KEY,
@@ -575,51 +591,84 @@ function ContractExplorer() {
         showDemoCounterHint && (
           <Card>
             <div className="p-6 space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6 text-primary"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 16h-1v-4h1m0 0h1m-1 0V7m0 9v2a2 2 0 01-2 2H7a2 2 0 01-2-2v-2a2 2 0 012-2h4a2 2 0 012 2zm4-4h-1v-4h1m0 0h1m-1 0V7m0 9v2a2 2 0 01-2 2h-4a2 2 0 01-2-2v-2a2 2 0 012-2h4a2 2 0 012 2z"
-                    />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-white">
-                    The demo contract includes a counter that can be advanced as
-                    a part of the demonstration. Use the "Demo: counter 42 → 43"
-                    button to advance the counter, then capture a snapshot to
-                    see the changes.
-                  </p>
-                  <div className="flex gap-2 mt-4">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleInspectDemoCounter}
-                    >
-                      Inspect Counter Row
-                    </Button>
-                    <Button
-                      variant="tertiary"
-                      size="sm"
-                      onClick={handleDismissDemoCounterHint}
-                    >
-                      Dismiss This Hint
-                    </Button>
-                  </div>
-                </div>
+              <Heading size="sm" as="h3">
+                Try the counter row
+              </Heading>
+              <p className="text-sm text-text-muted">
+                Find the counter row, then inspect it to see the demo value.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleInspectDemoCounter}
+                >
+                  Inspect counter
+                </Button>
+                <Button
+                  variant="tertiary"
+                  size="sm"
+                  onClick={handleDismissDemoCounterHint}
+                >
+                  Dismiss hint
+                </Button>
               </div>
             </div>
           </Card>
         )}
+
+      {contractLoadStatus === ContractLoadStatus.SUCCESS && (
+        <Card>
+          <div className="p-6 space-y-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <Heading
+                size="sm"
+                as="h3"
+                className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
+              >
+                Explorer Rows ({flatRows.length})
+              </Heading>
+
+              {expandableNodeIds.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleExpandAll}
+                  >
+                    Expand all
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleCollapseAll}
+                  >
+                    Collapse all
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+
+            {flatRows.length === 0 ? (
+              <p className="text-text-muted text-sm">
+                No decodable tree rows are available for this contract response.
+              </p>
+            ) : (
+              <VirtualizedTreeList
+                rows={flatRows}
+                expandedNodeIds={expandedNodes}
+                onToggleExpand={(nodeId) =>
+                  toggleExpandedForContract(normalizedContractId, nodeId)
+                }
+                selectedRowId={selectedKeyPath}
+                onActivateRow={(row) => handleActivateRow(row.keyPath)}
+              />
+            )}
+
+            <DecodeFallbackList entries={decodeFallbackEntries} />
+          </div>
+        </Card>
+      )}
     </div>
   )
 }
