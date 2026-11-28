@@ -7,7 +7,7 @@ export type SpecParser<T> = (
 ) => { ok: true; value: T } | { ok: false; reason: string }
 
 export type LoadContractSpecResult<T> =
-  | { ok: true; spec: T }
+  | { ok: true; spec: T; wasmHash?: string }
   | { ok: false; stage: 'fetch' | 'section' | 'parse'; reason: string }
 
 /** Fetch and inspect a contract's WASM without executing it. */
@@ -24,7 +24,11 @@ export async function loadContractSpec<T>(
   try {
     const parsed = parse(extracted.payload)
     return parsed.ok
-      ? { ok: true, spec: parsed.value }
+      ? {
+          ok: true,
+          spec: parsed.value,
+          ...(fetched.wasmHash ? { wasmHash: fetched.wasmHash } : {}),
+        }
       : { ok: false, stage: 'parse', reason: parsed.reason }
   } catch {
     return {

@@ -176,6 +176,40 @@ describe('Inspector opt-in spec loading', () => {
     )
   })
 
+  it('distinguishes fetched code identity from unverified uploaded metadata', async () => {
+    const wasmHash = 'ab'.repeat(32)
+    mockGetContractWasm.mockResolvedValueOnce({
+      success: true,
+      wasm: createContractSpecWasm(),
+      wasmHash,
+    })
+    renderInspector()
+    fireEvent.click(screen.getByRole('button', { name: 'Load contract spec' }))
+    await screen.findByText('Metadata source: Stellar RPC')
+    expect(screen.getByText(wasmHash)).toBeTruthy()
+    expect(screen.getByText(getStoreState().networkConfig.rpcUrl)).toBeTruthy()
+    expect(
+      screen.getByText(getStoreState().networkConfig.networkId),
+    ).toBeTruthy()
+    expect(
+      screen.queryByText(
+        'This file has not been verified against on-chain contract code.',
+      ),
+    ).toBeNull()
+    uploadWasm(createContractSpecWasm())
+    await screen.findByText('contract.wasm')
+    expect(
+      screen.getByText(
+        'This file has not been verified against on-chain contract code.',
+      ),
+    ).toBeTruthy()
+    expect(screen.queryByText('Metadata source: Stellar RPC')).toBeNull()
+    expect(screen.queryByText(wasmHash)).toBeNull()
+    uploadWasm(createWasmWithoutSpec())
+    await screen.findByText(/This WASM file has no contractspecv0 section/)
+    expect(screen.queryByText('contract.wasm')).toBeNull()
+  })
+
   it('loads once with opt-in on and fills the scoped cache', async () => {
     enableOptIn()
 
@@ -290,5 +324,30 @@ describe('Inspector opt-in spec loading', () => {
       expect(screen.getByText(/Spec load failed: RPC unavailable/)).toBeTruthy()
     })
     expect(mockGetContractWasm).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries a failed load for the current contract and clears stale failure UI', async () => {
+    mockGetContractWasm
+      .mockResolvedValueOnce({ success: false, error: 'RPC unavailable' })
+      .mockResolvedValueOnce({
+        success: true,
+        wasm: createContractSpecWasm(),
+      })
+    enableOptIn()
+
+    renderInspector()
+    await screen.findByRole('alert')
+    expect(screen.getByRole('button', { name: 'Retry spec load' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry spec load' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Contract spec loaded.')).toBeTruthy()
+    })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(mockGetContractWasm).toHaveBeenCalledTimes(2)
+    expect(mockGetContractWasm).toHaveBeenLastCalledWith(
+      expect.objectContaining({ contractId: TEST_CONTRACT_ID }),
+    )
   })
 })
