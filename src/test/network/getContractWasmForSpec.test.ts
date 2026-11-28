@@ -58,6 +58,7 @@ describe('getContractWasmForSpec', () => {
     expect(await getContractWasmForSpec(params)).toEqual({
       success: true,
       wasm: new Uint8Array([0, 97, 115, 109]),
+      wasmHash: '07'.repeat(32),
     })
     expect(getLedgerEntries).toHaveBeenNthCalledWith(
       1,

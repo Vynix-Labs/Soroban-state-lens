@@ -214,14 +214,29 @@ export interface LoadContractSpecResult {
   reason?: string
 }
 
+export type ContractSpecSource =
+  | {
+      kind: 'rpc'
+      networkId: string
+      rpcUrl: string
+      contractId: string
+      wasmHash?: string
+    }
+  | { kind: 'upload'; filename: string }
+
 // Contract spec slice – parsed schema data keyed by contract ID
 export interface ContractSpecSlice {
   contractSpecs: Record<string, ContractSpec>
+  contractSpecSources: Partial<Record<string, ContractSpecSource>>
   contractSpecErrors: Record<string, string>
   contractSpecMismatches: Record<string, Array<ContractSchemaMismatch>>
   contractSpecLoadStatuses: Record<string, ContractSpecLoadStatus>
   collectionStructInterpretations: Record<string, string>
-  setContractSpec: (contractId: string, spec: ContractSpec) => void
+  setContractSpec: (
+    contractId: string,
+    spec: ContractSpec,
+    source?: ContractSpecSource,
+  ) => void
   compareContractSpec: (
     contractId: string,
     expectedFields: Array<ContractSchemaField>,
@@ -238,6 +253,10 @@ export interface ContractSpecSlice {
   clearContractSpec: (contractId: string) => void
   getContractSpecLoadStatus: (contractId: string) => ContractSpecLoadStatus
   clearKeyInterpretation: (specScopeKey: string, keyPath: string) => void
+  loadContractSpecFromUpload: (
+    contractId: string,
+    file: Pick<File, 'size' | 'arrayBuffer'> & { name?: string },
+  ) => Promise<LoadContractSpecResult>
   setCollectionStructInterpretation: (
     contractId: string,
     collectionKeyPath: string,
@@ -247,10 +266,6 @@ export interface ContractSpecSlice {
     contractId: string,
     collectionKeyPath: string,
   ) => string | undefined
-  loadContractSpecFromUpload: (
-    contractId: string,
-    file: Pick<File, 'size' | 'arrayBuffer'>,
-  ) => Promise<LoadContractSpecResult>
   /** Fetch, validate, and cache the spec for a single contract. */
   loadContractSpec: (
     contractId: string,

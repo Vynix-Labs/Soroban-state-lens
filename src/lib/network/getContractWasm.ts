@@ -14,6 +14,7 @@ export interface GetContractWasmParams extends RpcRequestOptions {
 export interface GetContractWasmSuccess {
   success: true
   wasm: Uint8Array
+  wasmHash?: string
 }
 
 export interface GetContractWasmFailure {

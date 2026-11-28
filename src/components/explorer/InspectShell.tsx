@@ -59,6 +59,15 @@ export function InspectShell({
     (state) =>
       state.getContractSpec(normalizedContractId || contractId) !== undefined,
   )
+  const specSource = useLensStore(
+    (state) =>
+      state.contractSpecSources[
+        contractSpecKey(
+          state.networkConfig,
+          normalizedContractId || contractId,
+        ) ?? ''
+      ],
+  )
   const contractSpec = useLensStore((state) =>
     state.getContractSpec(normalizedContractId || contractId),
   )
@@ -129,12 +138,10 @@ export function InspectShell({
   const selectedStruct = compatibleStructs.find(
     (struct) => struct.name === selectedStructName,
   )
-
   const interpretedFields =
     inspectedNode && selectedStruct
       ? resolveStructFieldRows(inspectedNode, selectedStruct, keyPath)
       : undefined
-
   useEffect(() => {
     if (!selectedStructName) return
     const fields =
@@ -293,9 +300,11 @@ export function InspectShell({
             >
               {specLoadStatus === ContractSpecLoadStatus.LOADING
                 ? 'Loading spec…'
-                : hasSpec
-                  ? 'Reload spec'
-                  : 'Load contract spec'}
+                : specLoadStatus === ContractSpecLoadStatus.ERROR
+                  ? 'Retry spec load'
+                  : hasSpec
+                    ? 'Reload spec'
+                    : 'Load contract spec'}
             </Button>
           </div>
           <label className="block text-sm text-text-muted">
@@ -331,7 +340,41 @@ export function InspectShell({
             </p>
           ) : null}
           {specLoadStatus === ContractSpecLoadStatus.SUCCESS && hasSpec ? (
-            <p className="text-sm text-text-muted">Contract spec loaded.</p>
+            <div className="space-y-2 text-sm text-text-muted">
+              <p>Contract spec loaded.</p>
+              {specSource?.kind === 'upload' ? (
+                <>
+                  <p>
+                    Metadata source: uploaded file{' '}
+                    <code>{specSource.filename}</code>
+                  </p>
+                  <p>
+                    This file has not been verified against on-chain contract
+                    code.
+                  </p>
+                </>
+              ) : specSource?.kind === 'rpc' ? (
+                <>
+                  <p>Metadata source: Stellar RPC</p>
+                  <p>
+                    Network: <code>{specSource.networkId}</code>
+                  </p>
+                  <p>
+                    Contract: <code>{specSource.contractId}</code>
+                  </p>
+                  <p>
+                    RPC endpoint: <code>{specSource.rpcUrl}</code>
+                  </p>
+                  {specSource.wasmHash ? (
+                    <p>
+                      Code hash: <code>{specSource.wasmHash}</code>
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p>Metadata source was not recorded.</p>
+              )}
+            </div>
           ) : null}
           {!isContractId(inspectedContractId) ? (
             <p className="text-sm text-text-muted">
