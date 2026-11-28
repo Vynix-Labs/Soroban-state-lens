@@ -55,6 +55,91 @@ describe('contractSpecSlice', () => {
     expect(getStoreState().getContractSpec('CONTRACT_B')).toEqual(specB)
   })
 
+  it('keeps provenance scoped and clears it with errors or replacement metadata', () => {
+    const spec = makeSpec('A')
+    const originalNetwork = getStoreState().networkConfig
+    getStoreState().setContractSpec('CONTRACT_A', spec, {
+      kind: 'upload',
+      filename: 'a.wasm',
+    })
+    getStoreState().setContractSpec('CONTRACT_B', spec, {
+      kind: 'upload',
+      filename: 'b.wasm',
+    })
+    expect(getStoreState().contractSpecSources[key('CONTRACT_A')]).toEqual({
+      kind: 'upload',
+      filename: 'a.wasm',
+    })
+    getStoreState().setNetworkConfig(DEFAULT_NETWORKS.mainnet)
+    expect(
+      getStoreState().contractSpecSources[key('CONTRACT_A')],
+    ).toBeUndefined()
+    getStoreState().setNetworkConfig(originalNetwork)
+    getStoreState().setContractSpecError('CONTRACT_A', 'bad metadata')
+    expect(
+      getStoreState().contractSpecSources[key('CONTRACT_A')],
+    ).toBeUndefined()
+    expect(getStoreState().contractSpecSources[key('CONTRACT_B')]).toEqual({
+      kind: 'upload',
+      filename: 'b.wasm',
+    })
+    getStoreState().setContractSpec('CONTRACT_B', spec)
+    expect(
+      getStoreState().contractSpecSources[key('CONTRACT_B')],
+    ).toBeUndefined()
+  })
+
+  it('keeps collection struct choices scoped to their contract and network', () => {
+    const collectionPath = '/entry/item-0'
+    const originalNetwork = getStoreState().networkConfig
+    getStoreState().setCollectionStructInterpretation(
+      'CONTRACT_A',
+      collectionPath,
+      'Payment',
+    )
+    getStoreState().setCollectionStructInterpretation(
+      'CONTRACT_B',
+      collectionPath,
+      'Balance',
+    )
+
+    expect(
+      getStoreState().getCollectionStructInterpretation(
+        'CONTRACT_A',
+        collectionPath,
+      ),
+    ).toBe('Payment')
+    expect(
+      getStoreState().getCollectionStructInterpretation(
+        'CONTRACT_B',
+        collectionPath,
+      ),
+    ).toBe('Balance')
+
+    getStoreState().setNetworkConfig({ networkId: 'other-network' })
+    expect(
+      getStoreState().getCollectionStructInterpretation(
+        'CONTRACT_A',
+        collectionPath,
+      ),
+    ).toBeUndefined()
+    getStoreState().setNetworkConfig(originalNetwork)
+
+    getStoreState().clearContractSpec('CONTRACT_A')
+    expect(
+      getStoreState().getCollectionStructInterpretation(
+        'CONTRACT_A',
+        collectionPath,
+      ),
+    ).toBeUndefined()
+    expect(
+      getStoreState().getCollectionStructInterpretation(
+        'CONTRACT_B',
+        collectionPath,
+      ),
+    ).toBe('Balance')
+  })
+
   it('stores schema comparison details and clears them for matching fields', () => {
     const compare = getStoreState().compareContractSpec
     const expected = [{ keyPath: 'balance', type: 'i128' }]

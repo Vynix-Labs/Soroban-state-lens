@@ -1,20 +1,35 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
 import { Link } from '@tanstack/react-router'
 import { isSampleContractId } from '../../lib/demoContract'
+import { structSchemaFields } from '../../lib/spec/structSchemaFields'
+import { resolveStructFieldRows } from '../../lib/spec/resolveStructFieldRows'
+import { findCompatibleStructs } from '../../lib/spec/findCompatibleStructs'
+import { resolveNodeAtPath } from '../../lib/tree/resolveNodeAtPath'
 import { isContractId } from '../../lib/validation/isContractId'
 import { useLensStore } from '../../store/lensStore'
 import { ContractSpecLoadStatus } from '../../store/types'
 import { contractSpecKey } from '../../store/contractSpecSlice'
 import { buildInspectBreadcrumb } from './buildInspectBreadcrumb'
+import { InspectorEnum } from './InspectorEnum'
 import { LocalDemoNotice } from './LocalDemoNotice'
 import type { LedgerEntry } from '../../store/types'
+import type { Node } from '../../types/node'
 
 interface InspectShellProps {
   contractId: string
   normalizedContractId: string
   keyPath: string
   keyPathError?: string
+}
+
+function isNodeLike(value: unknown): value is Node {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'kind' in value &&
+    typeof value.kind === 'string'
+  )
 }
 
 export function InspectShell({
@@ -31,6 +46,9 @@ export function InspectShell({
   )
   const rpcUrl = useLensStore((state) => state.networkConfig.rpcUrl)
   const loadContractSpec = useLensStore((state) => state.loadContractSpec)
+  const uploadContractSpec = useLensStore(
+    (state) => state.loadContractSpecFromUpload,
+  )
   const specLoadStatus = useLensStore((state) =>
     state.getContractSpecLoadStatus(normalizedContractId || contractId),
   )
@@ -41,12 +59,44 @@ export function InspectShell({
     (state) =>
       state.getContractSpec(normalizedContractId || contractId) !== undefined,
   )
+  const specSource = useLensStore(
+    (state) =>
+      state.contractSpecSources[
+        contractSpecKey(
+          state.networkConfig,
+          normalizedContractId || contractId,
+        ) ?? ''
+      ],
+  )
+  const contractSpec = useLensStore((state) =>
+    state.getContractSpec(normalizedContractId || contractId),
+  )
+  const selectedStructName = useLensStore((state) =>
+    state.getCollectionStructInterpretation(
+      normalizedContractId || contractId,
+      keyPath,
+    ),
+  )
+  const setCollectionStructInterpretation = useLensStore(
+    (state) => state.setCollectionStructInterpretation,
+  )
+  const clearKeyInterpretation = useLensStore(
+    (state) => state.clearKeyInterpretation,
+  )
+  const interpretationScope = useLensStore((state) =>
+    contractSpecKey(state.networkConfig, normalizedContractId || contractId),
+  )
+  const compareContractSpec = useLensStore((state) => state.compareContractSpec)
   const schemaMismatch = useLensStore((state) =>
     (
       state.contractSpecMismatches[
         contractSpecKey(state.networkConfig, normalizedContractId) ?? ''
       ] ?? []
-    ).find((mismatch) => mismatch.keyPath === keyPath),
+    ).find(
+      (mismatch) =>
+        mismatch.keyPath === keyPath ||
+        mismatch.keyPath.startsWith(`${keyPath}.`),
+    ),
   )
   const entry = useLensStore((state) =>
     Object.values(state.ledgerData).reduce<LedgerEntry | undefined>(
@@ -70,6 +120,59 @@ export function InspectShell({
   const [watchlistFeedback, setWatchlistFeedback] = useState('')
   const copiedResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inspectedContractId = normalizedContractId || contractId
+  const inspectedNode =
+    entry && isNodeLike(entry.value)
+      ? resolveNodeAtPath(entry.value, entry.key, keyPath)
+      : undefined
+  const compatibleStructs = useMemo(
+    () =>
+      inspectedNode?.kind === 'vec'
+        ? findCompatibleStructs(
+            inspectedNode,
+            contractSpec?.entries.filter((item) => item.kind === 'struct') ??
+              [],
+          )
+        : [],
+    [contractSpec, inspectedNode],
+  )
+  const selectedStruct = compatibleStructs.find(
+    (struct) => struct.name === selectedStructName,
+  )
+  const interpretedFields =
+    inspectedNode && selectedStruct
+      ? resolveStructFieldRows(inspectedNode, selectedStruct, keyPath)
+      : undefined
+  useEffect(() => {
+    if (!selectedStructName) return
+    const fields =
+      selectedStruct && inspectedNode
+        ? structSchemaFields(inspectedNode, selectedStruct, keyPath)
+        : { expected: [], actual: [] }
+    compareContractSpec(
+      inspectedContractId,
+      fields.expected,
+      fields.actual,
+      keyPath,
+    )
+  }, [
+    selectedStructName,
+    selectedStruct,
+    inspectedNode,
+    inspectedContractId,
+    keyPath,
+    compareContractSpec,
+    networkId,
+    networkPassphrase,
+    rpcUrl,
+  ])
+
+  useEffect(
+    () => () => {
+      if (interpretationScope)
+        clearKeyInterpretation(interpretationScope, keyPath)
+    },
+    [interpretationScope, keyPath, clearKeyInterpretation],
+  )
 
   // Opt-in, route-scoped automatic metadata load. The action itself skips
   // cached specs/errors and de-duplicates concurrent loads, so re-opening the
@@ -197,11 +300,35 @@ export function InspectShell({
             >
               {specLoadStatus === ContractSpecLoadStatus.LOADING
                 ? 'Loading spec…'
-                : hasSpec
-                  ? 'Reload spec'
-                  : 'Load contract spec'}
+                : specLoadStatus === ContractSpecLoadStatus.ERROR
+                  ? 'Retry spec load'
+                  : hasSpec
+                    ? 'Reload spec'
+                    : 'Load contract spec'}
             </Button>
           </div>
+          <label className="block text-sm text-text-muted">
+            Upload contract WASM
+            <input
+              type="file"
+              accept=".wasm,application/wasm"
+              disabled={
+                !isContractId(inspectedContractId) ||
+                specLoadStatus === ContractSpecLoadStatus.LOADING
+              }
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0]
+                event.currentTarget.value = ''
+                if (file) void uploadContractSpec(inspectedContractId, file)
+              }}
+            />
+          </label>
+          {specLoadStatus === ContractSpecLoadStatus.NO_SPEC ? (
+            <p role="status" className="text-sm text-text-muted">
+              This WASM file has no contractspecv0 section. Raw values remain
+              available; schema labels are unavailable.
+            </p>
+          ) : null}
           {specLoadStatus === ContractSpecLoadStatus.LOADING ? (
             <p role="status" className="text-sm text-text-muted">
               Loading contract spec…
@@ -213,7 +340,41 @@ export function InspectShell({
             </p>
           ) : null}
           {specLoadStatus === ContractSpecLoadStatus.SUCCESS && hasSpec ? (
-            <p className="text-sm text-text-muted">Contract spec loaded.</p>
+            <div className="space-y-2 text-sm text-text-muted">
+              <p>Contract spec loaded.</p>
+              {specSource?.kind === 'upload' ? (
+                <>
+                  <p>
+                    Metadata source: uploaded file{' '}
+                    <code>{specSource.filename}</code>
+                  </p>
+                  <p>
+                    This file has not been verified against on-chain contract
+                    code.
+                  </p>
+                </>
+              ) : specSource?.kind === 'rpc' ? (
+                <>
+                  <p>Metadata source: Stellar RPC</p>
+                  <p>
+                    Network: <code>{specSource.networkId}</code>
+                  </p>
+                  <p>
+                    Contract: <code>{specSource.contractId}</code>
+                  </p>
+                  <p>
+                    RPC endpoint: <code>{specSource.rpcUrl}</code>
+                  </p>
+                  {specSource.wasmHash ? (
+                    <p>
+                      Code hash: <code>{specSource.wasmHash}</code>
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p>Metadata source was not recorded.</p>
+              )}
+            </div>
           ) : null}
           {!isContractId(inspectedContractId) ? (
             <p className="text-sm text-text-muted">
@@ -222,6 +383,14 @@ export function InspectShell({
           ) : null}
         </div>
       </Card>
+
+      {entry && !keyPathError ? (
+        <InspectorEnum
+          contractId={inspectedContractId}
+          keyPath={keyPath}
+          entry={entry}
+        />
+      ) : null}
 
       <nav
         aria-label="Inspect breadcrumb"
@@ -339,6 +508,106 @@ export function InspectShell({
                 </div>
               </div>
             </div>
+          </div>
+        </Card>
+      ) : null}
+
+      {inspectedNode?.kind === 'vec' ? (
+        <Card>
+          <div className="p-6 space-y-3">
+            <Heading
+              size="sm"
+              as="h3"
+              className="text-text-muted uppercase tracking-widest text-[11px] font-bold"
+            >
+              Struct interpretation
+            </Heading>
+            {!hasSpec ? (
+              <p className="text-sm text-text-muted">
+                Load this contract’s spec to choose a matching struct.
+              </p>
+            ) : compatibleStructs.length === 0 ? (
+              <p role="status" className="text-sm text-text-muted">
+                No parsed struct matches this collection shape.
+              </p>
+            ) : (
+              <>
+                <label
+                  htmlFor="collection-struct-interpretation"
+                  className="block text-sm text-text-muted"
+                >
+                  Choose field labels for named map items or scalar values in
+                  traversal order.
+                </label>
+                <select
+                  id="collection-struct-interpretation"
+                  aria-label="Struct interpretation"
+                  className="w-full rounded border border-white/15 bg-surface-dark px-3 py-2 text-sm text-white"
+                  value={selectedStruct?.name ?? ''}
+                  onChange={(event) => {
+                    if (!event.currentTarget.value)
+                      compareContractSpec(inspectedContractId, [], [], keyPath)
+                    setCollectionStructInterpretation(
+                      inspectedContractId,
+                      keyPath,
+                      event.currentTarget.value,
+                    )
+                  }}
+                >
+                  <option value="">No interpretation selected</option>
+                  {compatibleStructs.map((struct) => (
+                    <option key={struct.name} value={struct.name}>
+                      {struct.name}
+                    </option>
+                  ))}
+                </select>
+                {selectedStruct ? (
+                  <div role="status" className="space-y-2 text-sm">
+                    <p className="text-text-muted">
+                      This collection is explicitly interpreted as{' '}
+                      <span className="font-mono text-white">
+                        {selectedStruct.name}
+                      </span>
+                      .
+                    </p>
+                    <p className="text-text-muted">
+                      Fields:{' '}
+                      <span className="font-mono text-white">
+                        {selectedStruct.fields
+                          .map((field) => {
+                            const name = field.name()
+                            return typeof name === 'string'
+                              ? name
+                              : new TextDecoder().decode(name)
+                          })
+                          .join(', ')}
+                      </span>
+                    </p>
+                    <dl aria-label="Interpreted fields" className="space-y-2">
+                      {interpretedFields?.map((field) => (
+                        <div
+                          key={field.keyPath}
+                          className="rounded bg-surface-dark p-3"
+                        >
+                          <dt className="font-mono text-white">
+                            {field.label}
+                          </dt>
+                          <dd>
+                            <code>{field.keyPath}</code>
+                            <span className="ml-3">
+                              {field.node.kind === 'primitive' ||
+                              field.node.kind === 'address'
+                                ? String(field.node.value)
+                                : field.node.kind}
+                            </span>
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
         </Card>
       ) : null}
