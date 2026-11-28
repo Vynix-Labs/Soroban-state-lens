@@ -58,3 +58,6 @@ jobs:
 
       - name: Run Discovery argument acceptance
         run: bun run test:browser -- browser-tests/discovery-arguments.pw.ts
+
+      - name: Run Inspector upload acceptance
+        run: bun run test:browser -- browser-tests/inspector-upload.pw.ts

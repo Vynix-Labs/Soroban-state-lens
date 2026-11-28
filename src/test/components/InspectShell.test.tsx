@@ -226,7 +226,7 @@ describe('InspectShell', () => {
         keyPath={entry.key}
       />,
     )
-    expect(screen.queryByRole('definition')).toBeNull()
+    expect(screen.queryByLabelText('Interpreted fields')).toBeNull()
     expect(screen.queryByText('first_value')).toBeNull()
     fireEvent.change(
       screen.getByRole('combobox', { name: 'Struct interpretation' }),

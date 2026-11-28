@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Card, Heading, IconButton } from '@stellar/design-system'
 import { Link } from '@tanstack/react-router'
 import { isSampleContractId } from '../../lib/demoContract'
+import { rawInspectorFields } from '../../lib/spec/rawInspectorFields'
 import { structSchemaFields } from '../../lib/spec/structSchemaFields'
 import { resolveStructFieldRows } from '../../lib/spec/resolveStructFieldRows'
 import { findCompatibleStructs } from '../../lib/spec/findCompatibleStructs'
@@ -142,6 +143,12 @@ export function InspectShell({
     inspectedNode && selectedStruct
       ? resolveStructFieldRows(inspectedNode, selectedStruct, keyPath)
       : undefined
+  const rawFields = useMemo(
+    () => (inspectedNode ? rawInspectorFields(inspectedNode, keyPath) : []),
+    [inspectedNode, keyPath],
+  )
+  const displayedFields = interpretedFields ?? rawFields
+
   useEffect(() => {
     if (!selectedStructName) return
     const fields =
@@ -583,31 +590,37 @@ export function InspectShell({
                           .join(', ')}
                       </span>
                     </p>
-                    <dl aria-label="Interpreted fields" className="space-y-2">
-                      {interpretedFields?.map((field) => (
-                        <div
-                          key={field.keyPath}
-                          className="rounded bg-surface-dark p-3"
-                        >
-                          <dt className="font-mono text-white">
-                            {field.label}
-                          </dt>
-                          <dd>
-                            <code>{field.keyPath}</code>
-                            <span className="ml-3">
-                              {field.node.kind === 'primitive' ||
-                              field.node.kind === 'address'
-                                ? String(field.node.value)
-                                : field.node.kind}
-                            </span>
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
                   </div>
                 ) : null}
               </>
             )}
+            <dl
+              aria-label={selectedStruct ? 'Interpreted fields' : 'Raw fields'}
+              className="space-y-2"
+            >
+              {displayedFields.map((field) => (
+                <div
+                  key={field.keyPath}
+                  className="rounded bg-surface-dark p-3"
+                >
+                  <dt className="font-mono text-white">{field.label}</dt>
+                  <dd>
+                    <code>{field.keyPath}</code>
+                    <span className="ml-3">
+                      {field.node.kind === 'primitive' ||
+                      field.node.kind === 'address'
+                        ? String(field.node.value)
+                        : field.node.kind}
+                    </span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            {!selectedStruct && rawFields.length === 100 ? (
+              <p className="text-sm text-text-muted">
+                Showing the first 100 raw fields.
+              </p>
+            ) : null}
           </div>
         </Card>
       ) : null}
