@@ -38,6 +38,17 @@ function collectionStructInterpretationKey(
   return `${specKey}\u0000${collectionKeyPath}`
 }
 
+function withoutSpecInterpretations(
+  choices: Record<string, string>,
+  scope: string,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(choices).filter(
+      ([key]) => !key.startsWith(`${scope}\u0000`),
+    ),
+  )
+}
+
 export const createContractSpecSlice = (
   set: (fn: (state: LensStore) => Partial<LensStore>) => void,
   get: () => LensStore,
@@ -59,6 +70,10 @@ export const createContractSpecSlice = (
     }
 
     set((state) => ({
+      collectionStructInterpretations: withoutSpecInterpretations(
+        state.collectionStructInterpretations,
+        normalizedContractId,
+      ),
       contractSpecs: {
         ...state.contractSpecs,
         [normalizedContractId]: spec,
@@ -157,6 +172,10 @@ export const createContractSpecSlice = (
     if (!normalizedContractId || !normalizedError) return
 
     set((state) => ({
+      collectionStructInterpretations: withoutSpecInterpretations(
+        state.collectionStructInterpretations,
+        normalizedContractId,
+      ),
       contractSpecErrors: {
         ...state.contractSpecErrors,
         [normalizedContractId]: normalizedError,
@@ -235,6 +254,25 @@ export const createContractSpecSlice = (
     return get().contractSpecLoadStatuses[key] ?? ContractSpecLoadStatus.IDLE
   },
 
+  clearKeyInterpretation: (specScopeKey, keyPath) =>
+    set((state) => {
+      const key = `${specScopeKey}\u0000${keyPath}`
+      const { [key]: _choice, ...collectionStructInterpretations } =
+        state.collectionStructInterpretations
+      return {
+        collectionStructInterpretations,
+        contractSpecMismatches: {
+          ...state.contractSpecMismatches,
+          [specScopeKey]: (
+            state.contractSpecMismatches[specScopeKey] ?? []
+          ).filter(
+            (mismatch) =>
+              mismatch.keyPath !== keyPath &&
+              !mismatch.keyPath.startsWith(`${keyPath}.`),
+          ),
+        },
+      }
+    }),
   loadContractSpecFromUpload: async (contractId, file) => {
     const normalized = normalizeContractIdInput(contractId)
     if (!isContractId(normalized))

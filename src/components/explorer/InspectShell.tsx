@@ -80,6 +80,12 @@ export function InspectShell({
   const setCollectionStructInterpretation = useLensStore(
     (state) => state.setCollectionStructInterpretation,
   )
+  const clearKeyInterpretation = useLensStore(
+    (state) => state.clearKeyInterpretation,
+  )
+  const interpretationScope = useLensStore((state) =>
+    contractSpecKey(state.networkConfig, normalizedContractId || contractId),
+  )
   const compareContractSpec = useLensStore((state) => state.compareContractSpec)
   const schemaMismatch = useLensStore((state) =>
     (
@@ -159,6 +165,14 @@ export function InspectShell({
     networkPassphrase,
     rpcUrl,
   ])
+
+  useEffect(
+    () => () => {
+      if (interpretationScope)
+        clearKeyInterpretation(interpretationScope, keyPath)
+    },
+    [interpretationScope, keyPath, clearKeyInterpretation],
+  )
 
   // Opt-in, route-scoped automatic metadata load. The action itself skips
   // cached specs/errors and de-duplicates concurrent loads, so re-opening the

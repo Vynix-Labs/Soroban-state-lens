@@ -252,6 +252,7 @@ export interface ContractSpecSlice {
   getContractSpecError: (contractId: string) => string | undefined
   clearContractSpec: (contractId: string) => void
   getContractSpecLoadStatus: (contractId: string) => ContractSpecLoadStatus
+  clearKeyInterpretation: (specScopeKey: string, keyPath: string) => void
   loadContractSpecFromUpload: (
     contractId: string,
     file: Pick<File, 'size' | 'arrayBuffer'> & { name?: string },

@@ -122,6 +122,21 @@ describe('Inspector explicit enum interpretation', () => {
     })
     expect(screen.queryByRole('status')).toBeNull()
   })
+  it('does not revive an old enum label when a replaced spec returns', () => {
+    const original = useLensStore.getState().getContractSpec('C123')!
+    render(<InspectorEnum contractId="C123" keyPath="root" entry={entry(1)} />)
+    fireEvent.change(screen.getByLabelText('Choose an enum for this value'), {
+      target: { value: 'Color' },
+    })
+    expect(screen.getByRole('status').textContent).toBe('Color.GREEN')
+    act(() => useLensStore.getState().setContractSpec('C123', { entries: [] }))
+    act(() => useLensStore.getState().setContractSpec('C123', original))
+    expect(
+      screen.getByLabelText('Choose an enum for this value'),
+    ).toHaveProperty('value', '')
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
   it('resolves nested numeric paths and hides enum choices for incompatible data', () => {
     const nested: LedgerEntry = {
       ...entry(1),

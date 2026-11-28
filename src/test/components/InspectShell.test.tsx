@@ -335,6 +335,112 @@ describe('InspectShell', () => {
     expect(useLensStore.getState().networkConfig).toBe(network)
   })
 
+  it('clears struct labels after uploaded metadata replacement and context round trips', async () => {
+    const entries = createDemoLedgerEntries()
+    const entry = entries.find(
+      (item) => (item.value as { kind: string }).kind === 'vec',
+    )!
+    const network = useLensStore.getState().networkConfig
+    useLensStore.setState({
+      ledgerData: Object.fromEntries(entries.map((item) => [item.key, item])),
+    })
+    useLensStore
+      .getState()
+      .setCollectionStructInterpretation('OTHER', 'other-key', 'Keep')
+    const { rerender } = render(
+      <InspectShell
+        contractId={entry.contractId}
+        normalizedContractId={entry.contractId}
+        keyPath={entry.key}
+      />,
+    )
+    const upload = (names: Array<string>) => {
+      const wire = new xdr.ScSpecUdtStructV0({
+        doc: '',
+        lib: '',
+        name: 'DemoVector',
+        fields: names.map(
+          (name) =>
+            new xdr.ScSpecUdtStructFieldV0({
+              doc: '',
+              name,
+              type: xdr.ScSpecTypeDef.scSpecTypeU32(),
+            }),
+        ),
+      })
+      const wasm = createContractSpecWasm([
+        xdr.ScSpecEntry.scSpecEntryUdtStructV0(wire),
+      ])
+      const buffer = new ArrayBuffer(wasm.length)
+      new Uint8Array(buffer).set(wasm)
+      const file = new File([], 'fixture.wasm')
+      Object.defineProperties(file, {
+        size: { value: buffer.byteLength },
+        arrayBuffer: { value: () => Promise.resolve(buffer) },
+      })
+      fireEvent.change(screen.getByLabelText('Upload contract WASM'), {
+        target: { files: [file] },
+      })
+    }
+    const choose = () =>
+      fireEvent.change(
+        screen.getByRole('combobox', { name: 'Struct interpretation' }),
+        { target: { value: 'DemoVector' } },
+      )
+    upload(['first_value', 'second_value'])
+    await screen.findByRole('combobox', { name: 'Struct interpretation' })
+    choose()
+    expect(screen.getByLabelText('Interpreted fields').textContent).toContain(
+      'first_value',
+    )
+    upload(['replacement_first', 'replacement_second'])
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'Struct interpretation' }),
+      ).toHaveProperty('disabled', false),
+    )
+    await waitFor(() =>
+      expect(
+        useLensStore.getState().getContractSpecLoadStatus(entry.contractId),
+      ).toBe('success'),
+    )
+    expect(
+      screen.getByRole('combobox', { name: 'Struct interpretation' }),
+    ).toHaveProperty('value', '')
+    expect(screen.queryByLabelText('Interpreted fields')).toBeNull()
+    choose()
+    expect(screen.getByLabelText('Interpreted fields').textContent).toContain(
+      'replacement_first',
+    )
+    act(() =>
+      useLensStore.getState().setNetworkConfig({ networkId: 'other-network' }),
+    )
+    act(() => useLensStore.getState().setNetworkConfig(network))
+    expect(
+      screen.getByRole('combobox', { name: 'Struct interpretation' }),
+    ).toHaveProperty('value', '')
+    choose()
+    rerender(
+      <InspectShell
+        contractId="OTHER"
+        normalizedContractId="OTHER"
+        keyPath="other-key"
+      />,
+    )
+    rerender(
+      <InspectShell
+        contractId={entry.contractId}
+        normalizedContractId={entry.contractId}
+        keyPath={entry.key}
+      />,
+    )
+    expect(
+      screen.getByRole('combobox', { name: 'Struct interpretation' }),
+    ).toHaveProperty('value', '')
+    expect(screen.getByText(entry.rawXdr!)).toBeTruthy()
+    expect(useLensStore.getState().ledgerData[entry.key]).toBe(entry)
+  })
+
   it('labels the sample contract as local demo data', () => {
     render(
       <InspectShell

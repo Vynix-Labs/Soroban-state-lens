@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { resolveEnumValue } from '../../lib/spec/resolveEnumValue'
 import { resolveNodeAtPath } from '../../lib/tree/resolveNodeAtPath'
 import { contractSpecKey } from '../../store/contractSpecSlice'
@@ -38,6 +38,9 @@ export function InspectorEnum({
     spec: ContractSpec
     name: string
   } | null>(null)
+  useEffect(() => {
+    setChoice(null)
+  }, [scope, keyPath, spec])
   const node = decodedNode(entry.value)
     ? resolveNodeAtPath(entry.value, entry.key, keyPath)
     : undefined
